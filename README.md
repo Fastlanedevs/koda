@@ -448,6 +448,7 @@ Detailed documentation lives in the [`docs/`](docs/) directory:
 | [`DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Cloud and self-hosted deployment guide |
 | [`SELF_HOSTING.md`](docs/SELF_HOSTING.md) | Local hosting setup and configuration |
 | [`SANDBOX_CONFIGURATION.md`](docs/SANDBOX_CONFIGURATION.md) | Docker sandbox resource tuning |
+| [`roadmap/phase-3-plugin-governance-playbook.md`](docs/roadmap/phase-3-plugin-governance-playbook.md) | Plugin governance review, escalation, and operator override/rollback playbook |
 
 ---
 
@@ -492,6 +493,28 @@ Contributions are welcome. Here's how to get started:
 4. Run `npm run lint` and `npm run build` to verify
 5. Commit and push
 6. Open a pull request
+
+### Plugin policy metadata requirements
+
+When contributing plugin changes, declare policy metadata on every `AgentPlugin`:
+
+```ts
+policy: {
+  capabilityDeclarations: AgentCapability[];
+  distributionVisibility: ('oss' | 'hosted')[];
+  trustTier: 'official' | 'verified' | 'community';
+}
+```
+
+Checklist:
+- Keep `capabilityDeclarations` in sync with runtime `capabilities`
+- Set explicit `distributionVisibility` (`oss`, `hosted`, or both)
+- Set correct `trustTier` based on review status
+- Run `npm run build` before opening a PR
+
+For governance and operator response flow, see:
+- [`docs/roadmap/phase-3-plugin-policy-schema.md`](docs/roadmap/phase-3-plugin-policy-schema.md)
+- [`docs/roadmap/phase-3-plugin-governance-playbook.md`](docs/roadmap/phase-3-plugin-governance-playbook.md)
 
 ### Adding a new node type
 
