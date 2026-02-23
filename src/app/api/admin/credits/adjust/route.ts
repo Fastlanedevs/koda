@@ -2,11 +2,23 @@ import 'server-only';
 
 import { randomUUID } from 'crypto';
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { requireActor } from '@/lib/auth/actor';
 import { ensureBillingAccountForWorkspace } from '@/lib/billing/accounts';
 import { isBillingAdmin } from '@/lib/billing/admin';
+import { logBillingAdminAction } from '@/lib/billing/admin-audit';
 import { appendLedgerEntry } from '@/lib/billing/ledger';
 import { emitBillingMetric } from '@/lib/observability/billing-metrics';
+
+const adminAdjustBodySchema = z
+  .object({
+    workspaceId: z.string().min(1),
+    amountCredits: z.number().int(),
+    reasonCode: z.string().min(2),
+    note: z.string().max(2000).optional(),
+    idempotencyKey: z.string().min(1).optional(),
+  })
+  .strict();
 
 export async function POST(request: Request) {
   const actorResult = await requireActor();
@@ -16,21 +28,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const body = (await request.json()) as {
-    workspaceId?: string;
-    amountCredits?: number;
-    reasonCode?: string;
-    note?: string;
-    idempotencyKey?: string;
-  };
-
-  if (!body.workspaceId || typeof body.amountCredits !== 'number' || !body.reasonCode) {
+  const parsedBody = adminAdjustBodySchema.safeParse(await request.json().catch(() => null));
+  if (!parsedBody.success) {
     return NextResponse.json(
       { error: 'workspaceId, amountCredits, and reasonCode are required' },
       { status: 400 }
     );
   }
 
+  const body = parsedBody.data;
   const account = await ensureBillingAccountForWorkspace(body.workspaceId);
 
   const idempotencyKey =
@@ -47,6 +53,18 @@ export async function POST(request: Request) {
     metadata: {
       note: body.note ?? null,
       actorUserId: actorResult.actor.user.id,
+    },
+  });
+
+  await logBillingAdminAction({
+    actorUserId: actorResult.actor.user.id,
+    action: 'manual_credit_adjustment',
+    workspaceId: body.workspaceId,
+    metadata: {
+      billingAccountId: account.id,
+      amountCredits: body.amountCredits,
+      reasonCode: body.reasonCode,
+      entryId: entry.id,
     },
   });
 

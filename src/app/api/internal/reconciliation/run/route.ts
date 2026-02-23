@@ -1,10 +1,18 @@
 import 'server-only';
 
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { requireActor } from '@/lib/auth/actor';
 import { isBillingAdmin } from '@/lib/billing/admin';
+import { logBillingAdminAction } from '@/lib/billing/admin-audit';
 import { runBillingReconciliation } from '@/lib/billing/reconciliation';
 import { emitBillingMetric } from '@/lib/observability/billing-metrics';
+
+const reconciliationBodySchema = z
+  .object({
+    repairEnabled: z.boolean().optional(),
+  })
+  .strict();
 
 export async function POST(request: Request) {
   const actorResult = await requireActor();
@@ -14,9 +22,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const body = (await request.json().catch(() => ({}))) as { repairEnabled?: boolean };
+  const parsedBody = reconciliationBodySchema.safeParse(await request.json().catch(() => ({})));
+  if (!parsedBody.success) {
+    return NextResponse.json({ error: 'Invalid request payload' }, { status: 400 });
+  }
 
-  const result = await runBillingReconciliation({ repairEnabled: body.repairEnabled === true });
+  const repairEnabled = parsedBody.data.repairEnabled === true;
+  const result = await runBillingReconciliation({ repairEnabled });
+
+  await logBillingAdminAction({
+    actorUserId: actorResult.actor.user.id,
+    action: 'reconciliation_trigger',
+    metadata: {
+      repairEnabled,
+      ...result,
+    },
+  });
 
   emitBillingMetric({
     event: 'reconciliation_run',
