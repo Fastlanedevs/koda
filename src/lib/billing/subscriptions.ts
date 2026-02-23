@@ -119,6 +119,8 @@ export async function processSubscriptionLifecycleWebhook(event: WebhookLifecycl
   const db = await getDatabaseAsync();
   const now = new Date();
 
+  const payloadDigest = payloadHash(event.payload);
+
   const [existingEvent] = await db
     .select()
     .from(externalBillingEvents)
@@ -131,6 +133,10 @@ export async function processSubscriptionLifecycleWebhook(event: WebhookLifecycl
     .limit(1);
 
   if (existingEvent) {
+    if (existingEvent.payloadHash !== payloadDigest) {
+      throw new Error('Webhook idempotency conflict: authorityEventId replayed with different payload');
+    }
+
     return { deduped: true, eventId: existingEvent.id };
   }
 
@@ -146,7 +152,7 @@ export async function processSubscriptionLifecycleWebhook(event: WebhookLifecycl
     authorityEventId: event.authorityEventId,
     eventType: event.eventType,
     billingAccountId: event.billingAccountId,
-    payloadHash: payloadHash(event.payload),
+    payloadHash: payloadDigest,
     payloadJson: JSON.stringify(event.payload),
     status: 'received',
     errorCode: null,
@@ -154,80 +160,93 @@ export async function processSubscriptionLifecycleWebhook(event: WebhookLifecycl
     processedAt: null,
   });
 
-  await db
-    .insert(subscriptions)
-    .values({
-      id: event.subscriptionId,
-      billingAccountId: event.billingAccountId,
-      planId: plan.id,
-      authority: event.authority,
-      authoritySubscriptionId: event.subscriptionId,
-      status: event.status,
-      currentPeriodStart: new Date(event.currentPeriodStart),
-      currentPeriodEnd: new Date(event.currentPeriodEnd),
-      cancelAtPeriodEnd: event.cancelAtPeriodEnd ?? false,
-      createdAt: now,
-      updatedAt: now,
-    })
-    .onConflictDoUpdate({
-      target: subscriptions.id,
-      set: {
+  try {
+    await db
+      .insert(subscriptions)
+      .values({
+        id: event.subscriptionId,
+        billingAccountId: event.billingAccountId,
         planId: plan.id,
+        authority: event.authority,
+        authoritySubscriptionId: event.subscriptionId,
         status: event.status,
         currentPeriodStart: new Date(event.currentPeriodStart),
         currentPeriodEnd: new Date(event.currentPeriodEnd),
         cancelAtPeriodEnd: event.cancelAtPeriodEnd ?? false,
+        createdAt: now,
         updatedAt: now,
-      },
-    });
-
-  if (event.grantCredits && event.grantCredits > 0 && event.cycleStart && event.cycleEnd) {
-    const [existingGrant] = await db
-      .select()
-      .from(subscriptionCycleGrants)
-      .where(
-        and(
-          eq(subscriptionCycleGrants.subscriptionId, event.subscriptionId),
-          eq(subscriptionCycleGrants.cycleStart, new Date(event.cycleStart)),
-          eq(subscriptionCycleGrants.cycleEnd, new Date(event.cycleEnd))
-        )
-      )
-      .limit(1);
-
-    if (!existingGrant) {
-      const ledger = await appendLedgerEntry({
-        billingAccountId: event.billingAccountId,
-        txnType: 'credit_grant_subscription',
-        amountCredits: event.grantCredits,
-        idempotencyKey: `billing:grant:${event.subscriptionId}:${event.authorityEventId}:v1`,
-        referenceType: 'subscription_cycle',
-        referenceId: `${event.subscriptionId}:${event.cycleStart}`,
-        metadata: {
-          planCode: event.planCode,
-          cycleStart: event.cycleStart,
-          cycleEnd: event.cycleEnd,
+      })
+      .onConflictDoUpdate({
+        target: subscriptions.id,
+        set: {
+          planId: plan.id,
+          status: event.status,
+          currentPeriodStart: new Date(event.currentPeriodStart),
+          currentPeriodEnd: new Date(event.currentPeriodEnd),
+          cancelAtPeriodEnd: event.cancelAtPeriodEnd ?? false,
+          updatedAt: now,
         },
       });
 
-      await db.insert(subscriptionCycleGrants).values({
-        id: randomUUID(),
-        subscriptionId: event.subscriptionId,
-        cycleStart: new Date(event.cycleStart),
-        cycleEnd: new Date(event.cycleEnd),
-        grantedCredits: event.grantCredits,
-        grantLedgerTxnId: ledger.id,
-        createdAt: now,
-      });
+    if (event.grantCredits && event.grantCredits > 0 && event.cycleStart && event.cycleEnd) {
+      const [existingGrant] = await db
+        .select()
+        .from(subscriptionCycleGrants)
+        .where(
+          and(
+            eq(subscriptionCycleGrants.subscriptionId, event.subscriptionId),
+            eq(subscriptionCycleGrants.cycleStart, new Date(event.cycleStart)),
+            eq(subscriptionCycleGrants.cycleEnd, new Date(event.cycleEnd))
+          )
+        )
+        .limit(1);
+
+      if (!existingGrant) {
+        const ledger = await appendLedgerEntry({
+          billingAccountId: event.billingAccountId,
+          txnType: 'credit_grant_subscription',
+          amountCredits: event.grantCredits,
+          idempotencyKey: `billing:grant:${event.subscriptionId}:${event.authorityEventId}:v1`,
+          referenceType: 'subscription_cycle',
+          referenceId: `${event.subscriptionId}:${event.cycleStart}`,
+          metadata: {
+            planCode: event.planCode,
+            cycleStart: event.cycleStart,
+            cycleEnd: event.cycleEnd,
+          },
+        });
+
+        await db.insert(subscriptionCycleGrants).values({
+          id: randomUUID(),
+          subscriptionId: event.subscriptionId,
+          cycleStart: new Date(event.cycleStart),
+          cycleEnd: new Date(event.cycleEnd),
+          grantedCredits: event.grantCredits,
+          grantLedgerTxnId: ledger.id,
+          createdAt: now,
+        });
+      }
     }
+
+    await db
+      .update(externalBillingEvents)
+      .set({
+        status: 'processed',
+        processedAt: now,
+      })
+      .where(eq(externalBillingEvents.id, externalEventId));
+
+    return { deduped: false, eventId: externalEventId };
+  } catch (error) {
+    await db
+      .update(externalBillingEvents)
+      .set({
+        status: 'failed',
+        errorCode: error instanceof Error ? error.name || 'webhook_processing_failed' : 'webhook_processing_failed',
+        processedAt: now,
+      })
+      .where(eq(externalBillingEvents.id, externalEventId));
+
+    throw error;
   }
-
-  await db
-    .update(externalBillingEvents)
-    .set({
-      status: 'processed',
-      processedAt: now,
-    })
-    .where(eq(externalBillingEvents.id, externalEventId));
-
-  return { deduped: false, eventId: externalEventId };
 }
