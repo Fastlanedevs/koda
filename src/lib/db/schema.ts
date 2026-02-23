@@ -514,6 +514,85 @@ export const externalBillingEvents = sqliteTable(
 export type ExternalBillingEvent = typeof externalBillingEvents.$inferSelect;
 export type NewExternalBillingEvent = typeof externalBillingEvents.$inferInsert;
 
+export const asyncCreditSettlements = sqliteTable(
+  'async_credit_settlements',
+  {
+    id: text('id').primaryKey(),
+    provider: text('provider').notNull(),
+    externalTaskId: text('external_task_id').notNull(),
+    billingAccountId: text('billing_account_id').notNull(),
+    reservationJobId: text('reservation_job_id').notNull(),
+    idempotencyKeyPrefix: text('idempotency_key_prefix').notNull(),
+    estimatedCredits: integer('estimated_credits').notNull(),
+    status: text('status').notNull().default('pending'), // pending | settled | released | timed_out
+    failureReason: text('failure_reason'),
+    metadataJson: text('metadata_json').notNull().default('{}'),
+    expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+    settledAt: integer('settled_at', { mode: 'timestamp_ms' }),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (table) => ({
+    providerTaskUnique: uniqueIndex('async_credit_settlements_provider_task_unique').on(
+      table.provider,
+      table.externalTaskId
+    ),
+    statusExpiresIdx: index('idx_async_credit_settlements_status_expires').on(table.status, table.expiresAt),
+  })
+);
+
+export type AsyncCreditSettlement = typeof asyncCreditSettlements.$inferSelect;
+export type NewAsyncCreditSettlement = typeof asyncCreditSettlements.$inferInsert;
+
+export const billingInvoices = sqliteTable(
+  'billing_invoices',
+  {
+    id: text('id').primaryKey(),
+    authority: text('authority').notNull(),
+    authorityInvoiceId: text('authority_invoice_id').notNull(),
+    billingAccountId: text('billing_account_id').notNull(),
+    invoiceNumber: text('invoice_number').notNull(),
+    amountMinor: integer('amount_minor').notNull(),
+    currency: text('currency').notNull(),
+    status: text('status').notNull(),
+    invoiceDate: integer('invoice_date', { mode: 'timestamp_ms' }).notNull(),
+    receiptUrl: text('receipt_url'),
+    payloadJson: text('payload_json').notNull().default('{}'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (table) => ({
+    authorityInvoiceUnique: uniqueIndex('billing_invoices_authority_invoice_unique').on(
+      table.authority,
+      table.authorityInvoiceId
+    ),
+    accountDateIdx: index('idx_billing_invoices_account_date').on(table.billingAccountId, table.invoiceDate),
+  })
+);
+
+export type BillingInvoice = typeof billingInvoices.$inferSelect;
+export type NewBillingInvoice = typeof billingInvoices.$inferInsert;
+
+export const billingAdminAuditLogs = sqliteTable(
+  'billing_admin_audit_logs',
+  {
+    id: text('id').primaryKey(),
+    actorUserId: text('actor_user_id').notNull(),
+    action: text('action').notNull(),
+    workspaceId: text('workspace_id'),
+    requestId: text('request_id'),
+    metadataJson: text('metadata_json').notNull().default('{}'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (table) => ({
+    createdIdx: index('idx_billing_admin_audit_created').on(table.createdAt),
+    actionIdx: index('idx_billing_admin_audit_action').on(table.action),
+  })
+);
+
+export type BillingAdminAuditLog = typeof billingAdminAuditLogs.$inferSelect;
+export type NewBillingAdminAuditLog = typeof billingAdminAuditLogs.$inferInsert;
+
 export const reconciliationRuns = sqliteTable('reconciliation_runs', {
   id: text('id').primaryKey(),
   jobName: text('job_name').notNull(),
