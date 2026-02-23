@@ -1,0 +1,12 @@
+HTTP/1.1 200 OK
+x-clerk-auth-reason: dev-browser-missing
+x-clerk-auth-status: signed-out
+x-middleware-rewrite: /api/webhooks/billing/clerk
+vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
+content-type: application/json
+Date: Mon, 23 Feb 2026 15:05:42 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+Transfer-Encoding: chunked
+
+{"ok":true,"deduped":false,"eventId":"52a03342-64c8-4b2d-9280-92b78601ab54"}

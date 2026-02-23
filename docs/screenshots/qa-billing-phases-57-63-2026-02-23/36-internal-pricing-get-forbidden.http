@@ -1,0 +1,12 @@
+HTTP/1.1 403 Forbidden
+x-clerk-auth-reason: dev-browser-missing
+x-clerk-auth-status: signed-out
+x-middleware-rewrite: /api/internal/pricing/versions
+vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
+content-type: application/json
+Date: Mon, 23 Feb 2026 15:01:44 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+Transfer-Encoding: chunked
+
+{"error":"Forbidden"}

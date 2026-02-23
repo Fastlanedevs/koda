@@ -1,0 +1,12 @@
+HTTP/1.1 200 OK
+x-clerk-auth-reason: dev-browser-missing
+x-clerk-auth-status: signed-out
+x-middleware-rewrite: /api/settings/billing/invoices?workspaceId=ws_personal_d9f2f782-f8f7-4f60-873d-cab71bff0206
+vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
+content-type: application/json
+Date: Mon, 23 Feb 2026 15:05:09 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+Transfer-Encoding: chunked
+
+{"invoices":[{"id":"b904b164-962a-4458-a4fc-9f48f8ab25a9","number":"2026-02-001","amountMinor":4900,"currency":"USD","status":"paid","invoiceDate":"2026-02-23T00:00:00.000Z"}]}

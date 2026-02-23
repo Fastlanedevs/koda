@@ -1,0 +1,12 @@
+HTTP/1.1 200 OK
+x-clerk-auth-reason: dev-browser-missing
+x-clerk-auth-status: signed-out
+x-middleware-rewrite: /api/workspaces/bootstrap
+vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
+content-type: application/json
+Date: Mon, 23 Feb 2026 14:57:35 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+Transfer-Encoding: chunked
+
+{"memberships":[{"workspaceId":"ws_personal_f4cb9b3e-83a1-4afa-a9c3-eb5720e3f4a9","role":"owner","workspaceName":"Dev's Workspace","workspaceType":"personal"}],"invites":[],"personalWorkspaceId":"ws_personal_f4cb9b3e-83a1-4afa-a9c3-eb5720e3f4a9"}

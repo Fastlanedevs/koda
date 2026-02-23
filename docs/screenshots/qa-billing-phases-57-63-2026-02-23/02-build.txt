@@ -1,0 +1,87 @@
+
+> spaces-clone@0.1.0 build
+> next build
+
+▲ Next.js 16.1.1 (Turbopack)
+- Environments: .env.local, .env
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+✓ Compiled successfully in 8.0s
+  Running TypeScript ...
+  Collecting page data using 9 workers ...
+  Generating static pages using 9 workers (0/45) ...
+  Generating static pages using 9 workers (11/45) 
+  Generating static pages using 9 workers (22/45) 
+  Generating static pages using 9 workers (33/45) 
+✓ Generating static pages using 9 workers (45/45) in 158.0ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ƒ /api/admin/credits/adjust
+├ ƒ /api/agents/enhance-prompt
+├ ƒ /api/assets/[id]
+├ ƒ /api/assets/presign
+├ ƒ /api/assets/upload
+├ ƒ /api/billing/plans
+├ ƒ /api/billing/subscription
+├ ƒ /api/billing/subscription/cancel
+├ ƒ /api/billing/subscription/change-plan
+├ ƒ /api/billing/subscription/resume
+├ ƒ /api/canvases
+├ ƒ /api/canvases/[id]
+├ ƒ /api/canvases/[id]/share
+├ ƒ /api/config
+├ ƒ /api/credits/authorize
+├ ƒ /api/credits/balance
+├ ƒ /api/credits/ledger
+├ ƒ /api/credits/release
+├ ƒ /api/credits/settle
+├ ƒ /api/generate
+├ ƒ /api/generate-music
+├ ƒ /api/generate-speech
+├ ƒ /api/generate-video
+├ ƒ /api/generate-video-audio
+├ ƒ /api/generate-video/poll
+├ ƒ /api/generation/estimate
+├ ƒ /api/health
+├ ƒ /api/internal/billing/invoices/ingest
+├ ƒ /api/internal/pricing/versions
+├ ƒ /api/internal/pricing/versions/[id]/activate
+├ ƒ /api/internal/reconciliation/run
+├ ƒ /api/invites
+├ ƒ /api/invites/[token]
+├ ƒ /api/invites/expire
+├ ƒ /api/me
+├ ƒ /api/plugins/animation
+├ ƒ /api/plugins/animation/sandbox/[sandboxId]/file
+├ ƒ /api/plugins/animation/sandbox/[sandboxId]/proxy/[[...path]]
+├ ƒ /api/plugins/animation/save-video
+├ ƒ /api/plugins/animation/snapshot/[nodeId]
+├ ƒ /api/plugins/animation/stream
+├ ƒ /api/plugins/motion-analyzer/stream
+├ ƒ /api/plugins/product-shot
+├ ƒ /api/plugins/storyboard
+├ ƒ /api/plugins/svg-studio
+├ ƒ /api/runtime/sync-capability
+├ ƒ /api/settings/billing/invoices
+├ ƒ /api/settings/billing/overview
+├ ƒ /api/settings/billing/payment-method/session
+├ ƒ /api/webhooks/billing/clerk
+├ ƒ /api/webhooks/clerk
+├ ƒ /api/workspaces/[workspaceId]/members/[memberId]/role
+├ ƒ /api/workspaces/[workspaceId]/transfer-ownership
+├ ƒ /api/workspaces/bootstrap
+├ ƒ /canvas/[id]
+├ ○ /settings
+├ ƒ /sign-in/[[...sign-in]]
+└ ƒ /sign-up/[[...sign-up]]
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

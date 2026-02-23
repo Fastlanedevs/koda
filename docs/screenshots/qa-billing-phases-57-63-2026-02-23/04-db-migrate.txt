@@ -1,0 +1,18 @@
+
+> spaces-clone@0.1.0 db:migrate
+> tsx src/lib/db/migrate.ts
+
+🚀 Starting database migration...
+
+📁 Database type: local
+📍 Location: ./data/qa-billing-audit.db
+
+📁 Using better-sqlite3 for local database
+
+📝 Creating tables...
+✅ Tables created successfully!
+
+✅ Verified: canvases table exists
+📊 Current canvas count: 0
+
+🎉 Migration completed successfully!

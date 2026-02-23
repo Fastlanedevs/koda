@@ -1,0 +1,1039 @@
+
+> spaces-clone@0.1.0 lint
+> eslint
+
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/app/api/internal/pricing/versions/[id]/activate/route.ts
+  25:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/app/api/internal/pricing/versions/route.ts
+  52:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/app/api/invites/[token]/route.ts
+  116:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/app/api/workspaces/[workspaceId]/transfer-ownership/route.ts
+  42:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/Canvas.tsx
+  16:48  warning  'VideoGeneratorNodeData' is defined but never used    @typescript-eslint/no-unused-vars
+  16:88  warning  'VideoModelType' is defined but never used            @typescript-eslint/no-unused-vars
+  17:30  warning  'VIDEO_MODEL_CAPABILITIES' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/ContextMenu.tsx
+   86:7   warning  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/ContextMenu.tsx:86:7
+  84 |   useLayoutEffect(() => {
+  85 |     if (!contextMenu) {
+> 86 |       setMenuPos(null);
+     |       ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  87 |       return;
+  88 |     }
+  89 |     // Defer one frame so the ref is attached after render                                                                                                                                        react-hooks/set-state-in-effect
+  107:5   warning  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/ContextMenu.tsx:107:5
+  105 |       setTimeout(() => searchInputRef.current?.focus(), 50);
+  106 |     }
+> 107 |     setSearchQuery('');
+      |     ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  108 |     setUtilitiesExpanded(false);
+  109 |     setPluginsExpanded(false);
+  110 |   }, [contextMenu]);                                                                                                       react-hooks/set-state-in-effect
+  186:53  warning  Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `getNodePosition`, but the source dependencies were [addNode, hideContextMenu, handleUpload, nodes, onPluginLaunch, svgPluginEnabled]. Inferred different dependency than source.
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/ContextMenu.tsx:186:53
+  184 |
+  185 |   // Canvas menu sections
+> 186 |   const canvasMenuSections: MenuSection[] = useMemo(() => [
+      |                                                     ^^^^^^^
+> 187 |     {
+      | ^^^^^
+> 188 |       title: '',
+      …
+      | ^^^^^
+> 344 |     },
+      | ^^^^^
+> 345 |   ], [addNode, hideContextMenu, handleUpload, nodes, onPluginLaunch, svgPluginEnabled]);
+      | ^^^^ Could not preserve existing manual memoization
+  346 |
+  347 |   // Filter sections based on search query
+  348 |   const filteredSections = useMemo(() => {  react-hooks/preserve-manual-memoization
+  186:53  warning  Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `handleAddNode`, but the source dependencies were [addNode, hideContextMenu, handleUpload, nodes, onPluginLaunch, svgPluginEnabled]. Inferred different dependency than source.
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/ContextMenu.tsx:186:53
+  184 |
+  185 |   // Canvas menu sections
+> 186 |   const canvasMenuSections: MenuSection[] = useMemo(() => [
+      |                                                     ^^^^^^^
+> 187 |     {
+      | ^^^^^
+> 188 |       title: '',
+      …
+      | ^^^^^
+> 344 |     },
+      | ^^^^^
+> 345 |   ], [addNode, hideContextMenu, handleUpload, nodes, onPluginLaunch, svgPluginEnabled]);
+      | ^^^^ Could not preserve existing manual memoization
+  346 |
+  347 |   // Filter sections based on search query
+  348 |   const filteredSections = useMemo(() => {    react-hooks/preserve-manual-memoization
+  186:53  warning  Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `handleAddNode`, but the source dependencies were [addNode, hideContextMenu, handleUpload, nodes, onPluginLaunch, svgPluginEnabled]. Inferred different dependency than source.
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/ContextMenu.tsx:186:53
+  184 |
+  185 |   // Canvas menu sections
+> 186 |   const canvasMenuSections: MenuSection[] = useMemo(() => [
+      |                                                     ^^^^^^^
+> 187 |     {
+      | ^^^^^
+> 188 |       title: '',
+      …
+      | ^^^^^
+> 344 |     },
+      | ^^^^^
+> 345 |   ], [addNode, hideContextMenu, handleUpload, nodes, onPluginLaunch, svgPluginEnabled]);
+      | ^^^^ Could not preserve existing manual memoization
+  346 |
+  347 |   // Filter sections based on search query
+  348 |   const filteredSections = useMemo(() => {    react-hooks/preserve-manual-memoization
+  186:53  warning  Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `handleAddNode`, but the source dependencies were [addNode, hideContextMenu, handleUpload, nodes, onPluginLaunch, svgPluginEnabled]. Inferred different dependency than source.
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/ContextMenu.tsx:186:53
+  184 |
+  185 |   // Canvas menu sections
+> 186 |   const canvasMenuSections: MenuSection[] = useMemo(() => [
+      |                                                     ^^^^^^^
+> 187 |     {
+      | ^^^^^
+> 188 |       title: '',
+      …
+      | ^^^^^
+> 344 |     },
+      | ^^^^^
+> 345 |   ], [addNode, hideContextMenu, handleUpload, nodes, onPluginLaunch, svgPluginEnabled]);
+      | ^^^^ Could not preserve existing manual memoization
+  346 |
+  347 |   // Filter sections based on search query
+  348 |   const filteredSections = useMemo(() => {    react-hooks/preserve-manual-memoization
+  186:53  warning  Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `handleAddNode`, but the source dependencies were [addNode, hideContextMenu, handleUpload, nodes, onPluginLaunch, svgPluginEnabled]. Inferred different dependency than source.
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/ContextMenu.tsx:186:53
+  184 |
+  185 |   // Canvas menu sections
+> 186 |   const canvasMenuSections: MenuSection[] = useMemo(() => [
+      |                                                     ^^^^^^^
+> 187 |     {
+      | ^^^^^
+> 188 |       title: '',
+      …
+      | ^^^^^
+> 344 |     },
+      | ^^^^^
+> 345 |   ], [addNode, hideContextMenu, handleUpload, nodes, onPluginLaunch, svgPluginEnabled]);
+      | ^^^^ Could not preserve existing manual memoization
+  346 |
+  347 |   // Filter sections based on search query
+  348 |   const filteredSections = useMemo(() => {    react-hooks/preserve-manual-memoization
+  186:53  warning  Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `handleAddNode`, but the source dependencies were [addNode, hideContextMenu, handleUpload, nodes, onPluginLaunch, svgPluginEnabled]. Inferred different dependency than source.
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/ContextMenu.tsx:186:53
+  184 |
+  185 |   // Canvas menu sections
+> 186 |   const canvasMenuSections: MenuSection[] = useMemo(() => [
+      |                                                     ^^^^^^^
+> 187 |     {
+      | ^^^^^
+> 188 |       title: '',
+      …
+      | ^^^^^
+> 344 |     },
+      | ^^^^^
+> 345 |   ], [addNode, hideContextMenu, handleUpload, nodes, onPluginLaunch, svgPluginEnabled]);
+      | ^^^^ Could not preserve existing manual memoization
+  346 |
+  347 |   // Filter sections based on search query
+  348 |   const filteredSections = useMemo(() => {    react-hooks/preserve-manual-memoization
+  186:53  warning  Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `handleAddNode`, but the source dependencies were [addNode, hideContextMenu, handleUpload, nodes, onPluginLaunch, svgPluginEnabled]. Inferred different dependency than source.
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/ContextMenu.tsx:186:53
+  184 |
+  185 |   // Canvas menu sections
+> 186 |   const canvasMenuSections: MenuSection[] = useMemo(() => [
+      |                                                     ^^^^^^^
+> 187 |     {
+      | ^^^^^
+> 188 |       title: '',
+      …
+      | ^^^^^
+> 344 |     },
+      | ^^^^^
+> 345 |   ], [addNode, hideContextMenu, handleUpload, nodes, onPluginLaunch, svgPluginEnabled]);
+      | ^^^^ Could not preserve existing manual memoization
+  346 |
+  347 |   // Filter sections based on search query
+  348 |   const filteredSections = useMemo(() => {    react-hooks/preserve-manual-memoization
+  186:53  warning  Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `handleAddNode`, but the source dependencies were [addNode, hideContextMenu, handleUpload, nodes, onPluginLaunch, svgPluginEnabled]. Inferred different dependency than source.
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/ContextMenu.tsx:186:53
+  184 |
+  185 |   // Canvas menu sections
+> 186 |   const canvasMenuSections: MenuSection[] = useMemo(() => [
+      |                                                     ^^^^^^^
+> 187 |     {
+      | ^^^^^
+> 188 |       title: '',
+      …
+      | ^^^^^
+> 344 |     },
+      | ^^^^^
+> 345 |   ], [addNode, hideContextMenu, handleUpload, nodes, onPluginLaunch, svgPluginEnabled]);
+      | ^^^^ Could not preserve existing manual memoization
+  346 |
+  347 |   // Filter sections based on search query
+  348 |   const filteredSections = useMemo(() => {    react-hooks/preserve-manual-memoization
+  186:53  warning  Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `handleAddNode`, but the source dependencies were [addNode, hideContextMenu, handleUpload, nodes, onPluginLaunch, svgPluginEnabled]. Inferred different dependency than source.
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/ContextMenu.tsx:186:53
+  184 |
+  185 |   // Canvas menu sections
+> 186 |   const canvasMenuSections: MenuSection[] = useMemo(() => [
+      |                                                     ^^^^^^^
+> 187 |     {
+      | ^^^^^
+> 188 |       title: '',
+      …
+      | ^^^^^
+> 344 |     },
+      | ^^^^^
+> 345 |   ], [addNode, hideContextMenu, handleUpload, nodes, onPluginLaunch, svgPluginEnabled]);
+      | ^^^^ Could not preserve existing manual memoization
+  346 |
+  347 |   // Filter sections based on search query
+  348 |   const filteredSections = useMemo(() => {    react-hooks/preserve-manual-memoization
+  186:53  warning  Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `getNodePosition`, but the source dependencies were [addNode, hideContextMenu, handleUpload, nodes, onPluginLaunch, svgPluginEnabled]. Inferred different dependency than source.
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/ContextMenu.tsx:186:53
+  184 |
+  185 |   // Canvas menu sections
+> 186 |   const canvasMenuSections: MenuSection[] = useMemo(() => [
+      |                                                     ^^^^^^^
+> 187 |     {
+      | ^^^^^
+> 188 |       title: '',
+      …
+      | ^^^^^
+> 344 |     },
+      | ^^^^^
+> 345 |   ], [addNode, hideContextMenu, handleUpload, nodes, onPluginLaunch, svgPluginEnabled]);
+      | ^^^^ Could not preserve existing manual memoization
+  346 |
+  347 |   // Filter sections based on search query
+  348 |   const filteredSections = useMemo(() => {  react-hooks/preserve-manual-memoization
+  186:53  warning  Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `getNodePosition`, but the source dependencies were [addNode, hideContextMenu, handleUpload, nodes, onPluginLaunch, svgPluginEnabled]. Inferred different dependency than source.
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/ContextMenu.tsx:186:53
+  184 |
+  185 |   // Canvas menu sections
+> 186 |   const canvasMenuSections: MenuSection[] = useMemo(() => [
+      |                                                     ^^^^^^^
+> 187 |     {
+      | ^^^^^
+> 188 |       title: '',
+      …
+      | ^^^^^
+> 344 |     },
+      | ^^^^^
+> 345 |   ], [addNode, hideContextMenu, handleUpload, nodes, onPluginLaunch, svgPluginEnabled]);
+      | ^^^^ Could not preserve existing manual memoization
+  346 |
+  347 |   // Filter sections based on search query
+  348 |   const filteredSections = useMemo(() => {  react-hooks/preserve-manual-memoization
+  186:53  warning  Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `getNodePosition`, but the source dependencies were [addNode, hideContextMenu, handleUpload, nodes, onPluginLaunch, svgPluginEnabled]. Inferred different dependency than source.
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/ContextMenu.tsx:186:53
+  184 |
+  185 |   // Canvas menu sections
+> 186 |   const canvasMenuSections: MenuSection[] = useMemo(() => [
+      |                                                     ^^^^^^^
+> 187 |     {
+      | ^^^^^
+> 188 |       title: '',
+      …
+      | ^^^^^
+> 344 |     },
+      | ^^^^^
+> 345 |   ], [addNode, hideContextMenu, handleUpload, nodes, onPluginLaunch, svgPluginEnabled]);
+      | ^^^^ Could not preserve existing manual memoization
+  346 |
+  347 |   // Filter sections based on search query
+  348 |   const filteredSections = useMemo(() => {  react-hooks/preserve-manual-memoization
+  217:57  warning  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           @typescript-eslint/no-explicit-any
+  345:6   warning  React Hook useMemo has missing dependencies: 'getNodePosition' and 'handleAddNode'. Either include them or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             react-hooks/exhaustive-deps
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/NodeToolbar.tsx
+    3:39  warning  'useCallback' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-unused-vars
+   83:9   warning  'hasRunnableGenerators' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  @typescript-eslint/no-unused-vars
+  127:7   warning  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/NodeToolbar.tsx:127:7
+  125 |       });
+  126 |     } else {
+> 127 |       setSearchQuery('');
+      |       ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  128 |       setUtilitiesExpanded(false);
+  129 |       setAddMenuPosition({ x: -9999, y: -9999 });
+  130 |     }  react-hooks/set-state-in-effect
+  173:35  warning  Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `handleUpload`, but the source dependencies were [svgPluginEnabled]. Inferred different dependency than source.
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/NodeToolbar.tsx:173:35
+  171 |   };
+  172 |
+> 173 |   const addMenuSections = useMemo(() => [
+      |                                   ^^^^^^^
+> 174 |     {
+      | ^^^^^
+> 175 |       title: '',
+      …
+      | ^^^^^
+> 298 |     },
+      | ^^^^^
+> 299 |   ], [svgPluginEnabled]);
+      | ^^^^ Could not preserve existing manual memoization
+  300 |
+  301 |   // Filter sections based on search query
+  302 |   const filteredSections = useMemo(() => {                                                     react-hooks/preserve-manual-memoization
+  173:35  warning  Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `handleAddNode`, but the source dependencies were [svgPluginEnabled]. Inferred different dependency than source.
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/NodeToolbar.tsx:173:35
+  171 |   };
+  172 |
+> 173 |   const addMenuSections = useMemo(() => [
+      |                                   ^^^^^^^
+> 174 |     {
+      | ^^^^^
+> 175 |       title: '',
+      …
+      | ^^^^^
+> 298 |     },
+      | ^^^^^
+> 299 |   ], [svgPluginEnabled]);
+      | ^^^^ Could not preserve existing manual memoization
+  300 |
+  301 |   // Filter sections based on search query
+  302 |   const filteredSections = useMemo(() => {                                                    react-hooks/preserve-manual-memoization
+  173:35  warning  Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `handleAddNode`, but the source dependencies were [svgPluginEnabled]. Inferred different dependency than source.
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/NodeToolbar.tsx:173:35
+  171 |   };
+  172 |
+> 173 |   const addMenuSections = useMemo(() => [
+      |                                   ^^^^^^^
+> 174 |     {
+      | ^^^^^
+> 175 |       title: '',
+      …
+      | ^^^^^
+> 298 |     },
+      | ^^^^^
+> 299 |   ], [svgPluginEnabled]);
+      | ^^^^ Could not preserve existing manual memoization
+  300 |
+  301 |   // Filter sections based on search query
+  302 |   const filteredSections = useMemo(() => {                                                    react-hooks/preserve-manual-memoization
+  173:35  warning  Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `handleAddNode`, but the source dependencies were [svgPluginEnabled]. Inferred different dependency than source.
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/NodeToolbar.tsx:173:35
+  171 |   };
+  172 |
+> 173 |   const addMenuSections = useMemo(() => [
+      |                                   ^^^^^^^
+> 174 |     {
+      | ^^^^^
+> 175 |       title: '',
+      …
+      | ^^^^^
+> 298 |     },
+      | ^^^^^
+> 299 |   ], [svgPluginEnabled]);
+      | ^^^^ Could not preserve existing manual memoization
+  300 |
+  301 |   // Filter sections based on search query
+  302 |   const filteredSections = useMemo(() => {                                                    react-hooks/preserve-manual-memoization
+  173:35  warning  Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `handleAddNode`, but the source dependencies were [svgPluginEnabled]. Inferred different dependency than source.
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/NodeToolbar.tsx:173:35
+  171 |   };
+  172 |
+> 173 |   const addMenuSections = useMemo(() => [
+      |                                   ^^^^^^^
+> 174 |     {
+      | ^^^^^
+> 175 |       title: '',
+      …
+      | ^^^^^
+> 298 |     },
+      | ^^^^^
+> 299 |   ], [svgPluginEnabled]);
+      | ^^^^ Could not preserve existing manual memoization
+  300 |
+  301 |   // Filter sections based on search query
+  302 |   const filteredSections = useMemo(() => {                                                    react-hooks/preserve-manual-memoization
+  173:35  warning  Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `handleAddNode`, but the source dependencies were [svgPluginEnabled]. Inferred different dependency than source.
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/NodeToolbar.tsx:173:35
+  171 |   };
+  172 |
+> 173 |   const addMenuSections = useMemo(() => [
+      |                                   ^^^^^^^
+> 174 |     {
+      | ^^^^^
+> 175 |       title: '',
+      …
+      | ^^^^^
+> 298 |     },
+      | ^^^^^
+> 299 |   ], [svgPluginEnabled]);
+      | ^^^^ Could not preserve existing manual memoization
+  300 |
+  301 |   // Filter sections based on search query
+  302 |   const filteredSections = useMemo(() => {                                                    react-hooks/preserve-manual-memoization
+  173:35  warning  Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `handleAddNode`, but the source dependencies were [svgPluginEnabled]. Inferred different dependency than source.
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/NodeToolbar.tsx:173:35
+  171 |   };
+  172 |
+> 173 |   const addMenuSections = useMemo(() => [
+      |                                   ^^^^^^^
+> 174 |     {
+      | ^^^^^
+> 175 |       title: '',
+      …
+      | ^^^^^
+> 298 |     },
+      | ^^^^^
+> 299 |   ], [svgPluginEnabled]);
+      | ^^^^ Could not preserve existing manual memoization
+  300 |
+  301 |   // Filter sections based on search query
+  302 |   const filteredSections = useMemo(() => {                                                    react-hooks/preserve-manual-memoization
+  173:35  warning  Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `handleAddNode`, but the source dependencies were [svgPluginEnabled]. Inferred different dependency than source.
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/NodeToolbar.tsx:173:35
+  171 |   };
+  172 |
+> 173 |   const addMenuSections = useMemo(() => [
+      |                                   ^^^^^^^
+> 174 |     {
+      | ^^^^^
+> 175 |       title: '',
+      …
+      | ^^^^^
+> 298 |     },
+      | ^^^^^
+> 299 |   ], [svgPluginEnabled]);
+      | ^^^^ Could not preserve existing manual memoization
+  300 |
+  301 |   // Filter sections based on search query
+  302 |   const filteredSections = useMemo(() => {                                                    react-hooks/preserve-manual-memoization
+  173:35  warning  Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `handleAddNode`, but the source dependencies were [svgPluginEnabled]. Inferred different dependency than source.
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/NodeToolbar.tsx:173:35
+  171 |   };
+  172 |
+> 173 |   const addMenuSections = useMemo(() => [
+      |                                   ^^^^^^^
+> 174 |     {
+      | ^^^^^
+> 175 |       title: '',
+      …
+      | ^^^^^
+> 298 |     },
+      | ^^^^^
+> 299 |   ], [svgPluginEnabled]);
+      | ^^^^ Could not preserve existing manual memoization
+  300 |
+  301 |   // Filter sections based on search query
+  302 |   const filteredSections = useMemo(() => {                                                    react-hooks/preserve-manual-memoization
+  173:35  warning  Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `handleAddNode`, but the source dependencies were [svgPluginEnabled]. Inferred different dependency than source.
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/NodeToolbar.tsx:173:35
+  171 |   };
+  172 |
+> 173 |   const addMenuSections = useMemo(() => [
+      |                                   ^^^^^^^
+> 174 |     {
+      | ^^^^^
+> 175 |       title: '',
+      …
+      | ^^^^^
+> 298 |     },
+      | ^^^^^
+> 299 |   ], [svgPluginEnabled]);
+      | ^^^^ Could not preserve existing manual memoization
+  300 |
+  301 |   // Filter sections based on search query
+  302 |   const filteredSections = useMemo(() => {                                                    react-hooks/preserve-manual-memoization
+  173:35  warning  Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `handleAddNode`, but the source dependencies were [svgPluginEnabled]. Inferred different dependency than source.
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/NodeToolbar.tsx:173:35
+  171 |   };
+  172 |
+> 173 |   const addMenuSections = useMemo(() => [
+      |                                   ^^^^^^^
+> 174 |     {
+      | ^^^^^
+> 175 |       title: '',
+      …
+      | ^^^^^
+> 298 |     },
+      | ^^^^^
+> 299 |   ], [svgPluginEnabled]);
+      | ^^^^ Could not preserve existing manual memoization
+  300 |
+  301 |   // Filter sections based on search query
+  302 |   const filteredSections = useMemo(() => {                                                    react-hooks/preserve-manual-memoization
+  173:35  warning  Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `handleAddNode`, but the source dependencies were [svgPluginEnabled]. Inferred different dependency than source.
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/NodeToolbar.tsx:173:35
+  171 |   };
+  172 |
+> 173 |   const addMenuSections = useMemo(() => [
+      |                                   ^^^^^^^
+> 174 |     {
+      | ^^^^^
+> 175 |       title: '',
+      …
+      | ^^^^^
+> 298 |     },
+      | ^^^^^
+> 299 |   ], [svgPluginEnabled]);
+      | ^^^^ Could not preserve existing manual memoization
+  300 |
+  301 |   // Filter sections based on search query
+  302 |   const filteredSections = useMemo(() => {                                                    react-hooks/preserve-manual-memoization
+  173:35  warning  Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `handleAddNode`, but the source dependencies were [svgPluginEnabled]. Inferred different dependency than source.
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/NodeToolbar.tsx:173:35
+  171 |   };
+  172 |
+> 173 |   const addMenuSections = useMemo(() => [
+      |                                   ^^^^^^^
+> 174 |     {
+      | ^^^^^
+> 175 |       title: '',
+      …
+      | ^^^^^
+> 298 |     },
+      | ^^^^^
+> 299 |   ], [svgPluginEnabled]);
+      | ^^^^ Could not preserve existing manual memoization
+  300 |
+  301 |   // Filter sections based on search query
+  302 |   const filteredSections = useMemo(() => {                                                    react-hooks/preserve-manual-memoization
+  188:58  warning  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    @typescript-eslint/no-explicit-any
+  200:57  warning  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    @typescript-eslint/no-explicit-any
+  280:63  warning  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    @typescript-eslint/no-explicit-any
+  287:60  warning  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    @typescript-eslint/no-explicit-any
+  299:6   warning  React Hook useMemo has missing dependencies: 'handleAddNode' and 'handleUpload'. Either include them or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         react-hooks/exhaustive-deps
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/PresetPopover.tsx
+  142:21  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  188:19  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  199:19  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  259:13  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  267:15  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  277:15  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/SettingsPanel.tsx
+   13:202  warning  'CharacterSelection' is defined but never used                                                                                                                                                                                                                                           @typescript-eslint/no-unused-vars
+  662:23   warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/nodes/ImageGeneratorNode.tsx
+  406:15  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/nodes/MediaNode.tsx
+  197:15  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/nodes/PluginNode.tsx
+  31:11  warning  An interface declaring no members is equivalent to its supertype  @typescript-eslint/no-empty-object-type
+  36:39  warning  'id' is defined but never used                                    @typescript-eslint/no-unused-vars
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/nodes/StickyNoteNode.tsx
+  10:3  warning  'Palette' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/nodes/StoryboardNode.tsx
+  20:3   warning  'StoryboardMode' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-unused-vars
+  26:42  warning  'Grid3X3' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    @typescript-eslint/no-unused-vars
+  70:3   warning  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/nodes/StoryboardNode.tsx:70:3
+  68 |   const focused = useRef(false);
+  69 |   const storeRef = useRef(storeValue);
+> 70 |   storeRef.current = storeValue;
+     |   ^^^^^^^^^^^^^^^^ Cannot update ref during render
+  71 |
+  72 |   // Sync from store when not focused (handles undo, migration, external updates)
+  73 |   if (!focused.current && storeValue !== local) {                                                              react-hooks/refs
+  73:7   warning  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/nodes/StoryboardNode.tsx:73:7
+  71 |
+  72 |   // Sync from store when not focused (handles undo, migration, external updates)
+> 73 |   if (!focused.current && storeValue !== local) {
+     |       ^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  74 |     setLocal(storeValue);
+  75 |   }
+  76 |                                                                                                                               react-hooks/refs
+  73:7   warning  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/nodes/StoryboardNode.tsx:73:7
+  71 |
+  72 |   // Sync from store when not focused (handles undo, migration, external updates)
+> 73 |   if (!focused.current && storeValue !== local) {
+     |       ^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  74 |     setLocal(storeValue);
+  75 |   }
+  76 |                                                                                                                               react-hooks/refs
+  73:7   warning  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/nodes/StoryboardNode.tsx:73:7
+  71 |
+  72 |   // Sync from store when not focused (handles undo, migration, external updates)
+> 73 |   if (!focused.current && storeValue !== local) {
+     |       ^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  74 |     setLocal(storeValue);
+  75 |   }
+  76 |                                                                                                                               react-hooks/refs
+  73:8   warning  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/nodes/StoryboardNode.tsx:73:8
+  71 |
+  72 |   // Sync from store when not focused (handles undo, migration, external updates)
+> 73 |   if (!focused.current && storeValue !== local) {
+     |        ^^^^^^^^^^^^^^^ Cannot access ref value during render
+  74 |     setLocal(storeValue);
+  75 |   }
+  76 |
+
+To initialize a ref only once, check that the ref is null with the pattern `if (ref.current == null) { ref.current = ... }`  react-hooks/refs
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/nodes/TextNode.tsx
+  87:18  warning  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/nodes/TextNode.tsx:87:18
+  85 |   }, [id, deleteNode]);
+  86 |
+> 87 |   const editor = editorRef.current?.getEditor() || null;
+     |                  ^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  88 |
+  89 |   return (
+  90 |     <div                                    react-hooks/refs
+  87:18  warning  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/nodes/TextNode.tsx:87:18
+  85 |   }, [id, deleteNode]);
+  86 |
+> 87 |   const editor = editorRef.current?.getEditor() || null;
+     |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  88 |
+  89 |   return (
+  90 |     <div                         react-hooks/refs
+  87:18  warning  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/nodes/TextNode.tsx:87:18
+  85 |   }, [id, deleteNode]);
+  86 |
+> 87 |   const editor = editorRef.current?.getEditor() || null;
+     |                  ^^^^^^^^^^^^^^^^^ Passing a ref to a function may read its value during render
+  88 |
+  89 |   return (
+  90 |     <div             react-hooks/refs
+  87:18  warning  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/nodes/TextNode.tsx:87:18
+  85 |   }, [id, deleteNode]);
+  86 |
+> 87 |   const editor = editorRef.current?.getEditor() || null;
+     |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Passing a ref to a function may read its value during render
+  88 |
+  89 |   return (
+  90 |     <div  react-hooks/refs
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/canvas/nodes/storyboard/StoryboardDraftCard.tsx
+  10:20  warning  'useCallback' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/common/CommandPalette.tsx
+  15:3  warning  'Moon' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/common/FloatingActionButton.tsx
+   5:23  warning  'MessageCircle' is defined but never used          @typescript-eslint/no-unused-vars
+  21:21  warning  'setIsLoading' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/dashboard/CanvasCard.tsx
+  119:13  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/dashboard/DashboardPage.tsx
+  23:5  warning  'filteredCanvases' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/dashboard/hooks/useDashboardState.ts
+  214:5  warning  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/dashboard/hooks/useDashboardState.ts:214:5
+  212 |
+  213 |   useEffect(() => {
+> 214 |     initializeDashboard();
+      |     ^^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  215 |   }, [initializeDashboard]);
+  216 |
+  217 |   const retryActionLabel = loadFailureStage === 'bootstrap'  react-hooks/set-state-in-effect
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/plugins/AgentSandbox/index.tsx
+  16:62  warning  'PluginSandboxProps' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/settings/sections/HistorySection.tsx
+  53:17  warning  Image elements must have an alt prop, either with meaningful text, or an empty string for decorative images  jsx-a11y/alt-text
+  65:15  warning  Image elements must have an alt prop, either with meaningful text, or an empty string for decorative images  jsx-a11y/alt-text
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/settings/sections/ProfileSection.tsx
+  39:11  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/ui/KodaLogo.tsx
+  34:7  warning  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/ui/KodaLogo.tsx:34:7
+  32 |     if (theme === 'system') {
+  33 |       const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+> 34 |       setResolvedTheme(mediaQuery.matches ? 'dark' : 'light');
+     |       ^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  35 |
+  36 |       const listener = (e: MediaQueryListEvent) => {
+  37 |         setResolvedTheme(e.matches ? 'dark' : 'light');  react-hooks/set-state-in-effect
+  46:9  warning  'logoSrc' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-unused-vars
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/ui/mention-editor.tsx
+   52:5   warning  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/ui/mention-editor.tsx:52:5
+  50 |
+  51 |   useEffect(() => {
+> 52 |     setSelectedIndex(0);
+     |     ^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  53 |   }, [props.items]);
+  54 |
+  55 |   const selectItem = useCallback(  react-hooks/set-state-in-effect
+  142:35  warning  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-explicit-any
+  146:24  warning  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-explicit-any
+  164:25  warning  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-explicit-any
+  175:26  warning  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-explicit-any
+  181:36  warning  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-explicit-any
+  220:27  warning  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-explicit-any
+  291:38  warning  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/components/ui/mention-editor.tsx:291:38
+  289 |           ];
+  290 |         },
+> 291 |         suggestion: createSuggestion(itemsRef),
+      |                                      ^^^^^^^^ Passing a ref to a function may read its value during render
+  292 |       }),
+  293 |       Placeholder.configure({
+  294 |         placeholder: placeholderText || 'Type something...',                                                                                                                                                                                                                                           react-hooks/refs
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/lib/assets/local-provider.ts
+  15:3  warning  'AssetMetadata' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/lib/assets/s3-provider.ts
+  165:13  warning  'id' is defined but never used        @typescript-eslint/no-unused-vars
+  189:24  warning  'canvasId' is defined but never used  @typescript-eslint/no-unused-vars
+  196:22  warning  'canvasId' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/lib/billing/ledger.ts
+  183:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  238:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  348:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/lib/billing/pricing.ts
+  114:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/lib/db/canvas-queries.ts
+  29:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/lib/plugins/ai-service/mastra-provider.ts
+  36:5   warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+  39:27  warning  Unexpected any. Specify a different type                                                               @typescript-eslint/no-explicit-any
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/lib/plugins/canvas-api.ts
+  17:43  warning  'CreateNodeType' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/lib/plugins/official/agents/animation-generator/AnimationNode.tsx
+   123:11  warning  An interface declaring no members is equivalent to its supertype                                                                                                                                                                                                                         @typescript-eslint/no-empty-object-type
+   401:6   warning  React Hook useEffect has a missing dependency: 'engine'. Either include it or remove the dependency array                                                                                                                                                                                react-hooks/exhaustive-deps
+  1137:5   warning  React Hook useCallback has a missing dependency: 'data.prompt'. Either include it or remove the dependency array                                                                                                                                                                         react-hooks/exhaustive-deps
+  1328:5   warning  React Hook useCallback has a missing dependency: 'startPipelineTimer'. Either include it or remove the dependency array                                                                                                                                                                  react-hooks/exhaustive-deps
+  1396:5   warning  React Hook useCallback has a missing dependency: 'startPipelineTimer'. Either include it or remove the dependency array                                                                                                                                                                  react-hooks/exhaustive-deps
+  1479:5   warning  React Hook useCallback has a missing dependency: 'startPipelineTimer'. Either include it or remove the dependency array                                                                                                                                                                  react-hooks/exhaustive-deps
+  1557:6   warning  React Hook useCallback has missing dependencies: 'aspectRatio' and 'startPipelineTimer'. Either include them or remove the dependency array                                                                                                                                              react-hooks/exhaustive-deps
+  1610:5   warning  React Hook useCallback has a missing dependency: 'startPipelineTimer'. Either include it or remove the dependency array                                                                                                                                                                  react-hooks/exhaustive-deps
+  1728:5   warning  React Hook useCallback has a missing dependency: 'startPipelineTimer'. Either include it or remove the dependency array                                                                                                                                                                  react-hooks/exhaustive-deps
+  1814:6   warning  React Hook useCallback has missing dependencies: 'aspectRatio' and 'startPipelineTimer'. Either include them or remove the dependency array                                                                                                                                              react-hooks/exhaustive-deps
+  1816:9   warning  'handleExportVideo' is assigned a value but never used                                                                                                                                                                                                                                   @typescript-eslint/no-unused-vars
+  1865:6   warning  React Hook useCallback has a missing dependency: 'startPipelineTimer'. Either include it or remove the dependency array                                                                                                                                                                  react-hooks/exhaustive-deps
+  2106:15  warning  Image elements must have an alt prop, either with meaningful text, or an empty string for decorative images                                                                                                                                                                              jsx-a11y/alt-text
+  2354:21  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/lib/plugins/official/agents/animation-generator/components/AnimationSettingsPanel.tsx
+  149:3   warning  'nodeId' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       @typescript-eslint/no-unused-vars
+  196:5   warning  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/lib/plugins/official/agents/animation-generator/components/AnimationSettingsPanel.tsx:196:5
+  194 |     if (y < 16) y = 16;
+  195 |
+> 196 |     setAdjustedPosition({ x, y });
+      |     ^^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  197 |   }, [position]);
+  198 |
+  199 |   // Close on Escape  react-hooks/set-state-in-effect
+  234:9   warning  The 'colors' logical expression could make the dependencies of useCallback Hook (at line 244) change on every render. To fix this, wrap the initialization of 'colors' in its own useMemo() Hook                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         react-hooks/exhaustive-deps
+  235:9   warning  The 'fonts' logical expression could make the dependencies of useCallback Hook (at line 254) change on every render. To fix this, wrap the initialization of 'fonts' in its own useMemo() Hook                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           react-hooks/exhaustive-deps
+  370:15  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  @next/next/no-img-element
+  416:21  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  @next/next/no-img-element
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/lib/plugins/official/agents/animation-generator/components/ChatInput.tsx
+  337:19  warning  Image elements must have an alt prop, either with meaningful text, or an empty string for decorative images  jsx-a11y/alt-text
+  351:27  warning  Image elements must have an alt prop, either with meaningful text, or an empty string for decorative images  jsx-a11y/alt-text
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/lib/plugins/official/agents/animation-generator/components/ChatMessages.tsx
+    23:3   warning  'ChevronRight' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-unused-vars
+    59:17  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      @next/next/no-img-element
+   226:7   warning  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/lib/plugins/official/agents/animation-generator/components/ChatMessages.tsx:226:7
+  224 |     if (isStreaming && startedAt) {
+  225 |       const start = new Date(startedAt).getTime();
+> 226 |       setElapsed(Math.round((Date.now() - start) / 1000));
+      |       ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  227 |       const timer = setInterval(() => {
+  228 |         setElapsed(Math.round((Date.now() - start) / 1000));
+  229 |       }, 1000);  react-hooks/set-state-in-effect
+   395:52  warning  'rawError' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         @typescript-eslint/no-unused-vars
+   761:5   warning  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/lib/plugins/official/agents/animation-generator/components/ChatMessages.tsx:761:5
+  759 |   // Reset error state when URL changes
+  760 |   useEffect(() => {
+> 761 |     setHasError(false);
+      |     ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  762 |     setIsLoading(true);
+  763 |   }, [previewUrl]);
+  764 |                                                                                                                                          react-hooks/set-state-in-effect
+  1078:17  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      @next/next/no-img-element
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/lib/plugins/official/agents/motion-analyzer/MotionAnalyzerNode.tsx
+  175:7   warning  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/lib/plugins/official/agents/motion-analyzer/MotionAnalyzerNode.tsx:175:7
+  173 |     if (isActive && startedAt) {
+  174 |       const start = new Date(startedAt).getTime();
+> 175 |       setElapsed(Math.round((Date.now() - start) / 1000));
+      |       ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  176 |       const timer = setInterval(() => {
+  177 |         setElapsed(Math.round((Date.now() - start) / 1000));
+  178 |       }, 1000);  react-hooks/set-state-in-effect
+  449:9   warning  The 'state' conditional could make the dependencies of useCallback Hook (at line 482) change on every render. To fix this, wrap the initialization of 'state' in its own useMemo() Hook                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          react-hooks/exhaustive-deps
+  449:9   warning  The 'state' conditional could make the dependencies of useCallback Hook (at line 495) change on every render. To fix this, wrap the initialization of 'state' in its own useMemo() Hook                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          react-hooks/exhaustive-deps
+  777:52  warning  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  784:40  warning  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  785:43  warning  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/lib/plugins/official/agents/svg-studio/SvgStudioNode.tsx
+  150:15  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/lib/storage/sqlite-provider.ts
+   33:33  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   41:33  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   73:33  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  118:33  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  163:33  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  169:33  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/lib/types.ts
+  33:18  warning  An interface declaring no members is equivalent to its supertype  @typescript-eslint/no-empty-object-type
+  36:18  warning  An interface declaring no members is equivalent to its supertype  @typescript-eslint/no-empty-object-type
+  39:18  warning  An interface declaring no members is equivalent to its supertype  @typescript-eslint/no-empty-object-type
+  42:18  warning  An interface declaring no members is equivalent to its supertype  @typescript-eslint/no-empty-object-type
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/mastra/tools/animation/analyze-media-tool.ts
+   15:63  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   15:94  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  163:34  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/mastra/tools/animation/enhance-prompt-tool.ts
+  463:14  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/mastra/tools/animation/generate-code-tool.ts
+  17:63  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  17:94  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/mastra/tools/animation/generate-remotion-code-tool.ts
+   14:63  warning  Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any
+   14:94  warning  Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any
+  316:17  warning  'quote' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/mastra/tools/animation/sandbox-tools.ts
+   429:14  warning  'error' is defined but never used         @typescript-eslint/no-unused-vars
+  1093:11  warning  'fps' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/src/stores/canvas-store.ts
+  465:26  warning  'groupId' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  569:28  warning  'nodes' is assigned a value but never used    @typescript-eslint/no-unused-vars
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/templates/remotion-sandbox/template/postcss.config.mjs
+  1:1  warning  Assign object to a variable before exporting as module default  import/no-anonymous-default-export
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/templates/remotion-sandbox/template/src/Player.tsx
+  39:9  warning  'handlePlay' is assigned a value but never used         @typescript-eslint/no-unused-vars
+  40:9  warning  'handlePause' is assigned a value but never used        @typescript-eslint/no-unused-vars
+  41:9  warning  'handleFrameUpdate' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/templates/remotion-sandbox/template/src/Video.tsx
+  6:9   warning  'frame' is assigned a value but never used             @typescript-eslint/no-unused-vars
+  7:11  warning  'fps' is assigned a value but never used               @typescript-eslint/no-unused-vars
+  7:16  warning  'durationInFrames' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/amanrawat/Desktop/work_2026/spaces-clone/templates/sandbox/template/export-video.cjs
+  13:19  warning  'spawn' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+✖ 167 problems (0 errors, 167 warnings)
+  0 errors and 1 warning potentially fixable with the `--fix` option.
+

@@ -1,0 +1,11 @@
+HTTP/1.1 401 Unauthorized
+content-type: application/json
+x-clerk-auth-reason: dev-browser-missing
+x-clerk-auth-status: signed-out
+Vary: Accept-Encoding
+Date: Mon, 23 Feb 2026 15:01:01 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+Transfer-Encoding: chunked
+
+{"error":"Unauthorized"}

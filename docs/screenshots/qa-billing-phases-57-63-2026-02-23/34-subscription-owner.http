@@ -1,0 +1,12 @@
+HTTP/1.1 200 OK
+x-clerk-auth-reason: dev-browser-missing
+x-clerk-auth-status: signed-out
+x-middleware-rewrite: /api/billing/subscription?workspaceId=ws_personal_d9f2f782-f8f7-4f60-873d-cab71bff0206
+vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
+content-type: application/json
+Date: Mon, 23 Feb 2026 15:01:37 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+Transfer-Encoding: chunked
+
+{"workspaceId":"ws_personal_d9f2f782-f8f7-4f60-873d-cab71bff0206","billingAccountId":"d958632d-52c4-4d03-884f-1f0c85ad9376","subscription":{"id":"b0575710-380a-4312-9275-65568e02dd26","billingAccountId":"d958632d-52c4-4d03-884f-1f0c85ad9376","planId":"b4f1f1a0-8b78-4cd2-a7e7-75a85ae6bd26","authority":"clerk","authoritySubscriptionId":"08ee28ba-3ab3-4112-a12d-b76323b750b9","status":"active","currentPeriodStart":"2026-02-23T15:01:37.392Z","currentPeriodEnd":"2026-03-25T15:01:37.392Z","cancelAtPeriodEnd":false,"createdAt":"2026-02-23T15:01:37.392Z","updatedAt":"2026-02-23T15:01:37.433Z"}}

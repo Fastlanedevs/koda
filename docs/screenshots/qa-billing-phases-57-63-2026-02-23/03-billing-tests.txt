@@ -1,0 +1,26 @@
+✔ isDevAuthBypassEnabled requires NODE_ENV=development and truthy DEV_AUTH_BYPASS (0.617625ms)
+✔ API bypass in development works without token when DEV_AUTH_BYPASS_TOKEN is not configured (0.224ms)
+✔ API bypass enforces x-dev-auth-bypass-token when DEV_AUTH_BYPASS_TOKEN is set (0.281041ms)
+✔ isBillingAdmin requires explicit allowlist by default (0.591375ms)
+✔ isBillingAdmin allows configured user ids (0.061375ms)
+✔ isBillingAdmin can allow workspace owners behind explicit legacy flag (0.058458ms)
+✔ toAsyncSettlementStatus maps success to settled (0.636375ms)
+✔ toAsyncSettlementStatus maps failed/timed_out to release states (0.062041ms)
+✔ ingestBillingInvoiceSchema accepts expected invoice payload (2.889958ms)
+✔ ingestBillingInvoiceSchema rejects missing required fields (0.387208ms)
+✔ computeSettlement captures and releases within reservation (0.623125ms)
+✔ computeSettlement records overflow when actual exceeds reserve (0.067667ms)
+✔ computeSettlement clamps negative values to zero (0.739458ms)
+✔ image estimate scales with count and resolution (0.604666ms)
+✔ video estimate uses per-second credits and rounds up (0.065916ms)
+✔ validateBillingWebhookRequest verifies signed payload (0.827458ms)
+✔ validateBillingWebhookRequest rejects stale replay timestamp (0.098167ms)
+✔ parseBillingSubscriptionWebhookPayload enforces strict contract (2.078166ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 345.708042

@@ -1,0 +1,12 @@
+HTTP/1.1 200 OK
+x-clerk-auth-reason: dev-browser-missing
+x-clerk-auth-status: signed-out
+x-middleware-rewrite: /api/credits/balance?workspaceId=ws_personal_d9f2f782-f8f7-4f60-873d-cab71bff0206
+vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
+content-type: application/json
+Date: Mon, 23 Feb 2026 15:06:14 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+Transfer-Encoding: chunked
+
+{"workspaceId":"ws_personal_d9f2f782-f8f7-4f60-873d-cab71bff0206","billingAccountId":"d958632d-52c4-4d03-884f-1f0c85ad9376","role":"owner","totalCredits":2593,"reservedCredits":0,"availableCredits":2593}

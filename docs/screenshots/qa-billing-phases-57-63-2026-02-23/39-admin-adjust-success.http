@@ -1,0 +1,12 @@
+HTTP/1.1 200 OK
+x-clerk-auth-reason: dev-browser-missing
+x-clerk-auth-status: signed-out
+x-middleware-rewrite: /api/admin/credits/adjust
+vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
+content-type: application/json
+Date: Mon, 23 Feb 2026 15:04:22 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+Transfer-Encoding: chunked
+
+{"ok":true,"entry":{"id":"60995863-c868-43bb-bbaf-a5481ddd529b","billingAccountId":"d958632d-52c4-4d03-884f-1f0c85ad9376","bucketId":null,"txnType":"credit_adjustment_admin","amountCredits":123,"idempotencyKey":"admin:d9f2f782-f8f7-4f60-873d-cab71bff0206:4506930b-5763-4e7f-8ac6-89c81a274cbc:v1","referenceType":"admin_adjustment","referenceId":"ws_personal_d9f2f782-f8f7-4f60-873d-cab71bff0206","requestId":null,"reasonCode":"qa_manual","metadataJson":"{\"note\":\"qa audit\",\"actorUserId\":\"d9f2f782-f8f7-4f60-873d-cab71bff0206\"}","occurredAt":"2026-02-23T15:04:22.728Z","createdAt":"2026-02-23T15:04:22.728Z"}}

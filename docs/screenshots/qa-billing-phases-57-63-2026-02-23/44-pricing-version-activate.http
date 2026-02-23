@@ -1,0 +1,9 @@
+HTTP/1.1 308 Permanent Redirect
+location: /api/internal/pricing/versions/activate
+Refresh: 0;url=/api/internal/pricing/versions/activate
+Date: Mon, 23 Feb 2026 15:04:23 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+Transfer-Encoding: chunked
+
+/api/internal/pricing/versions/activate

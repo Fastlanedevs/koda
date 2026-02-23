@@ -1,0 +1,8 @@
+src/app/api/internal/pricing/versions/[id]/activate/route.ts:25:  await db.transaction(async (tx: any) => {
+src/app/api/internal/pricing/versions/route.ts:52:  await db.transaction(async (tx: any) => {
+src/app/api/invites/[token]/route.ts:116:  await db.transaction(async (tx: any) => {
+src/app/api/workspaces/[workspaceId]/transfer-ownership/route.ts:42:  await db.transaction(async (tx: any) => {
+src/lib/billing/ledger.ts:183:  await db.transaction(async (tx: any) => {
+src/lib/billing/ledger.ts:238:  await db.transaction(async (tx: any) => {
+src/lib/billing/ledger.ts:348:  await db.transaction(async (tx: any) => {
+src/lib/billing/pricing.ts:114:  await db.transaction(async (tx: any) => {

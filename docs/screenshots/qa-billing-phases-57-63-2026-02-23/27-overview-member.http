@@ -1,0 +1,12 @@
+HTTP/1.1 200 OK
+x-clerk-auth-reason: dev-browser-missing
+x-clerk-auth-status: signed-out
+x-middleware-rewrite: /api/settings/billing/overview?workspaceId=ws_personal_d9f2f782-f8f7-4f60-873d-cab71bff0206
+vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
+content-type: application/json
+Date: Mon, 23 Feb 2026 15:01:27 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+Transfer-Encoding: chunked
+
+{"workspaceId":"ws_personal_d9f2f782-f8f7-4f60-873d-cab71bff0206","workspaceName":"Dev's Workspace","role":"viewer","isOwner":false,"ownerNotice":"Only workspace owners can manage billing. Contact your workspace owner.","plan":{"code":"free","name":"Free","interval":"month","priceLabel":"$0 / month","currency":"USD","renewalDate":null,"status":"active","trialEndsAt":null,"canceledAt":null},"usage":[{"key":"credits","label":"Monthly credits","used":100,"limit":100,"unit":"credits"},{"key":"storage","label":"Storage","used":1,"limit":5,"unit":"GB"},{"key":"seats","label":"Seats","used":1,"limit":1,"unit":"seats"}],"paymentMethod":null}
