@@ -3,6 +3,7 @@
 import { useMemo, useEffect } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
+  CreditCard,
   Key,
   Sliders,
   HardDrive,
@@ -23,17 +24,19 @@ import { ThemeSection } from './sections/ThemeSection';
 import { KeyboardShortcutsSection } from './sections/KeyboardShortcutsSection';
 import { ProfileSection } from './sections/ProfileSection';
 import { InviteStatusSection } from './sections/InviteStatusSection';
+import { BillingPlansSection } from './sections/BillingPlansSection';
 
 type SettingsTab =
+  | 'profile'
+  | 'billing'
+  | 'invites'
   | 'api-keys'
   | 'generation'
   | 'storage'
   | 'history'
   | 'canvas'
   | 'theme'
-  | 'shortcuts'
-  | 'profile'
-  | 'invites';
+  | 'shortcuts';
 
 interface TabItem {
   id: SettingsTab;
@@ -43,6 +46,24 @@ interface TabItem {
 }
 
 const tabs: TabItem[] = [
+  {
+    id: 'profile',
+    label: 'Profile',
+    icon: User,
+    description: 'Your account information',
+  },
+  {
+    id: 'billing',
+    label: 'Billing & Plans',
+    icon: CreditCard,
+    description: 'Manage subscription, payment method, and invoices',
+  },
+  {
+    id: 'invites',
+    label: 'Invites',
+    icon: UserPlus,
+    description: 'Track pending, accepted, declined, revoked, and expired invites',
+  },
   {
     id: 'api-keys',
     label: 'API Keys',
@@ -85,21 +106,9 @@ const tabs: TabItem[] = [
     icon: HardDrive,
     description: 'Manage local storage and export data',
   },
-  {
-    id: 'profile',
-    label: 'Profile',
-    icon: User,
-    description: 'Your account information',
-  },
-  {
-    id: 'invites',
-    label: 'Invites',
-    icon: UserPlus,
-    description: 'Track pending, accepted, declined, revoked, and expired invites',
-  },
 ];
 
-const defaultTab: SettingsTab = 'api-keys';
+const defaultTab: SettingsTab = 'profile';
 
 function parseTab(tabParam: string | null, allowedTabs: TabItem[]): SettingsTab {
   const allowedTabSet = new Set<SettingsTab>(allowedTabs.map((t) => t.id));
@@ -142,6 +151,8 @@ export function SettingsContent() {
         return <ApiKeysSection />;
       case 'generation':
         return <GenerationSettingsSection />;
+      case 'billing':
+        return <BillingPlansSection />;
       case 'storage':
         return <StorageSection />;
       case 'history':
