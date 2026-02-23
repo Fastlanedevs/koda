@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { finalizeAsyncSettlement, finalizeAsyncSettlementIfExpired } from '@/lib/billing/async-settlement';
 import { xskillQueryTask } from '@/lib/xskill';
 import { saveGeneratedVideo } from '@/lib/video-storage';
 
@@ -8,6 +9,14 @@ export async function POST(request: Request) {
 
     if (!taskId) {
       return NextResponse.json({ error: 'taskId is required' }, { status: 400 });
+    }
+
+    const timeoutResult = await finalizeAsyncSettlementIfExpired({ provider: 'xskill', externalTaskId: taskId });
+    if (timeoutResult?.status === 'timed_out') {
+      return NextResponse.json({
+        status: 'failed',
+        error: 'Video generation timed out',
+      });
     }
 
     const result = await xskillQueryTask(taskId);
@@ -21,6 +30,12 @@ export async function POST(request: Request) {
         nodeId,
       });
 
+      await finalizeAsyncSettlement({
+        provider: 'xskill',
+        externalTaskId: taskId,
+        outcome: 'success',
+      });
+
       return NextResponse.json({
         status: 'completed',
         videoUrl: savedUrl,
@@ -29,6 +44,13 @@ export async function POST(request: Request) {
     }
 
     if (result.status === 'failed') {
+      await finalizeAsyncSettlement({
+        provider: 'xskill',
+        externalTaskId: taskId,
+        outcome: 'failed',
+        failureReason: result.error || 'FAILED_PROVIDER',
+      });
+
       return NextResponse.json({
         status: 'failed',
         error: result.error || 'Video generation failed',

@@ -2,6 +2,7 @@ import 'server-only';
 
 import { randomUUID } from 'crypto';
 import { and, eq, lt } from 'drizzle-orm';
+import { finalizeTimedOutAsyncSettlements } from '@/lib/billing/async-settlement';
 import { getDatabaseAsync } from '@/lib/db';
 import {
   creditReservations,
@@ -59,6 +60,26 @@ export async function runBillingReconciliation(options?: { repairEnabled?: boole
         .set({ status: 'expired', updatedAt: now })
         .where(eq(creditReservations.id, reservation.id));
       repairCount += 1;
+    }
+  }
+
+  if (options?.repairEnabled) {
+    const asyncSweep = await finalizeTimedOutAsyncSettlements(500);
+    if (asyncSweep.scanned > 0) {
+      mismatchCount += asyncSweep.scanned;
+      repairCount += asyncSweep.processed;
+
+      await db.insert(reconciliationItems).values({
+        id: randomUUID(),
+        runId,
+        itemKey: `async-timeout:${runId}`,
+        severity: asyncSweep.processed > 0 ? 'SEV-2' : 'SEV-3',
+        category: 'async_settlement_timeout',
+        detailsJson: JSON.stringify(asyncSweep),
+        repairAction: 'release_reservation',
+        repairStatus: asyncSweep.processed > 0 ? 'completed' : 'skipped',
+        createdAt: now,
+      });
     }
   }
 

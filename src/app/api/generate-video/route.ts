@@ -9,6 +9,7 @@ import {
   releaseGenerationCredits,
   settleGenerationCredits,
 } from '@/lib/billing/generation-credits';
+import { registerAsyncSettlement } from '@/lib/billing/async-settlement';
 
 export const maxDuration = 600;
 
@@ -256,7 +257,20 @@ export async function POST(request: Request) {
       const { xskillCreateTask } = await import('@/lib/xskill');
       const { taskId } = await xskillCreateTask({ model: xskillModelId, params: input });
 
-      await releaseGenerationCredits({ context: creditContext });
+      if (creditContext?.enabled && creditContext.enforced && creditContext.billingAccountId && creditContext.idempotencyBase) {
+        await registerAsyncSettlement({
+          provider: 'xskill',
+          externalTaskId: taskId,
+          billingAccountId: creditContext.billingAccountId,
+          reservationJobId: creditContext.reservationJobId,
+          idempotencyKeyPrefix: creditContext.idempotencyBase,
+          estimatedCredits: creditContext.estimatedCredits ?? 0,
+          metadata: {
+            model: xskillModelId,
+            duration,
+          },
+        });
+      }
 
       return NextResponse.json({
         async: true,

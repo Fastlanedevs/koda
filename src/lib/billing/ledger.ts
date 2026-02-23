@@ -220,8 +220,17 @@ export async function settleReservation(input: SettleReservationInput) {
     throw new Error('Reservation not found');
   }
 
-  const now = new Date();
   const settlement = computeSettlement(reservation.reservedCredits, input.actualCredits);
+  if (reservation.status !== 'active') {
+    return {
+      reservation,
+      capturedCredits: reservation.capturedCredits,
+      releasedCredits: reservation.releasedCredits,
+      overflowCredits: settlement.overflow,
+    };
+  }
+
+  const now = new Date();
   const release = settlement.release;
   const capture = settlement.capture;
   const overflow = settlement.overflow;
