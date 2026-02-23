@@ -3,28 +3,35 @@ import 'server-only';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { requireActor } from '@/lib/auth/actor';
+import { ensureBillingAccountForWorkspace } from '@/lib/billing/accounts';
+import { getCreditBalance } from '@/lib/billing/ledger';
+import { ensurePlanCatalogSeed } from '@/lib/billing/subscriptions';
 import { getDatabaseAsync } from '@/lib/db';
-import { workspaceMembers, workspaces } from '@/lib/db/schema';
+import { plans, subscriptions, workspaceMembers, workspaces } from '@/lib/db/schema';
 import type { BillingOverviewResponse } from '@/lib/billing/types';
 
-function resolveStatus(): BillingOverviewResponse['plan']['status'] {
-  const raw = process.env.BILLING_DEMO_STATUS;
-  if (
-    raw === 'trialing' ||
-    raw === 'active' ||
-    raw === 'grace' ||
-    raw === 'payment_failed' ||
-    raw === 'canceled' ||
-    raw === 'expired'
-  ) {
-    return raw;
+function mapSubscriptionStatus(status: string): BillingOverviewResponse['plan']['status'] {
+  switch (status) {
+    case 'trialing':
+      return 'trialing';
+    case 'active':
+      return 'active';
+    case 'past_due':
+      return 'payment_failed';
+    case 'canceled':
+      return 'canceled';
+    case 'expired':
+      return 'expired';
+    default:
+      return 'active';
   }
-  return 'active';
 }
 
 export async function GET(request: Request) {
   const actorResult = await requireActor();
   if (!actorResult.ok) return actorResult.response;
+
+  await ensurePlanCatalogSeed();
 
   const { searchParams } = new URL(request.url);
   const requestedWorkspaceId = searchParams.get('workspaceId');
@@ -57,8 +64,21 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Workspace not found' }, { status: 404 });
   }
 
-  const isOwner = workspaceRow.membershipRole === 'owner';
+  const billingAccount = await ensureBillingAccountForWorkspace(workspaceRow.workspaceId);
+  const [subscription] = await db
+    .select()
+    .from(subscriptions)
+    .where(eq(subscriptions.billingAccountId, billingAccount.id))
+    .limit(1);
 
+  const [plan] = subscription
+    ? await db.select().from(plans).where(eq(plans.id, subscription.planId)).limit(1)
+    : await db.select().from(plans).where(eq(plans.planCode, 'free')).limit(1);
+
+  const balance = await getCreditBalance(billingAccount.id);
+
+  const isOwner = workspaceRow.membershipRole === 'owner';
+  const monthlyCredits = plan?.monthlyCredits ?? 100;
   const response: BillingOverviewResponse = {
     workspaceId: workspaceRow.workspaceId,
     workspaceName: workspaceRow.workspaceName,
@@ -66,22 +86,22 @@ export async function GET(request: Request) {
     isOwner,
     ownerNotice: isOwner ? undefined : 'Only workspace owners can manage billing. Contact your workspace owner.',
     plan: {
-      code: (process.env.BILLING_DEMO_PLAN as BillingOverviewResponse['plan']['code']) || 'free',
-      name: process.env.BILLING_DEMO_PLAN_NAME || 'Free',
+      code: (plan?.planCode as BillingOverviewResponse['plan']['code']) ?? 'free',
+      name: plan?.displayName ?? 'Free',
       interval: 'month',
-      priceLabel: process.env.BILLING_DEMO_PLAN_PRICE || '$0 / month',
-      currency: 'USD',
-      renewalDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString(),
-      status: resolveStatus(),
+      priceLabel: `$${((plan?.priceMinor ?? 0) / 100).toFixed(0)} / month`,
+      currency: plan?.currency ?? 'USD',
+      renewalDate: subscription?.currentPeriodEnd?.toISOString() ?? null,
+      status: subscription ? mapSubscriptionStatus(subscription.status) : 'active',
       trialEndsAt: null,
-      canceledAt: null,
+      canceledAt: subscription?.cancelAtPeriodEnd ? subscription.currentPeriodEnd.toISOString() : null,
     },
     usage: [
       {
         key: 'credits',
         label: 'Monthly credits',
-        used: Number.parseInt(process.env.BILLING_DEMO_CREDITS_USED || '0', 10),
-        limit: Number.parseInt(process.env.BILLING_DEMO_CREDITS_LIMIT || '100', 10),
+        used: Math.max(0, monthlyCredits - Math.max(0, balance.availableCredits)),
+        limit: monthlyCredits,
         unit: 'credits',
       },
       {
