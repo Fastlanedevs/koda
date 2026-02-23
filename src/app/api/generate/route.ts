@@ -3,6 +3,11 @@ import { fal } from '@fal-ai/client';
 import { FAL_MODELS, type ImageModelType } from '@/lib/types';
 import { getModelAdapter, type GenerateRequest } from '@/lib/model-adapters';
 import { getAssetStorageType, getExtensionFromUrl, type AssetStorageProvider } from '@/lib/assets';
+import {
+  authorizeGenerationCredits,
+  releaseGenerationCredits,
+  settleGenerationCredits,
+} from '@/lib/billing/generation-credits';
 
 export const maxDuration = 300;
 
@@ -70,6 +75,8 @@ async function saveGeneratedImages(
 }
 
 export async function POST(request: Request) {
+  let creditContext: Awaited<ReturnType<typeof authorizeGenerationCredits>> | null = null;
+
   try {
     const body = await request.json();
     const {
@@ -127,6 +134,18 @@ export async function POST(request: Request) {
       ? adapter.getModelId(generateRequest)
       : FAL_MODELS[modelType] || FAL_MODELS['flux-schnell'];
 
+    creditContext = await authorizeGenerationCredits({
+      workspaceId: typeof body.workspaceId === 'string' ? body.workspaceId : undefined,
+      operationType: 'image.generate',
+      modelRef: modelType,
+      imageCount: numImages,
+      resolution: typeof resolution === 'string' ? resolution : undefined,
+      metadata: {
+        aspectRatio,
+        imageSize,
+      },
+    });
+
     // Call Fal API
     const result = await fal.subscribe(modelId, {
       input,
@@ -152,6 +171,14 @@ export async function POST(request: Request) {
       nodeId,
     });
 
+    await settleGenerationCredits({
+      context: creditContext,
+      actualCredits: creditContext.estimatedCredits,
+      metadata: {
+        outputCount: imageUrls.length,
+      },
+    });
+
     return NextResponse.json({
       success: true,
       imageUrl: savedUrls[0], // For backwards compatibility
@@ -160,6 +187,10 @@ export async function POST(request: Request) {
       model: modelId,
     });
   } catch (error) {
+    if (creditContext) {
+      await releaseGenerationCredits({ context: creditContext });
+    }
+
     console.error('Generation error:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Generation failed' },

@@ -4,6 +4,11 @@ import { FAL_VIDEO_MODELS, XSKILL_VIDEO_MODELS, VIDEO_MODEL_PROVIDERS, type Vide
 import { getVideoModelAdapter, type VideoGenerateRequest } from '@/lib/model-adapters';
 import { saveGeneratedVideo } from '@/lib/video-storage';
 import { getAssetStorageType, getExtensionFromUrl, type AssetStorageProvider } from '@/lib/assets';
+import {
+  authorizeGenerationCredits,
+  releaseGenerationCredits,
+  settleGenerationCredits,
+} from '@/lib/billing/generation-credits';
 
 export const maxDuration = 600;
 
@@ -128,6 +133,8 @@ async function generateViaFal(
 }
 
 export async function POST(request: Request) {
+  let creditContext: Awaited<ReturnType<typeof authorizeGenerationCredits>> | null = null;
+
   try {
     const body = await request.json();
     const {
@@ -228,6 +235,17 @@ export async function POST(request: Request) {
       input,
     });
 
+    creditContext = await authorizeGenerationCredits({
+      workspaceId: typeof body.workspaceId === 'string' ? body.workspaceId : undefined,
+      operationType: 'video.generate',
+      modelRef: modelType,
+      durationSeconds: duration,
+      resolution: typeof resolution === 'string' ? resolution : undefined,
+      metadata: {
+        provider,
+      },
+    });
+
     if (provider === 'xskill') {
       // xskill.ai path — return taskId immediately for client-side polling
       const xskillModelId = XSKILL_VIDEO_MODELS[modelType];
@@ -237,6 +255,8 @@ export async function POST(request: Request) {
 
       const { xskillCreateTask } = await import('@/lib/xskill');
       const { taskId } = await xskillCreateTask({ model: xskillModelId, params: input });
+
+      await releaseGenerationCredits({ context: creditContext });
 
       return NextResponse.json({
         async: true,
@@ -261,6 +281,15 @@ export async function POST(request: Request) {
       nodeId,
     });
 
+    await settleGenerationCredits({
+      context: creditContext,
+      actualCredits: creditContext.estimatedCredits,
+      metadata: {
+        provider,
+        duration,
+      },
+    });
+
     return NextResponse.json({
       success: true,
       videoUrl: savedUrl,
@@ -268,6 +297,10 @@ export async function POST(request: Request) {
       model: modelLabel,
     });
   } catch (error) {
+    if (creditContext) {
+      await releaseGenerationCredits({ context: creditContext });
+    }
+
     console.error('Video generation error:', error);
 
     // Extract detailed error
