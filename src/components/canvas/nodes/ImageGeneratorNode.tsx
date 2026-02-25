@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useCallback, useState, useRef, useEffect } from 'react';
+import { memo, useCallback, useMemo, useState, useRef, useEffect } from 'react';
 import { Handle, Position, useUpdateNodeInternals, type NodeProps } from '@xyflow/react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -316,6 +316,25 @@ function ImageGeneratorNodeComponent({ id, data, selected, positionAbsoluteX, po
   );
   const hasValidPrompt = !!(data.prompt || connectedInputs.textContent || hasPresetSelected);
 
+  const activePresets = useMemo((): { key: string; label: string; preview: string }[] => {
+    const pills: { key: string; label: string; preview: string }[] = [];
+    if (data.selectedCharacter?.type === 'preset') {
+      pills.push({ key: 'char', label: data.selectedCharacter.label, preview: data.selectedCharacter.preview });
+    } else if (data.selectedCharacter?.type === 'custom') {
+      pills.push({ key: 'char', label: data.selectedCharacter.label || 'Custom', preview: data.selectedCharacter.imageUrl });
+    }
+    if (data.selectedStyle) {
+      pills.push({ key: 'style', label: data.selectedStyle.label, preview: data.selectedStyle.preview });
+    }
+    if (data.selectedCameraAngle) {
+      pills.push({ key: 'angle', label: data.selectedCameraAngle.label, preview: data.selectedCameraAngle.preview });
+    }
+    if (data.selectedCameraLens) {
+      pills.push({ key: 'lens', label: data.selectedCameraLens.label, preview: data.selectedCameraLens.preview });
+    }
+    return pills;
+  }, [data.selectedCharacter, data.selectedStyle, data.selectedCameraAngle, data.selectedCameraLens]);
+
   return (
     <div
       className="relative"
@@ -415,6 +434,16 @@ function ImageGeneratorNodeComponent({ id, data, selected, positionAbsoluteX, po
                   {data.prompt}
                 </p>
               )}
+              {activePresets.length > 0 && (
+                <div className="flex flex-wrap justify-center gap-1.5">
+                  {activePresets.map(p => (
+                    <span key={p.key} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-muted/60 text-[10px] text-muted-foreground">
+                      <img src={p.preview} alt="" className="w-4 h-4 rounded-sm object-cover" />
+                      {p.label}
+                    </span>
+                  ))}
+                </div>
+              )}
               <div className="text-center">
                 <p
                   className="text-base font-semibold bg-clip-text text-transparent"
@@ -457,6 +486,17 @@ function ImageGeneratorNodeComponent({ id, data, selected, positionAbsoluteX, po
               >
                 <Download className="h-4 w-4" />
               </Button>
+              {/* Preset pills - always visible on output */}
+              {activePresets.length > 0 && (
+                <div className="absolute top-3 left-3 flex flex-wrap gap-1 opacity-0 group-hover/image:opacity-100 transition-opacity duration-200">
+                  {activePresets.map(p => (
+                    <span key={p.key} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-black/50 backdrop-blur-sm text-[10px] text-zinc-300">
+                      <img src={p.preview} alt="" className="w-3.5 h-3.5 rounded-sm object-cover" />
+                      {p.label}
+                    </span>
+                  ))}
+                </div>
+              )}
               {/* Gradient overlay for better text visibility - visible on hover */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity duration-300 pointer-events-none" />
               {/* Prompt text overlay - visible on hover */}
@@ -547,6 +587,17 @@ function ImageGeneratorNodeComponent({ id, data, selected, positionAbsoluteX, po
                   />
                 </div>
               </div>
+              {/* Active preset pills */}
+              {activePresets.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 px-4 pb-2">
+                  {activePresets.map(p => (
+                    <span key={p.key} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-muted/60 text-[10px] text-muted-foreground">
+                      <img src={p.preview} alt="" className="w-4 h-4 rounded-sm object-cover" />
+                      {p.label}
+                    </span>
+                  ))}
+                </div>
+              )}
               {/* Error Display */}
               {data.error && (
                 <p className="text-xs text-red-400 px-4 pb-2">{data.error}</p>

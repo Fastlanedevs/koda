@@ -443,6 +443,26 @@ function TrimRangePicker({
 function MotionAnalyzerNodeComponent({ id, data, selected }: NodeProps<Node<PluginNodeData, 'pluginNode'>>) {
   const nodeData = data as unknown as MotionAnalyzerNodeData;
   const updateNodeData = useCanvasStore(s => s.updateNodeData);
+  const isReadOnly = useCanvasStore(s => s.isReadOnly);
+
+  // Rename state
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [nodeName, setNodeName] = useState(nodeData.name || 'Motion Analyzer');
+  const nameInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isEditingName && nameInputRef.current) {
+      nameInputRef.current.focus();
+      nameInputRef.current.select();
+    }
+  }, [isEditingName]);
+
+  const handleNameSubmit = useCallback(() => {
+    setIsEditingName(false);
+    if (nodeName.trim() && nodeName !== (nodeData.name || 'Motion Analyzer')) {
+      updateNodeData(id, { name: nodeName.trim() });
+    }
+  }, [id, nodeName, nodeData.name, updateNodeData]);
 
   // Initialize state — merge with defaults so persisted partial state doesn't crash
   const defaults = createDefaultState(id);
@@ -575,14 +595,12 @@ function MotionAnalyzerNodeComponent({ id, data, selected }: NodeProps<Node<Plug
     const blobUrl = URL.createObjectURL(file);
     blobPreviewUrlRef.current = blobUrl;
 
-    // Get video metadata
+    // Get video metadata (don't revoke the blob URL here — it's shared with the preview element.
+    // Cleanup happens in handleRemoveVideo or when a new video is uploaded.)
     const duration = await new Promise<number | undefined>((resolve) => {
       const videoEl = document.createElement('video');
       videoEl.preload = 'metadata';
-      videoEl.onloadedmetadata = () => {
-        resolve(videoEl.duration);
-        URL.revokeObjectURL(videoEl.src);
-      };
+      videoEl.onloadedmetadata = () => resolve(videoEl.duration);
       videoEl.onerror = () => resolve(undefined);
       videoEl.src = blobUrl;
     });
@@ -927,16 +945,41 @@ function MotionAnalyzerNodeComponent({ id, data, selected }: NodeProps<Node<Plug
   const containerClass = selected ? `${base} ring-1 ring-[var(--an-accent)]/70` : base;
 
   return (
+    <div>
+      {/* Node Title */}
+      <div className="flex items-center gap-2 mb-2 text-sm font-medium" style={{ color: 'var(--node-title-motion)' }}>
+        <Eye className="h-4 w-4" />
+        {isEditingName && !isReadOnly ? (
+          <input
+            ref={nameInputRef}
+            type="text"
+            value={nodeName}
+            onChange={(e) => setNodeName(e.target.value)}
+            onBlur={handleNameSubmit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleNameSubmit();
+              if (e.key === 'Escape') {
+                setNodeName(nodeData.name || 'Motion Analyzer');
+                setIsEditingName(false);
+              }
+            }}
+            className="bg-transparent border-b outline-none px-0.5 min-w-[100px]"
+            style={{ borderColor: 'var(--input-border)', color: 'var(--text-secondary)' }}
+          />
+        ) : (
+          <span
+            onDoubleClick={() => !isReadOnly && setIsEditingName(true)}
+            className={`transition-colors hover:opacity-80 ${isReadOnly ? 'cursor-default' : 'cursor-text'}`}
+          >
+            {nodeData.name || 'Motion Analyzer'}
+          </span>
+        )}
+      </div>
+
     <div className={containerClass} style={{ minHeight: '200px', maxHeight: '720px' }}>
       {/* ── Header ── */}
       <div className="drag-handle cursor-grab active:cursor-grabbing flex-shrink-0 flex items-center gap-2 px-3.5 py-2.5 border-b border-[var(--an-border)]">
-        <div className="h-7 w-7 rounded-[7px] bg-[var(--an-accent-bg)] flex items-center justify-center">
-          <Eye className="w-3.5 h-3.5" style={{ color: 'var(--an-accent)' }} />
-        </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-[13px] font-semibold text-[var(--an-text-heading)] leading-tight truncate">
-            {nodeData.name || 'Motion Analyzer'}
-          </h3>
           <p className="text-[10px] leading-tight" style={{ color: 'var(--an-text-placeholder)' }}>
             {state.phase === 'idle' && 'Upload a video to analyze'}
             {state.phase === 'analyzing' && 'Analyzing motion...'}
@@ -1175,6 +1218,7 @@ function MotionAnalyzerNodeComponent({ id, data, selected }: NodeProps<Node<Plug
         className="!w-3 !h-3 !bg-[var(--an-accent)] !border-2 !border-[var(--an-bg)]"
         style={{ top: '50%' }}
       />
+    </div>
     </div>
   );
 }

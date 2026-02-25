@@ -171,21 +171,8 @@ export function PluginLauncher({
               <div className="flex items-start gap-3">
                 <plugin.icon className="mt-0.5 h-5 w-5 text-muted-foreground" />
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <div className="truncate text-sm font-medium text-foreground">{plugin.name}</div>
-                    <span
-                      className={[
-                        'rounded px-1.5 py-0.5 text-[10px] font-medium',
-                        mode === 'Node'
-                          ? 'bg-emerald-500/15 text-emerald-400'
-                          : 'bg-violet-500/15 text-violet-400',
-                      ].join(' ')}
-                    >
-                      {mode}
-                    </span>
-                  </div>
+                  <div className="truncate text-sm font-medium text-foreground">{plugin.name}</div>
                   <div className="truncate text-xs text-muted-foreground">{plugin.description}</div>
-                  {ioHint && <div className="truncate text-[11px] text-muted-foreground/90">{ioHint}</div>}
                   {!decision.allowed && (
                     <div className="truncate text-[11px] text-amber-500">Unavailable: {decision.code}</div>
                   )}

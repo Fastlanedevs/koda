@@ -239,6 +239,8 @@ select {
   --node-title-music: #ea580c;
   --node-title-storyboard: #7c3aed;
   --node-title-animation: #2563eb;
+  --node-title-svg: #059669;
+  --node-title-motion: #2563eb;
 
   /* Inputs */
   --input-bg: #f9fafb;
@@ -326,6 +328,8 @@ select {
   --node-title-music: #fb923c;
   --node-title-storyboard: #a78bfa;
   --node-title-animation: #3B82F6;
+  --node-title-svg: #34d399;
+  --node-title-motion: #60a5fa;
 
   /* Inputs */
   --input-bg: transparent;

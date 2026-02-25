@@ -139,7 +139,7 @@ export type TextNode = Node<TextNodeData, 'text'>;
 // Media Node
 export interface MediaNodeData extends Record<string, unknown> {
   url?: string;
-  type?: 'image' | 'video';
+  type?: 'image' | 'video' | 'audio';
 }
 
 export type MediaNode = Node<MediaNodeData, 'media'>;

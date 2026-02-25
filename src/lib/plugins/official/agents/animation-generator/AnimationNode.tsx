@@ -127,11 +127,31 @@ interface AnimationNodeProps extends NodeProps<AnimationNodeType> {}
 function AnimationNodeComponent({ id, data, selected }: AnimationNodeProps) {
   const updateNodeData = useCanvasStore((s) => s.updateNodeData);
   const nodes = useCanvasStore((s) => s.nodes);
+  const isReadOnly = useCanvasStore((s) => s.isReadOnly);
   const addToHistory = useSettingsStore((s) => s.addToHistory);
   const updateNodeInternals = useUpdateNodeInternals();
   const [isHovered, setIsHovered] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [settingsPosition, setSettingsPosition] = useState({ x: 0, y: 0 });
+
+  // Rename state
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [nodeName, setNodeName] = useState(data.name || 'Animation Generator');
+  const nameInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isEditingName && nameInputRef.current) {
+      nameInputRef.current.focus();
+      nameInputRef.current.select();
+    }
+  }, [isEditingName]);
+
+  const handleNameSubmit = useCallback(() => {
+    setIsEditingName(false);
+    if (nodeName.trim() && nodeName !== (data.name || 'Animation Generator')) {
+      updateNodeData(id, { name: nodeName.trim() });
+    }
+  }, [id, nodeName, data.name, updateNodeData]);
 
   // Streaming hook
   const { isStreaming, stream: streamToAgent, abort: abortStream } = useAnimationStream();
@@ -2086,11 +2106,43 @@ function AnimationNodeComponent({ id, data, selected }: AnimationNodeProps) {
   // ─── Render ─────────────────────────────────────────────────────────
   return (
     <div
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* Node Title */}
+      <div className="flex items-center gap-2 mb-2 text-sm font-medium" style={{ color: 'var(--node-title-animation)' }}>
+        <Clapperboard className="h-4 w-4" />
+        {isEditingName && !isReadOnly ? (
+          <input
+            ref={nameInputRef}
+            type="text"
+            value={nodeName}
+            onChange={(e) => setNodeName(e.target.value)}
+            onBlur={handleNameSubmit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleNameSubmit();
+              if (e.key === 'Escape') {
+                setNodeName(data.name || 'Animation Generator');
+                setIsEditingName(false);
+              }
+            }}
+            className="bg-transparent border-b outline-none px-0.5 min-w-[100px]"
+            style={{ borderColor: 'var(--input-border)', color: 'var(--text-secondary)' }}
+          />
+        ) : (
+          <span
+            onDoubleClick={() => !isReadOnly && setIsEditingName(true)}
+            className={`transition-colors hover:opacity-80 ${isReadOnly ? 'cursor-default' : 'cursor-text'}`}
+          >
+            {data.name || 'Animation Generator'}
+          </span>
+        )}
+      </div>
+
+    <div
       ref={nodeContainerRef}
       className={`${nodeClasses}${isDragOver ? ' ring-1 ring-blue-500/50' : ''}`}
       style={{ minHeight }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
       onDragOver={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -2194,17 +2246,8 @@ function AnimationNodeComponent({ id, data, selected }: AnimationNodeProps) {
       )}
 
       {/* ── Header ───────────────────────────────────────────────────── */}
-      <div className="flex-shrink-0 flex items-center gap-2 px-3.5 py-2.5 border-b border-[var(--an-border)]">
-        <div
-          className="h-7 w-7 rounded-[7px] flex items-center justify-center"
-          style={{ backgroundColor: headerConfig.iconBg }}
-        >
-          <Clapperboard className="h-3.5 w-3.5" style={{ color: headerConfig.iconColor }} />
-        </div>
+      <div className="flex-shrink-0 flex items-center gap-2 px-3.5 py-2 border-b border-[var(--an-border)]">
         <div className="flex-1 min-w-0">
-          <h3 className="text-[13px] font-semibold text-[var(--an-text-heading)] leading-tight truncate">
-            {data.name || 'Animation Generator'}
-          </h3>
           <p className="text-[10px] leading-tight" style={{ color: headerConfig.statusColor }}>
             {headerConfig.statusText}
           </p>
@@ -2448,6 +2491,7 @@ function AnimationNodeComponent({ id, data, selected }: AnimationNodeProps) {
           onResolutionChange={handleResolutionChange}
         />
       )}
+    </div>
     </div>
   );
 }

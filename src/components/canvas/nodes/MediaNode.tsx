@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useCanvasStore } from '@/stores/canvas-store';
 import type { MediaNode as MediaNodeType } from '@/lib/types';
-import { Image as ImageIcon, Upload, Trash2, X, Link } from 'lucide-react';
+import { Image as ImageIcon, Upload, Trash2, X, Link, Volume2, Film } from 'lucide-react';
 import { uploadAsset } from '@/lib/assets/upload';
 
 function MediaNodeComponent({ id, data, selected }: NodeProps<MediaNodeType>) {
@@ -49,15 +49,21 @@ function MediaNodeComponent({ id, data, selected }: NodeProps<MediaNodeType>) {
 
   const handleFileSelect = useCallback(
     async (file: File) => {
-      if (!file.type.startsWith('image/')) {
-        toast.error('Please select an image file');
+      const isImage = file.type.startsWith('image/');
+      const isVideo = file.type.startsWith('video/');
+      const isAudio = file.type.startsWith('audio/');
+
+      if (!isImage && !isVideo && !isAudio) {
+        toast.error('Please select an image, video, or audio file');
         return;
       }
 
+      const mediaType = isVideo ? 'video' : isAudio ? 'audio' : 'image';
+
       try {
         const asset = await uploadAsset(file, { nodeId: id });
-        updateNodeData(id, { url: asset.url, type: 'image' });
-        toast.success('Image uploaded');
+        updateNodeData(id, { url: asset.url, type: mediaType });
+        toast.success(`${mediaType.charAt(0).toUpperCase() + mediaType.slice(1)} uploaded`);
       } catch (err) {
         console.error('[MediaNode] Upload failed:', err);
         toast.error('Upload failed');
@@ -105,10 +111,14 @@ function MediaNodeComponent({ id, data, selected }: NodeProps<MediaNodeType>) {
 
   const handleUrlSubmit = useCallback(() => {
     if (urlInput.trim()) {
-      updateNodeData(id, { url: urlInput.trim(), type: 'image' });
+      const url = urlInput.trim().toLowerCase();
+      let mediaType: 'image' | 'video' | 'audio' = 'image';
+      if (/\.(mp4|webm|mov|avi)(\?|$)/.test(url)) mediaType = 'video';
+      else if (/\.(mp3|wav|ogg|aac|m4a|flac)(\?|$)/.test(url)) mediaType = 'audio';
+      updateNodeData(id, { url: urlInput.trim(), type: mediaType });
       setUrlInput('');
       setShowUrlInput(false);
-      toast.success('Image URL added');
+      toast.success('Media URL added');
     }
   }, [id, urlInput, updateNodeData]);
 
@@ -122,7 +132,7 @@ function MediaNodeComponent({ id, data, selected }: NodeProps<MediaNodeType>) {
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept="image/*,video/*,audio/*"
         onChange={handleInputChange}
         className="hidden"
       />
@@ -192,15 +202,34 @@ function MediaNodeComponent({ id, data, selected }: NodeProps<MediaNodeType>) {
         {/* Content Area */}
         <div className="relative min-h-[160px]">
           {data.url && !data.url.startsWith('cached:') ? (
-            /* Image Preview */
-            <div className="relative">
-              <img
-                src={data.url}
-                alt="Media"
-                className="w-full h-auto"
-                onLoad={() => updateNodeInternals(id)}
-              />
-            </div>
+            data.type === 'audio' ? (
+              /* Audio Player */
+              <div className="p-4 flex flex-col items-center justify-center gap-3 min-h-[160px]">
+                <Volume2 className="h-8 w-8 text-muted-foreground" />
+                <audio src={data.url} controls className="w-full max-w-[240px]" />
+              </div>
+            ) : data.type === 'video' ? (
+              /* Video Preview */
+              <div className="relative">
+                <video
+                  src={data.url}
+                  controls
+                  className="w-full h-auto"
+                  style={{ maxHeight: '300px' }}
+                  onLoadedData={() => updateNodeInternals(id)}
+                />
+              </div>
+            ) : (
+              /* Image Preview */
+              <div className="relative">
+                <img
+                  src={data.url}
+                  alt="Media"
+                  className="w-full h-auto"
+                  onLoad={() => updateNodeInternals(id)}
+                />
+              </div>
+            )
           ) : (
             /* Upload Zone - disabled in read-only mode */
             <div
@@ -220,7 +249,7 @@ function MediaNodeComponent({ id, data, selected }: NodeProps<MediaNodeType>) {
             >
               <Upload className="h-8 w-8 mb-3" style={{ color: 'var(--text-placeholder)' }} />
               <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
-                {isReadOnly ? 'No image' : 'Drop image here'}
+                {isReadOnly ? 'No media' : 'Drop media here'}
               </p>
               {!isReadOnly && (
                 <p className="text-xs mt-1" style={{ color: 'var(--text-placeholder)' }}>or click to browse</p>
@@ -253,7 +282,7 @@ function MediaNodeComponent({ id, data, selected }: NodeProps<MediaNodeType>) {
                         if (e.key === 'Enter') handleUrlSubmit();
                         if (e.key === 'Escape') setShowUrlInput(false);
                       }}
-                      placeholder="Image URL..."
+                      placeholder="Media URL..."
                       className="flex-1 rounded px-2 py-1 text-xs outline-none focus:border-blue-500 node-input"
                       style={{ borderWidth: '1px' }}
                       autoFocus
@@ -287,10 +316,16 @@ function MediaNodeComponent({ id, data, selected }: NodeProps<MediaNodeType>) {
             id="output"
             className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-red-400 !border-zinc-900 hover:!border-zinc-700"
           />
-          <ImageIcon className="absolute inset-0 m-auto h-3.5 w-3.5 pointer-events-none text-zinc-900" />
+          {data.type === 'audio' ? (
+            <Volume2 className="absolute inset-0 m-auto h-3.5 w-3.5 pointer-events-none text-zinc-900" />
+          ) : data.type === 'video' ? (
+            <Film className="absolute inset-0 m-auto h-3.5 w-3.5 pointer-events-none text-zinc-900" />
+          ) : (
+            <ImageIcon className="absolute inset-0 m-auto h-3.5 w-3.5 pointer-events-none text-zinc-900" />
+          )}
         </div>
         <span className="absolute right-9 top-1/2 -translate-y-1/2 px-2 py-1 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 border node-tooltip">
-          Image output
+          {data.type === 'audio' ? 'Audio' : data.type === 'video' ? 'Video' : 'Image'} output
         </span>
       </div>
     </div>
