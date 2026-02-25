@@ -33,7 +33,7 @@ export function SearchableSelect({
 }: SearchableSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState('');
-  const [position, setPosition] = React.useState({ top: 0, left: 0 });
+  const [position, setPosition] = React.useState<{ top?: number; bottom?: number; left: number }>({ top: 0, left: 0 });
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -70,14 +70,30 @@ export function SearchableSelect({
 
   const hasGroups = options.some((opt) => opt.group);
 
-  // Update position when opening
+  // Update position when opening — flip upward if not enough space below
   React.useEffect(() => {
     if (open && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
-      setPosition({
-        top: rect.bottom + 4,
-        left: rect.left,
-      });
+      const dropdownMaxHeight = 340; // search input (~40px) + max-h-[300px]
+      const spaceBelow = window.innerHeight - rect.bottom - 8;
+      const spaceAbove = rect.top - 8;
+
+      const bottomFromViewport = window.innerHeight - rect.top + 4;
+
+      if (spaceBelow >= dropdownMaxHeight) {
+        // Enough space below — anchor top
+        setPosition({ top: rect.bottom + 4, bottom: undefined, left: rect.left });
+      } else if (spaceAbove >= dropdownMaxHeight) {
+        // Flip upward — anchor bottom edge to just above trigger
+        setPosition({ top: undefined, bottom: bottomFromViewport, left: rect.left });
+      } else {
+        // Neither fits fully — pick the side with more space
+        if (spaceBelow >= spaceAbove) {
+          setPosition({ top: rect.bottom + 4, bottom: undefined, left: rect.left });
+        } else {
+          setPosition({ top: undefined, bottom: bottomFromViewport, left: rect.left });
+        }
+      }
     }
   }, [open]);
 
@@ -147,8 +163,15 @@ export function SearchableSelect({
   const dropdown = open ? (
     <div
       ref={dropdownRef}
-      className="fixed z-[200] min-w-[180px] bg-popover border border-border rounded-lg shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100"
-      style={{ top: position.top, left: position.left }}
+      className="fixed z-[200] min-w-[180px] bg-popover border border-border rounded-lg shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100 flex flex-col"
+      style={{
+        top: position.top,
+        bottom: position.bottom,
+        left: position.left,
+        maxHeight: position.top != null
+          ? `calc(100dvh - ${position.top}px - 8px)`
+          : `calc(100dvh - ${position.bottom}px - 8px)`,
+      }}
       onWheel={(e) => e.stopPropagation()}
     >
       {/* Search Input */}
@@ -167,7 +190,7 @@ export function SearchableSelect({
       </div>
 
       {/* Options List */}
-      <div className="max-h-[300px] overflow-y-auto py-1">
+      <div className="max-h-[300px] min-h-0 flex-1 overflow-y-auto py-1">
         {filteredOptions.length === 0 ? (
           <div className="px-3 py-2 text-xs text-muted-foreground text-center">
             No results found

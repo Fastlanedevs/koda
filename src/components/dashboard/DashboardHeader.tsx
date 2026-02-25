@@ -16,13 +16,15 @@ export function DashboardHeader({ onCreateCanvas, memberships }: DashboardHeader
       <div className="mb-3 flex items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">Create a new project and start creating</p>
         <div className="flex items-center gap-2">
-          <select className="h-8 rounded-md border border-border bg-background px-2 text-xs text-foreground">
-            {memberships.map((membership) => (
-              <option key={membership.workspaceId} value={membership.workspaceId}>
-                {membership.workspaceName} · {membership.workspaceType === 'team' ? 'Team' : 'Personal'}
-              </option>
-            ))}
-          </select>
+          {memberships.length > 1 && (
+            <select className="h-8 rounded-md border border-border bg-background px-2 text-xs text-foreground">
+              {memberships.map((membership) => (
+                <option key={membership.workspaceId} value={membership.workspaceId}>
+                  {membership.workspaceName} · {membership.workspaceType === 'team' ? 'Team' : 'Personal'}
+                </option>
+              ))}
+            </select>
+          )}
           <SyncStatusIndicator />
         </div>
       </div>

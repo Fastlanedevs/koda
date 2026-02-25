@@ -29,6 +29,8 @@ export function SignUpForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -36,6 +38,7 @@ export function SignUpForm() {
   const [verificationCode, setVerificationCode] = useState('');
   const [formError, setFormError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const isEmailFormActive = Boolean(email || firstName || lastName || password || confirmPassword);
 
   const isBusy = isSubmitting || isGoogleSubmitting || isVerifying;
   const canSubmit = isLoaded && !isBusy;
@@ -78,7 +81,7 @@ export function SignUpForm() {
     try {
       await signUp.authenticateWithRedirect({
         strategy: 'oauth_google',
-        redirectUrl: '/sign-up',
+        redirectUrl: '/sign-up/sso-callback',
         redirectUrlComplete: '/',
       });
     } catch (error) {
@@ -178,6 +181,8 @@ export function SignUpForm() {
                 Continue with Google
               </Button>
 
+              {!isEmailFormActive && <div id="clerk-captcha" className="flex justify-center" />}
+
               <DividerWithLabel label="or continue with email" />
 
               <form className="space-y-3" onSubmit={handleSubmit} noValidate>
@@ -245,21 +250,31 @@ export function SignUpForm() {
                   <label htmlFor="sign-up-password" className="text-sm font-medium text-foreground">
                     Password
                   </label>
-                  <Input
-                    id="sign-up-password"
-                    type="password"
-                    autoComplete="new-password"
-                    className={inputBaseClass}
-                    value={password}
-                    onChange={(event) => {
-                      setPassword(event.target.value);
-                      if (fieldErrors.password) setFieldErrors((prev) => ({ ...prev, password: undefined }));
-                    }}
-                    onBlur={validate}
-                    aria-invalid={Boolean(fieldErrors.password)}
-                    aria-describedby={passwordErrorId}
-                    disabled={!canSubmit}
-                  />
+                  <div className="relative">
+                    <Input
+                      id="sign-up-password"
+                      type={showPassword ? 'text' : 'password'}
+                      autoComplete="new-password"
+                      className={`${inputBaseClass} pr-20`}
+                      value={password}
+                      onChange={(event) => {
+                        setPassword(event.target.value);
+                        if (fieldErrors.password) setFieldErrors((prev) => ({ ...prev, password: undefined }));
+                      }}
+                      onBlur={validate}
+                      aria-invalid={Boolean(fieldErrors.password)}
+                      aria-describedby={passwordErrorId}
+                      disabled={!canSubmit}
+                    />
+                    <button
+                      type="button"
+                      className="text-muted-foreground absolute right-3 top-1/2 min-h-6 -translate-y-1/2 text-xs font-medium hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
                   {fieldErrors.password ? (
                     <p id={passwordErrorId} className="text-sm text-[color:var(--danger)]">
                       {fieldErrors.password}
@@ -271,29 +286,41 @@ export function SignUpForm() {
                   <label htmlFor="sign-up-confirm-password" className="text-sm font-medium text-foreground">
                     Confirm password
                   </label>
-                  <Input
-                    id="sign-up-confirm-password"
-                    type="password"
-                    autoComplete="new-password"
-                    className={inputBaseClass}
-                    value={confirmPassword}
-                    onChange={(event) => {
-                      setConfirmPassword(event.target.value);
-                      if (fieldErrors.confirmPassword) {
-                        setFieldErrors((prev) => ({ ...prev, confirmPassword: undefined }));
-                      }
-                    }}
-                    onBlur={validate}
-                    aria-invalid={Boolean(fieldErrors.confirmPassword)}
-                    aria-describedby={fieldErrors.confirmPassword ? 'sign-up-confirm-password-error' : undefined}
-                    disabled={!canSubmit}
-                  />
+                  <div className="relative">
+                    <Input
+                      id="sign-up-confirm-password"
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      autoComplete="new-password"
+                      className={`${inputBaseClass} pr-20`}
+                      value={confirmPassword}
+                      onChange={(event) => {
+                        setConfirmPassword(event.target.value);
+                        if (fieldErrors.confirmPassword) {
+                          setFieldErrors((prev) => ({ ...prev, confirmPassword: undefined }));
+                        }
+                      }}
+                      onBlur={validate}
+                      aria-invalid={Boolean(fieldErrors.confirmPassword)}
+                      aria-describedby={fieldErrors.confirmPassword ? 'sign-up-confirm-password-error' : undefined}
+                      disabled={!canSubmit}
+                    />
+                    <button
+                      type="button"
+                      className="text-muted-foreground absolute right-3 top-1/2 min-h-6 -translate-y-1/2 text-xs font-medium hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+                      onClick={() => setShowConfirmPassword((prev) => !prev)}
+                      aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showConfirmPassword ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
                   {fieldErrors.confirmPassword ? (
                     <p id="sign-up-confirm-password-error" className="text-sm text-[color:var(--danger)]">
                       {fieldErrors.confirmPassword}
                     </p>
                   ) : null}
                 </div>
+
+                {isEmailFormActive && <div id="clerk-captcha" className="flex justify-center" />}
 
                 <Button
                   type="submit"
@@ -310,6 +337,7 @@ export function SignUpForm() {
                   )}
                 </Button>
               </form>
+
             </>
           ) : (
             <form className="space-y-3" onSubmit={handleVerify} noValidate>

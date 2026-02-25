@@ -77,23 +77,25 @@ export function DashboardPage() {
                 />
               </div>
 
-              <div>
-                <h2 className="font-serif text-2xl font-normal text-foreground mb-2">Team</h2>
-                <p className="text-sm text-muted-foreground mb-4">Collaborative team workspaces.</p>
-                <ProjectsGrid
-                  canvases={teamCanvases}
-                  isLoading={isLoadingList}
-                  loadError={null}
-                  searchQuery={searchQuery}
-                  onCreateCanvas={handleCreateCanvas}
-                  onRename={handleRename}
-                  onDuplicate={handleDuplicate}
-                  onDelete={handleDelete}
-                  onRefreshPreview={handleRefreshPreview}
-                  onRetryLoad={retryLoadCanvases}
-                  onBrowseTemplates={() => setActiveTab('templates')}
-                />
-              </div>
+              {teamCanvases.length > 0 && (
+                <div>
+                  <h2 className="font-serif text-2xl font-normal text-foreground mb-2">Team</h2>
+                  <p className="text-sm text-muted-foreground mb-4">Collaborative team workspaces.</p>
+                  <ProjectsGrid
+                    canvases={teamCanvases}
+                    isLoading={isLoadingList}
+                    loadError={null}
+                    searchQuery={searchQuery}
+                    onCreateCanvas={handleCreateCanvas}
+                    onRename={handleRename}
+                    onDuplicate={handleDuplicate}
+                    onDelete={handleDelete}
+                    onRefreshPreview={handleRefreshPreview}
+                    onRetryLoad={retryLoadCanvases}
+                    onBrowseTemplates={() => setActiveTab('templates')}
+                  />
+                </div>
+              )}
             </section>
 
             {invites.length > 0 && (

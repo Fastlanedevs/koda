@@ -91,7 +91,6 @@ export function NodeToolbar({ onPluginLaunch }: NodeToolbarProps) {
   const addMenuRef = useRef<HTMLDivElement>(null);
   const addMenuDropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const [addMenuPosition, setAddMenuPosition] = useState({ x: -9999, y: -9999 });
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -105,28 +104,9 @@ export function NodeToolbar({ onPluginLaunch }: NodeToolbarProps) {
       document.addEventListener('mousedown', handleClickOutside);
       // Focus search input when menu opens
       setTimeout(() => searchInputRef.current?.focus(), 50);
-      // Position dropdown clamped to viewport
-      requestAnimationFrame(() => {
-        const btn = addMenuRef.current;
-        const dropdown = addMenuDropdownRef.current;
-        if (btn && dropdown) {
-          const btnRect = btn.getBoundingClientRect();
-          const dropRect = dropdown.getBoundingClientRect();
-          const pad = 8;
-          const x = btnRect.right + 8;
-          let y = btnRect.top;
-          // Clamp bottom
-          if (y + dropRect.height > window.innerHeight - pad) {
-            y = window.innerHeight - dropRect.height - pad;
-          }
-          y = Math.max(pad, y);
-          setAddMenuPosition({ x, y });
-        }
-      });
     } else {
       setSearchQuery('');
       setUtilitiesExpanded(false);
-      setAddMenuPosition({ x: -9999, y: -9999 });
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showAddMenu]);
@@ -348,13 +328,7 @@ export function NodeToolbar({ onPluginLaunch }: NodeToolbarProps) {
           {showAddMenu && (
             <div
               ref={addMenuDropdownRef}
-              className="fixed w-[220px] bg-popover border border-border rounded-xl shadow-xl overflow-hidden z-50 animate-in fade-in slide-in-from-left-2 duration-150 flex flex-col"
-              style={{
-                left: addMenuPosition.x,
-                top: addMenuPosition.y,
-                maxHeight: addMenuPosition.y > 0 ? `calc(100vh - ${addMenuPosition.y}px - 8px)` : undefined,
-                visibility: addMenuPosition.x === -9999 ? 'hidden' : 'visible',
-              }}
+              className="absolute left-[calc(100%+8px)] top-0 w-[220px] max-h-[calc(100dvh-16px)] bg-popover border border-border rounded-xl shadow-xl overflow-hidden z-50 animate-in fade-in slide-in-from-left-2 duration-150 flex flex-col"
             >
               {/* Search Input */}
               <div className="p-2 border-b border-border">

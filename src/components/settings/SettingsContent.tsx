@@ -99,7 +99,7 @@ const tabs: TabItem[] = [
   },
 ];
 
-const defaultTab: SettingsTab = 'api-keys';
+const defaultTab: SettingsTab = 'generation';
 
 function parseTab(tabParam: string | null, allowedTabs: TabItem[]): SettingsTab {
   const allowedTabSet = new Set<SettingsTab>(allowedTabs.map((t) => t.id));
@@ -118,9 +118,17 @@ export function SettingsContent() {
     process.env.NEXT_PUBLIC_WORKSPACES_V1 !== 'false' &&
     process.env.NEXT_PUBLIC_COLLAB_SHARING_V1 !== 'false';
 
+  // Hide API keys tab when keys are configured server-side (env vars)
+  const apiKeysServerConfigured = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+
   const visibleTabs = useMemo(
-    () => tabs.filter((tab) => tab.id !== 'invites' || invitesEnabled),
-    [invitesEnabled]
+    () => tabs.filter((tab) => {
+      if (tab.id === 'invites' && !invitesEnabled) return false;
+      if (tab.id === 'api-keys' && apiKeysServerConfigured) return false;
+      if (tab.id === 'storage' && apiKeysServerConfigured) return false;
+      return true;
+    }),
+    [invitesEnabled, apiKeysServerConfigured]
   );
 
   const tabParam = searchParams.get('tab');
