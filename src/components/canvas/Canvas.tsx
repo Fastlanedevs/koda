@@ -260,7 +260,7 @@ export function Canvas() {
         connectionLineType={ConnectionLineType.Bezier}
         connectionLineStyle={{ stroke: '#6366f1', strokeWidth: 2 }}
         proOptions={{ hideAttribution: true }}
-        snapToGrid={useSettingsStore.getState().gridSnap}
+        snapToGrid={useSettingsStore.getState().canvasPreferences.gridSnap}
         snapGrid={[20, 20]}
         panOnDrag={activeTool === 'pan'}
         panOnScroll={false}
@@ -279,7 +279,7 @@ export function Canvas() {
           size={1.2}
           color="var(--canvas-dots)"
         />
-        {useSettingsStore.getState().showMinimap && (
+        {useSettingsStore.getState().canvasPreferences.showMinimap && (
           <MiniMap
             nodeStrokeWidth={3}
             zoomable

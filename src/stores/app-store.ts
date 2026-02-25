@@ -93,21 +93,28 @@ const previewQueue = new PreviewLifecycleQueue({
         thumbnailErrorCode: undefined,
       });
 
-      const canvasElement = document.querySelector('.react-flow') as HTMLElement | null;
+      // Wait briefly for the DOM to settle (React Flow can lag behind state updates)
+      let canvasElement = document.querySelector('.react-flow') as HTMLElement | null;
       if (!canvasElement) {
+        await new Promise((r) => setTimeout(r, 500));
+        canvasElement = document.querySelector('.react-flow') as HTMLElement | null;
+      }
+
+      if (!canvasElement) {
+        // Not on canvas page — keep existing preview if any, otherwise stay empty (not error)
         const current = await provider.getCanvas(id);
-        if (current?.thumbnail || current?.thumbnailUrl) {
-          await updateCanvasThumbnail(id, {
-            thumbnail: current.thumbnail,
-            thumbnailUrl: current.thumbnailUrl,
-            thumbnailStatus: 'ready',
+        const hasExisting = !!(current?.thumbnail || current?.thumbnailUrl);
+        await updateCanvasThumbnail(id, {
+          thumbnail: current?.thumbnail,
+          thumbnailUrl: current?.thumbnailUrl,
+          thumbnailStatus: hasExisting ? 'ready' : 'empty',
+          ...(hasExisting && {
             thumbnailUpdatedAt: Date.now(),
             thumbnailVersion: makeThumbnailVersion(),
-            thumbnailErrorCode: undefined,
-          });
-          return;
-        }
-        throw new Error('CAPTURE_FAILED');
+          }),
+          thumbnailErrorCode: undefined,
+        });
+        return;
       }
 
       const blob = await captureCanvasPreview(canvasElement);
@@ -123,6 +130,7 @@ const previewQueue = new PreviewLifecycleQueue({
         thumbnailErrorCode: undefined,
       });
     } catch (error) {
+      console.error('[preview] Capture failed for canvas', id, error);
       const current = await provider.getCanvas(id);
       await updateCanvasThumbnail(id, {
         thumbnail: current?.thumbnail,
@@ -523,8 +531,12 @@ export const useAppStore = create<AppState>()((set, get) => ({
     const canvas = await provider.getCanvas(id);
     if (!canvas) return;
 
+    // Auto-retry when the previous capture failed (error state gets stuck
+    // because the signature hasn't changed, so the queue skips it)
+    const shouldForce = force || canvas.thumbnailStatus === 'error';
+
     const signature = buildGraphSignature(canvas);
-    previewQueue.request(id, signature, force);
+    previewQueue.request(id, signature, shouldForce);
   },
 
   migrateLegacyData: async () => {

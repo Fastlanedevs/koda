@@ -40,22 +40,18 @@ export const exportAsPNG = async (
   spaceName: string
 ) => {
   try {
-    // Dynamically import html2canvas to avoid SSR issues
-    const { default: html2canvas } = await import('html2canvas');
+    const { toBlob } = await import('html-to-image');
 
-    const canvas = await html2canvas(canvasElement, {
-      backgroundColor: '#09090b', // zinc-950
-      scale: 2, // Higher resolution
-      logging: false,
-      useCORS: true,
+    const blob = await toBlob(canvasElement, {
+      backgroundColor: '#09090b',
+      cacheBust: true,
+      pixelRatio: 2,
     });
 
-    canvas.toBlob((blob) => {
-      if (blob) {
-        const filename = `${spaceName.replace(/\s+/g, '-').toLowerCase()}-canvas.png`;
-        downloadBlob(blob, filename);
-      }
-    }, 'image/png');
+    if (blob) {
+      const filename = `${spaceName.replace(/\s+/g, '-').toLowerCase()}-canvas.png`;
+      downloadBlob(blob, filename);
+    }
   } catch (error) {
     console.error('Failed to export as PNG:', error);
     throw error;

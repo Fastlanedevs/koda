@@ -1,15 +1,24 @@
-import html2canvas from 'html2canvas';
+import { toBlob } from 'html-to-image';
 
 const PREVIEW_WIDTH = 640;
 const PREVIEW_HEIGHT = 360;
 
 export async function captureCanvasPreview(canvasElement: HTMLElement): Promise<Blob> {
-  const canvas = await html2canvas(canvasElement, {
+  // html-to-image uses browser-native SVG foreignObject rendering,
+  // so it handles all modern CSS (oklch, oklab, lab, etc.) that html2canvas cannot.
+  const sourceBlob = await toBlob(canvasElement, {
     backgroundColor: '#09090b',
-    useCORS: true,
-    logging: false,
-    scale: 1,
+    width: canvasElement.offsetWidth,
+    height: canvasElement.offsetHeight,
+    cacheBust: true,
   });
+
+  if (!sourceBlob) {
+    throw new Error('CAPTURE_FAILED');
+  }
+
+  // Resize to 640x360 JPEG thumbnail
+  const img = await createImageBitmap(sourceBlob);
 
   const output = document.createElement('canvas');
   output.width = PREVIEW_WIDTH;
@@ -24,12 +33,12 @@ export async function captureCanvasPreview(canvasElement: HTMLElement): Promise<
   ctx.fillRect(0, 0, PREVIEW_WIDTH, PREVIEW_HEIGHT);
 
   // Fit source into 16:9 output (contain)
-  const ratio = Math.min(PREVIEW_WIDTH / canvas.width, PREVIEW_HEIGHT / canvas.height);
-  const width = canvas.width * ratio;
-  const height = canvas.height * ratio;
+  const ratio = Math.min(PREVIEW_WIDTH / img.width, PREVIEW_HEIGHT / img.height);
+  const width = img.width * ratio;
+  const height = img.height * ratio;
   const x = (PREVIEW_WIDTH - width) / 2;
   const y = (PREVIEW_HEIGHT - height) / 2;
-  ctx.drawImage(canvas, x, y, width, height);
+  ctx.drawImage(img, x, y, width, height);
 
   const blob = await new Promise<Blob | null>((resolve) => {
     output.toBlob(resolve, 'image/jpeg', 0.78);

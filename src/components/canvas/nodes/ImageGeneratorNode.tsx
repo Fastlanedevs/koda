@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/select';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { useCanvasStore, createMediaNode } from '@/stores/canvas-store';
+import { useSettingsStore } from '@/stores/settings-store';
 import type { ImageGeneratorNode as ImageGeneratorNodeType, RecraftStyle, IdeogramStyle } from '@/lib/types';
 import { MODEL_CAPABILITIES, ENABLED_IMAGE_MODELS, getApproxDimensions, FLUX_IMAGE_SIZES, RECRAFT_STYLE_LABELS, IDEOGRAM_STYLE_LABELS, type FluxImageSize, type NanoBananaResolution } from '@/lib/types';
 import {
@@ -38,6 +39,7 @@ function ImageGeneratorNodeComponent({ id, data, selected, positionAbsoluteX, po
   const addNode = useCanvasStore((state) => state.addNode);
   const isReadOnly = useCanvasStore((state) => state.isReadOnly);
   const edges = useCanvasStore((state) => state.edges);
+  const addToHistory = useSettingsStore((state) => state.addToHistory);
   const updateNodeInternals = useUpdateNodeInternals();
   const [isEditingName, setIsEditingName] = useState(false);
   const [nodeName, setNodeName] = useState(data.name || 'Image Generator');
@@ -234,6 +236,21 @@ function ImageGeneratorNodeComponent({ id, data, selected, positionAbsoluteX, po
       }
 
       toast.success(`${imageUrls.length} image${imageUrls.length > 1 ? 's' : ''} generated successfully`);
+
+      addToHistory({
+        type: 'image',
+        prompt: finalPrompt,
+        model: data.model,
+        status: 'completed',
+        result: { urls: imageUrls },
+        settings: {
+          aspectRatio: data.aspectRatio,
+          imageCount,
+          ...(data.style && { style: data.style }),
+          ...(data.resolution && { resolution: data.resolution }),
+          ...(data.imageSize && { imageSize: data.imageSize }),
+        },
+      });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Generation failed';
       updateNodeData(id, {
@@ -241,8 +258,17 @@ function ImageGeneratorNodeComponent({ id, data, selected, positionAbsoluteX, po
         isGenerating: false,
       });
       toast.error(`Generation failed: ${errorMessage}`);
+
+      addToHistory({
+        type: 'image',
+        prompt: finalPrompt || data.prompt || '(no prompt)',
+        model: data.model,
+        status: 'failed',
+        error: errorMessage,
+        settings: { aspectRatio: data.aspectRatio, imageCount },
+      });
     }
-  }, [id, data.prompt, data.model, data.aspectRatio, data.imageCount, data.selectedCharacter, data.selectedStyle, data.selectedCameraAngle, data.selectedCameraLens, data.imageSize, data.resolution, data.style, data.magicPrompt, data.cfgScale, data.steps, data.strength, updateNodeData, getConnectedInputs, addNode, positionAbsoluteX, positionAbsoluteY]);
+  }, [id, data.prompt, data.model, data.aspectRatio, data.imageCount, data.selectedCharacter, data.selectedStyle, data.selectedCameraAngle, data.selectedCameraLens, data.imageSize, data.resolution, data.style, data.magicPrompt, data.cfgScale, data.steps, data.strength, updateNodeData, getConnectedInputs, addNode, addToHistory, positionAbsoluteX, positionAbsoluteY]);
 
   const handleDelete = useCallback(() => {
     deleteNode(id);

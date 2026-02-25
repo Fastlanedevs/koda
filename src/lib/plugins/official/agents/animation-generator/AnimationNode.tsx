@@ -15,6 +15,7 @@ import { Handle, Position, useUpdateNodeInternals } from '@xyflow/react';
 import { Clapperboard, Plus, Minus, Image, Video, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCanvasStore } from '@/stores/canvas-store';
+import { useSettingsStore } from '@/stores/settings-store';
 
 // Chat components
 import { ChatInput } from './components';
@@ -126,6 +127,7 @@ interface AnimationNodeProps extends NodeProps<AnimationNodeType> {}
 function AnimationNodeComponent({ id, data, selected }: AnimationNodeProps) {
   const updateNodeData = useCanvasStore((s) => s.updateNodeData);
   const nodes = useCanvasStore((s) => s.nodes);
+  const addToHistory = useSettingsStore((s) => s.addToHistory);
   const updateNodeInternals = useUpdateNodeInternals();
   const [isHovered, setIsHovered] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -1008,6 +1010,14 @@ function AnimationNodeComponent({ id, data, selected }: AnimationNodeProps) {
             // Force update ls reference for subsequent handlers
             ls = newState;
             autoMarkTodo('render', 'done');
+
+            addToHistory({
+              type: 'video',
+              prompt: data.prompt || '',
+              model: data.engine || 'remotion',
+              status: 'completed',
+              result: { urls: [videoUrlWithCacheBust], duration },
+            });
 
             // Persist video to storage in background (async)
             // Skip if URL is already a permanent storage URL (from video-ready recovery)
