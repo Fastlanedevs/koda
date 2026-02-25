@@ -83,19 +83,41 @@ export async function getOrCreateBalance(
       };
     }
 
-    // Update planKey if it changed (e.g. user upgraded)
+    // Plan changed (upgrade/downgrade) — reset balance to new allocation
     if (existing.planKey !== planKey) {
       const monthlyCredits = getPlanCredits(planKey);
       const now = new Date();
+      const periodStart = now;
       await db
         .update(creditBalances)
         .set({
+          balance: monthlyCredits,
           planKey,
           creditsPerMonth: monthlyCredits,
+          periodStart,
           updatedAt: now,
         })
         .where(eq(creditBalances.userId, userId));
-      return { ...existing, planKey, creditsPerMonth: monthlyCredits, updatedAt: now };
+
+      // Log the plan change
+      await db.insert(creditTransactions).values({
+        id: randomUUID(),
+        userId,
+        amount: monthlyCredits,
+        balanceAfter: monthlyCredits,
+        type: 'reset',
+        reason: `plan_change:${existing.planKey}→${planKey}`,
+        createdAt: now,
+      });
+
+      return {
+        ...existing,
+        balance: monthlyCredits,
+        planKey,
+        creditsPerMonth: monthlyCredits,
+        periodStart,
+        updatedAt: now,
+      };
     }
 
     return existing;
@@ -274,7 +296,7 @@ export async function resetMonthlyCredits(
     .set({
       balance: planCredits,
       creditsPerMonth: planCredits,
-      periodStart: currentPeriodStart(),
+      periodStart: now,
       updatedAt: now,
     })
     .where(eq(creditBalances.userId, userId));

@@ -12,6 +12,7 @@ import {
   Keyboard,
   User,
   UserPlus,
+  CreditCard,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ApiKeysSection } from './sections/ApiKeysSection';
@@ -23,6 +24,7 @@ import { ThemeSection } from './sections/ThemeSection';
 import { KeyboardShortcutsSection } from './sections/KeyboardShortcutsSection';
 import { ProfileSection } from './sections/ProfileSection';
 import { InviteStatusSection } from './sections/InviteStatusSection';
+import { BillingSection } from './sections/BillingSection';
 
 type SettingsTab =
   | 'api-keys'
@@ -33,7 +35,8 @@ type SettingsTab =
   | 'theme'
   | 'shortcuts'
   | 'profile'
-  | 'invites';
+  | 'invites'
+  | 'billing';
 
 interface TabItem {
   id: SettingsTab;
@@ -97,6 +100,12 @@ const tabs: TabItem[] = [
     icon: UserPlus,
     description: 'Track pending, accepted, declined, revoked, and expired invites',
   },
+  {
+    id: 'billing',
+    label: 'Billing & Plan',
+    icon: CreditCard,
+    description: 'View your plan, credit usage, and upgrade options',
+  },
 ];
 
 const defaultTab: SettingsTab = 'generation';
@@ -126,6 +135,7 @@ export function SettingsContent() {
       if (tab.id === 'invites' && !invitesEnabled) return false;
       if (tab.id === 'api-keys' && apiKeysServerConfigured) return false;
       if (tab.id === 'storage' && apiKeysServerConfigured) return false;
+      if (tab.id === 'billing' && !apiKeysServerConfigured) return false;
       return true;
     }),
     [invitesEnabled, apiKeysServerConfigured]
@@ -164,6 +174,8 @@ export function SettingsContent() {
         return <ProfileSection />;
       case 'invites':
         return <InviteStatusSection />;
+      case 'billing':
+        return <BillingSection />;
       default:
         return <ApiKeysSection />;
     }

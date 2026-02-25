@@ -3,8 +3,10 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useClerk } from '@clerk/nextjs';
-import { LogOut, UserCircle2 } from 'lucide-react';
+import { LogOut, UserCircle2, CreditCard, Sparkles } from 'lucide-react';
 import type { CurrentUser } from '@/hooks/useCurrentUser';
+import { useCredits } from '@/hooks/useCredits';
+import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,6 +14,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+
+const PLAN_BADGE_STYLES: Record<string, { label: string; className: string }> = {
+  free_user: { label: 'Free', className: 'bg-zinc-700/60 text-zinc-300' },
+  basic_user: { label: 'Basic', className: 'bg-blue-600/20 text-blue-400' },
+  pro_user: { label: 'Pro', className: 'bg-purple-600/20 text-purple-400' },
+  pro_plus_user: { label: 'Pro+', className: 'bg-amber-600/20 text-amber-400' },
+};
 
 interface AccountMenuProps {
   user: CurrentUser | null;
@@ -23,9 +32,20 @@ interface AccountMenuProps {
 export function AccountMenu({ user, displayName, initials, isLoading = false }: AccountMenuProps) {
   const { signOut } = useClerk();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const { credits } = useCredits();
 
   const email = user?.email || '';
   const avatarAlt = displayName || 'User avatar';
+
+  const planBadge = credits
+    ? PLAN_BADGE_STYLES[credits.planKey] ?? PLAN_BADGE_STYLES.free_user
+    : null;
+
+  const usagePercent = credits && credits.creditsPerMonth > 0
+    ? Math.min((credits.balance / credits.creditsPerMonth) * 100, 100)
+    : 0;
+
+  const showUpgrade = credits && credits.planKey !== 'pro_plus_user';
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
@@ -62,10 +82,43 @@ export function AccountMenu({ user, displayName, initials, isLoading = false }: 
         className="w-64 rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-xl"
       >
         <div className="px-3 py-2">
-          <p className="truncate text-sm font-medium text-foreground">{isLoading ? 'Loading…' : displayName}</p>
+          <div className="flex items-center gap-2">
+            <p className="truncate text-sm font-medium text-foreground">
+              {isLoading ? 'Loading...' : displayName}
+            </p>
+            {planBadge && (
+              <span
+                className={cn(
+                  'inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-medium leading-none',
+                  planBadge.className
+                )}
+              >
+                {planBadge.label}
+              </span>
+            )}
+          </div>
           <p className="truncate text-xs text-muted-foreground">
             {isLoading ? 'Fetching account details' : email || 'No email available'}
           </p>
+
+          {credits && (
+            <div className="mt-2">
+              <div className="flex items-center gap-2">
+                <div className="h-1.5 flex-1 rounded-full bg-muted">
+                  <div
+                    className={cn(
+                      'h-full rounded-full transition-all',
+                      usagePercent > 20 ? 'bg-primary' : 'bg-red-500'
+                    )}
+                    style={{ width: `${usagePercent}%` }}
+                  />
+                </div>
+                <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
+                  {credits.balance} / {credits.creditsPerMonth}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         <DropdownMenuSeparator className="bg-border" />
@@ -76,6 +129,24 @@ export function AccountMenu({ user, displayName, initials, isLoading = false }: 
             Profile &amp; Account
           </Link>
         </DropdownMenuItem>
+
+        <DropdownMenuItem asChild className="rounded-lg px-3 py-2 focus:bg-accent focus:text-accent-foreground">
+          <Link href="/settings?tab=billing" className="flex w-full items-center gap-2" aria-label="Go to billing settings">
+            <CreditCard className="h-4 w-4" />
+            Billing &amp; Plan
+          </Link>
+        </DropdownMenuItem>
+
+        {showUpgrade && (
+          <DropdownMenuItem asChild className="rounded-lg px-3 py-2 focus:bg-accent focus:text-accent-foreground">
+            <Link href="/settings?tab=billing" className="flex w-full items-center gap-2" aria-label="Upgrade your plan">
+              <Sparkles className="h-4 w-4" />
+              Upgrade Plan
+            </Link>
+          </DropdownMenuItem>
+        )}
+
+        <DropdownMenuSeparator className="bg-border" />
 
         <DropdownMenuItem
           onSelect={(event) => {
@@ -89,7 +160,7 @@ export function AccountMenu({ user, displayName, initials, isLoading = false }: 
           disabled={isSigningOut}
         >
           <LogOut className="h-4 w-4" />
-          {isSigningOut ? 'Signing out…' : 'Sign out'}
+          {isSigningOut ? 'Signing out...' : 'Sign out'}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
