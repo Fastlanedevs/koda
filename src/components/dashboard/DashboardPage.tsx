@@ -32,7 +32,6 @@ export function DashboardPage() {
     handleRename,
     handleDuplicate,
     handleDelete,
-    handleRefreshPreview,
   } = useDashboardState();
 
   if (isCreating) {
@@ -70,7 +69,7 @@ export function DashboardPage() {
                   onRename={handleRename}
                   onDuplicate={handleDuplicate}
                   onDelete={handleDelete}
-                  onRefreshPreview={handleRefreshPreview}
+
                   onRetryLoad={retryLoadCanvases}
                   retryLabel={retryActionLabel}
                   onBrowseTemplates={() => setActiveTab('templates')}
@@ -90,7 +89,7 @@ export function DashboardPage() {
                     onRename={handleRename}
                     onDuplicate={handleDuplicate}
                     onDelete={handleDelete}
-                    onRefreshPreview={handleRefreshPreview}
+  
                     onRetryLoad={retryLoadCanvases}
                     onBrowseTemplates={() => setActiveTab('templates')}
                   />
@@ -122,7 +121,7 @@ export function DashboardPage() {
           </>
         )}
 
-        {activeTab === 'shared' && <SharedSection canvases={sharedCanvases} onRename={handleRename} onDuplicate={handleDuplicate} onDelete={handleDelete} onRefreshPreview={handleRefreshPreview} onCreateCanvas={handleCreateCanvas} />}
+        {activeTab === 'shared' && <SharedSection canvases={sharedCanvases} onRename={handleRename} onDuplicate={handleDuplicate} onDelete={handleDelete} onCreateCanvas={handleCreateCanvas} />}
         {activeTab === 'templates' && (
           <TemplatesSection
             templates={filteredTemplates}

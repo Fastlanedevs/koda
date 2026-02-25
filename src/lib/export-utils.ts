@@ -40,18 +40,41 @@ export const exportAsPNG = async (
   spaceName: string
 ) => {
   try {
-    const { toBlob } = await import('html-to-image');
+    const { toPng } = await import('html-to-image');
 
-    const blob = await toBlob(canvasElement, {
+    const dataUrl = await toPng(canvasElement, {
       backgroundColor: '#09090b',
       cacheBust: true,
       pixelRatio: 2,
+      skipFonts: true,
+      imagePlaceholder:
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPj/HwADBwIAMCbHYQAAAABJRU5ErkJggg==',
+      filter: (node: HTMLElement) => {
+        if (node.tagName) {
+          const tag = node.tagName.toLowerCase();
+          if (tag === 'img' || tag === 'video' || tag === 'canvas' || tag === 'iframe') return false;
+        }
+        if (node.classList) {
+          if (
+            node.classList.contains('react-flow__minimap') ||
+            node.classList.contains('react-flow__controls') ||
+            node.classList.contains('react-flow__panel')
+          ) return false;
+        }
+        return true;
+      },
     });
 
-    if (blob) {
-      const filename = `${spaceName.replace(/\s+/g, '-').toLowerCase()}-canvas.png`;
-      downloadBlob(blob, filename);
-    }
+    // Convert data URL to blob
+    const [header, base64] = dataUrl.split(',');
+    const mime = header.match(/:(.*?);/)?.[1] ?? 'image/png';
+    const bytes = atob(base64);
+    const buf = new Uint8Array(bytes.length);
+    for (let i = 0; i < bytes.length; i++) buf[i] = bytes.charCodeAt(i);
+    const blob = new Blob([buf], { type: mime });
+
+    const filename = `${spaceName.replace(/\s+/g, '-').toLowerCase()}-canvas.png`;
+    downloadBlob(blob, filename);
   } catch (error) {
     console.error('Failed to export as PNG:', error);
     throw error;

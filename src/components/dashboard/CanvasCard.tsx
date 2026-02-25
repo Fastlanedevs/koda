@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { MoreHorizontal, Pencil, Copy, Trash2, Calendar, AlertCircle, Loader2, ImageOff, Clock3 } from 'lucide-react';
+import { MoreHorizontal, Pencil, Copy, Trash2, Calendar, AlertCircle, Loader2, ImageOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CanvasMetadata } from '@/lib/storage';
 import { withThumbnailVersion } from '@/lib/preview-utils';
@@ -15,7 +15,6 @@ interface CanvasCardProps {
   onRename: (id: string, name: string) => void;
   onDuplicate: (id: string) => void;
   onDelete: (id: string) => void;
-  onRefreshPreview?: (id: string) => void;
 }
 
 function formatRelativeTime(timestamp: number): string {
@@ -34,7 +33,7 @@ function formatRelativeTime(timestamp: number): string {
   return new Date(timestamp).toLocaleDateString();
 }
 
-export function CanvasCard({ canvas, onRename, onDuplicate, onDelete, onRefreshPreview }: CanvasCardProps) {
+export function CanvasCard({ canvas, onRename, onDuplicate, onDelete }: CanvasCardProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [editName, setEditName] = useState(canvas.name);
@@ -45,8 +44,6 @@ export function CanvasCard({ canvas, onRename, onDuplicate, onDelete, onRefreshP
     () => deriveCanvasPreviewState(canvas, PREVIEW_SYSTEM_ENABLED),
     [canvas],
   );
-
-  const canRefreshPreview = previewStatus === 'stale' || previewStatus === 'error' || previewStatus === 'ready';
 
   const basePreviewSrc = canvas.thumbnailUrl || canvas.thumbnail;
   const previewSrc = useMemo(() => {
@@ -96,16 +93,12 @@ export function CanvasCard({ canvas, onRename, onDuplicate, onDelete, onRefreshP
       ? 'Team'
       : 'Personal';
 
-  const handleMenuAction = (action: 'rename' | 'duplicate' | 'delete' | 'refresh') => {
+  const handleMenuAction = (action: 'rename' | 'duplicate' | 'delete') => {
     setShowMenu(false);
     if (action === 'rename') {
       setIsRenaming(true);
     } else if (action === 'duplicate') {
       onDuplicate(canvas.id);
-    } else if (action === 'refresh') {
-      if (canRefreshPreview) {
-        onRefreshPreview?.(canvas.id);
-      }
     } else {
       onDelete(canvas.id);
     }
@@ -115,7 +108,7 @@ export function CanvasCard({ canvas, onRename, onDuplicate, onDelete, onRefreshP
     <article className="group relative rounded-xl border border-border bg-card shadow-sm transition-shadow hover:shadow-md focus-within:shadow-md">
       <Link href={`/canvas/${canvas.id}`} className="block rounded-t-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b82f6]">
         <div className="relative aspect-video overflow-hidden rounded-t-xl bg-muted">
-          {previewStatus === 'ready' || previewStatus === 'stale' ? (
+          {previewStatus === 'ready' ? (
             <img
               src={previewSrc}
               alt={`${canvas.name} preview`}
@@ -144,12 +137,6 @@ export function CanvasCard({ canvas, onRename, onDuplicate, onDelete, onRefreshP
             </div>
           )}
 
-          {previewStatus === 'stale' && (
-            <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-md bg-black/60 px-2 py-1 text-[11px] text-white">
-              <Clock3 className="h-3 w-3" />
-              Stale
-            </span>
-          )}
         </div>
       </Link>
 
@@ -219,17 +206,6 @@ export function CanvasCard({ canvas, onRename, onDuplicate, onDelete, onRefreshP
                   <Copy className="h-3.5 w-3.5" />
                   Duplicate
                 </button>
-                {PREVIEW_SYSTEM_ENABLED && (
-                  <button
-                    role="menuitem"
-                    onClick={() => handleMenuAction('refresh')}
-                    disabled={!canRefreshPreview}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <Loader2 className={cn('h-3.5 w-3.5', previewStatus === 'processing' && 'animate-spin')} />
-                    Refresh preview
-                  </button>
-                )}
                 {isReadOnly && (
                   <p className="px-3 py-2 text-xs text-muted-foreground">View-only access: editing is disabled.</p>
                 )}

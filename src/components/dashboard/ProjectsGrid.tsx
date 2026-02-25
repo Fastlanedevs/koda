@@ -15,7 +15,6 @@ interface ProjectsGridProps {
   onRename: (id: string, name: string) => void;
   onDuplicate: (id: string) => void;
   onDelete: (id: string) => void;
-  onRefreshPreview?: (id: string) => void;
   onRetryLoad?: () => void;
   retryLabel?: string;
   onBrowseTemplates?: () => void;
@@ -47,7 +46,6 @@ export function ProjectsGrid({
   onRename,
   onDuplicate,
   onDelete,
-  onRefreshPreview,
   onRetryLoad,
   retryLabel,
   onBrowseTemplates,
@@ -113,7 +111,6 @@ export function ProjectsGrid({
             onRename={onRename}
             onDuplicate={onDuplicate}
             onDelete={onDelete}
-            onRefreshPreview={onRefreshPreview}
           />
         </StaggerItem>
       ))}

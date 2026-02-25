@@ -9,7 +9,6 @@ interface SharedSectionProps {
   onRename: (id: string, name: string) => void;
   onDuplicate: (id: string) => void;
   onDelete: (id: string) => void;
-  onRefreshPreview?: (id: string) => void;
 }
 
 export function SharedSection({
@@ -18,7 +17,6 @@ export function SharedSection({
   onRename,
   onDuplicate,
   onDelete,
-  onRefreshPreview,
 }: SharedSectionProps) {
   return (
     <section>
@@ -33,7 +31,6 @@ export function SharedSection({
         onRename={onRename}
         onDuplicate={onDuplicate}
         onDelete={onDelete}
-        onRefreshPreview={onRefreshPreview}
       />
     </section>
   );
