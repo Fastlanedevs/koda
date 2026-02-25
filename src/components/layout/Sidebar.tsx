@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import {
   Home,
-  FolderOpen,
   LayoutTemplate,
   Settings,
   ChevronLeft,
@@ -25,12 +24,6 @@ const navItems: NavItem[] = [
     icon: Home,
     label: 'Home',
     href: '/',
-  },
-  {
-    icon: FolderOpen,
-    label: 'Projects',
-    href: '/?tab=my-spaces',
-    tab: 'my-spaces',
   },
   {
     icon: LayoutTemplate,
