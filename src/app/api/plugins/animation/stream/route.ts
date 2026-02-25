@@ -6,6 +6,7 @@
  */
 
 import { NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 import { animationAgent } from '@/mastra';
 import { getEngineInstructions } from '@/mastra/agents/instructions/animation';
 import { loadRecipes } from '@/mastra/recipes';
@@ -14,6 +15,9 @@ import { RequestContext } from '@mastra/core/di';
 import { getSandboxProvider } from '@/lib/sandbox/sandbox-factory';
 import { emitLaunchMetric } from '@/lib/observability/launch-metrics';
 import { evaluatePluginLaunchById, emitPluginPolicyAuditEvent } from '@/lib/plugins/launch-policy';
+import { requireActor } from '@/lib/auth/actor';
+import { getOrCreateBalance, deductCredits, refundCredits } from '@/lib/db/credit-queries';
+import { getCreditCost, PLAN_KEYS } from '@/lib/credits/costs';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -62,6 +66,8 @@ interface StreamRequestBody {
 }
 
 export async function POST(request: Request) {
+  let animUserId: string | undefined;
+  let animCreditCost: number | undefined;
   try {
     const policyDecision = evaluatePluginLaunchById('animation-generator');
     emitPluginPolicyAuditEvent({
@@ -86,6 +92,41 @@ export async function POST(request: Request) {
           reason: policyDecision.reason,
         },
         { status: policyDecision.code === 'PLUGIN_NOT_FOUND' ? 404 : 403 }
+      );
+    }
+
+    // ── Auth + Credit check ──────────────────────────────────────────
+    const actorResult = await requireActor();
+    if (!actorResult.ok) return actorResult.response;
+    animUserId = actorResult.actor.user.id;
+
+    // Resolve plan
+    let animPlanKey = 'free_user';
+    const { has: hasPlan } = await auth();
+    if (hasPlan) {
+      for (const plan of PLAN_KEYS) {
+        if (plan === 'free_user') continue;
+        if (hasPlan({ plan })) { animPlanKey = plan; break; }
+      }
+    }
+    await getOrCreateBalance(animUserId!, animPlanKey);
+
+    animCreditCost = getCreditCost('animation', { model: 'remotion' });
+    const deductResult = await deductCredits(
+      animUserId!,
+      animCreditCost,
+      'animation:remotion',
+      { model: 'remotion' }
+    );
+    if (!deductResult.success) {
+      return NextResponse.json(
+        {
+          error: 'INSUFFICIENT_CREDITS',
+          message: `Animation costs ${animCreditCost} credits but you have ${deductResult.balance}. Upgrade your plan for more credits.`,
+          required: animCreditCost,
+          balance: deductResult.balance,
+        },
+        { status: 402 }
       );
     }
 
@@ -883,6 +924,14 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error('Animation streaming error:', error);
+    // Refund credits on stream-level failure (actorResult may not be in scope if auth failed)
+    try {
+      if (typeof animUserId === 'string' && typeof animCreditCost === 'number') {
+        await refundCredits(animUserId, animCreditCost, 'error:animation:remotion', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    } catch { /* refund best-effort */ }
     emitLaunchMetric({
       metric: 'plugin_execution',
       status: 'error',

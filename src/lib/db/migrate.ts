@@ -185,6 +185,31 @@ const SCHEMA_SQL_STATEMENTS = [
     created_at INTEGER NOT NULL
   )`,
   `CREATE INDEX IF NOT EXISTS idx_animation_versions_project ON animation_versions(project_id, created_at DESC)`,
+  `CREATE TABLE IF NOT EXISTS credit_balances (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    balance INTEGER NOT NULL DEFAULT 0,
+    plan_key TEXT NOT NULL DEFAULT 'free_user',
+    credits_per_month INTEGER NOT NULL DEFAULT 30,
+    period_start INTEGER NOT NULL,
+    lifetime_used INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS credit_balances_user_id_unique ON credit_balances(user_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_credit_balances_user ON credit_balances(user_id)`,
+  `CREATE TABLE IF NOT EXISTS credit_transactions (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    amount INTEGER NOT NULL,
+    balance_after INTEGER NOT NULL,
+    type TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    metadata TEXT,
+    created_at INTEGER NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_credit_transactions_user_created ON credit_transactions(user_id, created_at)`,
+  `CREATE INDEX IF NOT EXISTS idx_credit_transactions_type ON credit_transactions(type)`,
 ];
 
 const CANVAS_COLUMN_MIGRATIONS = [

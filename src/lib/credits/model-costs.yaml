@@ -1,0 +1,187 @@
+# Koda Model Cost Configuration
+# fal_cost: actual fal.ai API cost per generation (USD)
+# credits: what we charge (auto-calculated: ceil(fal_cost * 30), i.e. 3x markup)
+# For per-second models, fal_cost is for base duration (5s). Scales linearly with duration.
+# Seedance 2.0 uses xskill (currently free) — assigned nominal credits until moved to fal.
+
+markup_multiplier: 30  # ceil(fal_cost * this) = credits
+
+plans:
+  free_user:
+    credits_per_month: 30
+  basic_user:
+    credits_per_month: 100
+  pro_user:
+    credits_per_month: 300
+  pro_plus_user:
+    credits_per_month: 800
+
+image:
+  flux-schnell:
+    fal_cost: 0.003
+    credits: 1
+  flux-pro:
+    fal_cost: 0.05
+    credits: 2
+  nanobanana-pro:
+    fal_cost: 0.15
+    credits: 5
+  recraft-v3:
+    fal_cost: 0.04
+    credits: 2
+  ideogram-v3:
+    fal_cost: 0.06
+    credits: 2
+  sd-3.5:
+    fal_cost: 0.065
+    credits: 2
+
+video:
+  # Per-second models — fal_cost is per second, credits are for 5s base duration
+  # Duration scaling: credits = base_credits * (duration / base_duration), minimum base_credits
+  veo-3:
+    fal_cost_per_sec: 0.20
+    fal_cost_per_sec_audio: 0.40
+    base_duration: 5
+    credits: 30
+    credits_audio: 60
+  veo-3.1-i2v:
+    fal_cost_per_sec: 0.20
+    fal_cost_per_sec_audio: 0.40
+    base_duration: 5
+    credits: 30
+    credits_audio: 60
+  veo-3.1-fast-i2v:
+    fal_cost_per_sec: 0.10
+    fal_cost_per_sec_audio: 0.15
+    base_duration: 5
+    credits: 15
+    credits_audio: 23
+  veo-3.1-ref:
+    fal_cost_per_sec: 0.20
+    fal_cost_per_sec_audio: 0.40
+    base_duration: 5
+    credits: 30
+    credits_audio: 60
+  veo-3.1-flf:
+    fal_cost_per_sec: 0.20
+    fal_cost_per_sec_audio: 0.40
+    base_duration: 5
+    credits: 30
+    credits_audio: 60
+  veo-3.1-fast-flf:
+    fal_cost_per_sec: 0.10
+    fal_cost_per_sec_audio: 0.15
+    base_duration: 5
+    credits: 15
+    credits_audio: 23
+  kling-2.6-t2v:
+    fal_cost_per_sec: 0.07
+    fal_cost_per_sec_audio: 0.14
+    base_duration: 5
+    credits: 11
+    credits_audio: 21
+  kling-2.6-i2v:
+    fal_cost_per_sec: 0.07
+    fal_cost_per_sec_audio: 0.14
+    base_duration: 5
+    credits: 11
+    credits_audio: 21
+  kling-o3-t2v:
+    fal_cost_per_sec: 0.224
+    fal_cost_per_sec_audio: 0.28
+    base_duration: 5
+    credits: 34
+    credits_audio: 42
+  kling-o3-i2v:
+    fal_cost_per_sec: 0.168
+    fal_cost_per_sec_audio: 0.224
+    base_duration: 5
+    credits: 26
+    credits_audio: 34
+  kling-o3-pro-i2v:
+    fal_cost_per_sec: 0.224
+    fal_cost_per_sec_audio: 0.28
+    base_duration: 5
+    credits: 34
+    credits_audio: 42
+  kling-3.0-t2v:
+    fal_cost_per_sec: 0.168
+    fal_cost_per_sec_audio: 0.252
+    base_duration: 5
+    credits: 26
+    credits_audio: 38
+  kling-3.0-i2v:
+    fal_cost_per_sec: 0.168
+    fal_cost_per_sec_audio: 0.252
+    base_duration: 5
+    credits: 26
+    credits_audio: 38
+  kling-3.0-pro-t2v:
+    fal_cost_per_sec: 0.224
+    fal_cost_per_sec_audio: 0.336
+    base_duration: 5
+    credits: 34
+    credits_audio: 51
+  kling-3.0-pro-i2v:
+    fal_cost_per_sec: 0.224
+    fal_cost_per_sec_audio: 0.336
+    base_duration: 5
+    credits: 34
+    credits_audio: 51
+  seedance-1.5-t2v:
+    fal_cost_per_video: 0.13
+    fal_cost_per_video_audio: 0.26
+    credits: 4
+    credits_audio: 8
+  seedance-1.5-i2v:
+    fal_cost_per_video: 0.13
+    fal_cost_per_video_audio: 0.26
+    credits: 4
+    credits_audio: 8
+  seedance-1.0-pro-t2v:
+    fal_cost_per_video: 0.62
+    credits: 19
+  seedance-1.0-pro-i2v:
+    fal_cost_per_video: 0.62
+    credits: 19
+  # Seedance 2.0 via xskill (currently free API) — nominal cost until moved to fal
+  seedance-2.0-t2v:
+    fal_cost_per_video: 0.00
+    credits: 5
+  seedance-2.0-i2v:
+    fal_cost_per_video: 0.00
+    credits: 5
+  seedance-2.0-fast-t2v:
+    fal_cost_per_video: 0.00
+    credits: 3
+  seedance-2.0-fast-i2v:
+    fal_cost_per_video: 0.00
+    credits: 3
+  # Flat-rate models
+  luma-ray2:
+    fal_cost_per_video: 0.50
+    credits: 15
+  minimax-video:
+    fal_cost_per_video: 0.50
+    credits: 15
+  runway-gen3:
+    fal_cost_per_sec: 0.05
+    base_duration: 5
+    credits: 8
+
+audio:
+  ace-step:
+    fal_cost: 0.01
+    credits: 1
+  elevenlabs-tts:
+    fal_cost: 0.05
+    credits: 2
+  mmaudio-v2:
+    fal_cost: 0.01
+    credits: 1
+
+animation:
+  remotion:
+    fal_cost: 0.20
+    credits: 5

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { fal } from '@fal-ai/client';
 import { FAL_AUDIO_MODELS, type ElevenLabsVoice } from '@/lib/types';
 import { getAssetStorageType, getExtensionFromUrl, type AssetStorageProvider } from '@/lib/assets';
+import { withCredits } from '@/lib/credits/with-credits';
 
 export const maxDuration = 300;
 
@@ -60,75 +61,78 @@ async function saveGeneratedAudio(
   }
 }
 
-export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-    const {
-      text,
-      voice,
-      speed,
-      stability,
-    } = body;
+export const POST = withCredits(
+  { type: 'audio', getCostParams: () => ({ model: 'elevenlabs-tts' }) },
+  async (request) => {
+    try {
+      const body = await request.json();
+      const {
+        text,
+        voice,
+        speed,
+        stability,
+      } = body;
 
-    const modelId = FAL_AUDIO_MODELS['elevenlabs-tts'];
+      const modelId = FAL_AUDIO_MODELS['elevenlabs-tts'];
 
-    // Validate input
-    if (!text) {
+      // Validate input
+      if (!text) {
+        return NextResponse.json(
+          { error: 'Text is required' },
+          { status: 400 }
+        );
+      }
+
+      // Build input for ElevenLabs TTS
+      const input = {
+        text,
+        voice: (voice as ElevenLabsVoice) || 'rachel',
+        speed: speed || 1.0,
+        stability: stability ?? 0.5,
+      };
+
+      console.log('Speech generation request:', { modelId, input });
+
+      // Call Fal API
+      const result = await fal.subscribe(modelId, {
+        input,
+        logs: true,
+        onQueueUpdate: (update) => {
+          console.log('Speech queue update:', update.status);
+        },
+      });
+
+      console.log('Speech generation result:', result);
+
+      // Extract audio URL
+      const data = result.data as { audio?: { url: string } } | undefined;
+      const audioUrl = data?.audio?.url;
+
+      if (!audioUrl) {
+        throw new Error('No audio generated');
+      }
+
+      // Save audio to configured asset storage
+      const { canvasId, nodeId } = body;
+      const savedUrl = await saveGeneratedAudio(audioUrl, {
+        text,
+        model: modelId,
+        canvasId,
+        nodeId,
+      });
+
+      return NextResponse.json({
+        success: true,
+        audioUrl: savedUrl,
+        originalUrl: audioUrl,
+        model: modelId,
+      });
+    } catch (error) {
+      console.error('Speech generation error:', error);
       return NextResponse.json(
-        { error: 'Text is required' },
-        { status: 400 }
+        { error: error instanceof Error ? error.message : 'Speech generation failed' },
+        { status: 500 }
       );
     }
-
-    // Build input for ElevenLabs TTS
-    const input = {
-      text,
-      voice: (voice as ElevenLabsVoice) || 'rachel',
-      speed: speed || 1.0,
-      stability: stability ?? 0.5,
-    };
-
-    console.log('Speech generation request:', { modelId, input });
-
-    // Call Fal API
-    const result = await fal.subscribe(modelId, {
-      input,
-      logs: true,
-      onQueueUpdate: (update) => {
-        console.log('Speech queue update:', update.status);
-      },
-    });
-
-    console.log('Speech generation result:', result);
-
-    // Extract audio URL
-    const data = result.data as { audio?: { url: string } } | undefined;
-    const audioUrl = data?.audio?.url;
-
-    if (!audioUrl) {
-      throw new Error('No audio generated');
-    }
-
-    // Save audio to configured asset storage
-    const { canvasId, nodeId } = body;
-    const savedUrl = await saveGeneratedAudio(audioUrl, {
-      text,
-      model: modelId,
-      canvasId,
-      nodeId,
-    });
-
-    return NextResponse.json({
-      success: true,
-      audioUrl: savedUrl,
-      originalUrl: audioUrl,
-      model: modelId,
-    });
-  } catch (error) {
-    console.error('Speech generation error:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Speech generation failed' },
-      { status: 500 }
-    );
   }
-}
+);

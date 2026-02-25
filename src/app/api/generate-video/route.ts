@@ -4,6 +4,7 @@ import { FAL_VIDEO_MODELS, XSKILL_VIDEO_MODELS, VIDEO_MODEL_PROVIDERS, type Vide
 import { getVideoModelAdapter, type VideoGenerateRequest } from '@/lib/model-adapters';
 import { saveGeneratedVideo } from '@/lib/video-storage';
 import { getAssetStorageType, getExtensionFromUrl, type AssetStorageProvider } from '@/lib/assets';
+import { withCredits } from '@/lib/credits/with-credits';
 
 export const maxDuration = 600;
 
@@ -127,7 +128,16 @@ async function generateViaFal(
   return videoUrl;
 }
 
-export async function POST(request: Request) {
+export const POST = withCredits(
+  {
+    type: 'video',
+    getCostParams: (body) => ({
+      model: (body.model as string) || 'veo-3',
+      duration: (body.duration as number) || 5,
+      generateAudio: (body.generateAudio as boolean) || false,
+    }),
+  },
+  async (request) => {
   try {
     const body = await request.json();
     const {
@@ -291,4 +301,5 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-}
+  }
+);

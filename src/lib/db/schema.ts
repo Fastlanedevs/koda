@@ -255,3 +255,58 @@ export const animationVersions = sqliteTable('animation_versions', {
 
 export type NewAnimationVersion = typeof animationVersions.$inferInsert;
 export type AnimationVersion = typeof animationVersions.$inferSelect;
+
+// ============================================
+// CREDIT TABLES
+// ============================================
+
+/**
+ * Credit balances — one row per user.
+ * Tracks current balance, plan, and billing period.
+ */
+export const creditBalances = sqliteTable(
+  'credit_balances',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id').notNull(),
+    balance: integer('balance').notNull().default(0),
+    planKey: text('plan_key').notNull().default('free_user'),
+    creditsPerMonth: integer('credits_per_month').notNull().default(30),
+    periodStart: integer('period_start', { mode: 'timestamp_ms' }).notNull(),
+    lifetimeUsed: integer('lifetime_used').notNull().default(0),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (table) => ({
+    userIdUnique: uniqueIndex('credit_balances_user_id_unique').on(table.userId),
+    userIdx: index('idx_credit_balances_user').on(table.userId),
+  })
+);
+
+export type NewCreditBalance = typeof creditBalances.$inferInsert;
+export type CreditBalance = typeof creditBalances.$inferSelect;
+
+/**
+ * Credit transactions — audit log of all credit changes.
+ * Positive amount = credit added, negative = deducted.
+ */
+export const creditTransactions = sqliteTable(
+  'credit_transactions',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id').notNull(),
+    amount: integer('amount').notNull(), // positive = add, negative = deduct
+    balanceAfter: integer('balance_after').notNull(),
+    type: text('type').notNull(), // 'deduction' | 'refund' | 'topup' | 'reset'
+    reason: text('reason').notNull(), // e.g. 'image:flux-schnell', 'video:veo-3'
+    metadata: text('metadata'), // JSON blob
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (table) => ({
+    userCreatedIdx: index('idx_credit_transactions_user_created').on(table.userId, table.createdAt),
+    typeIdx: index('idx_credit_transactions_type').on(table.type),
+  })
+);
+
+export type NewCreditTransaction = typeof creditTransactions.$inferInsert;
+export type CreditTransaction = typeof creditTransactions.$inferSelect;
