@@ -5,6 +5,7 @@ import {
   ReactFlow,
   Background,
   BackgroundVariant,
+  MiniMap,
   ConnectionLineType,
   SelectionMode,
   type OnSelectionChangeFunc,
@@ -15,6 +16,7 @@ import '@xyflow/react/dist/style.css';
 import { useCanvasStore, createStoryboardNode, createProductShotNode, createPluginNode } from '@/stores/canvas-store';
 import type { AppNode, ImageGeneratorNodeData, VideoGeneratorNodeData, ImageModelType, VideoModelType } from '@/lib/types';
 import { MODEL_CAPABILITIES, VIDEO_MODEL_CAPABILITIES } from '@/lib/types';
+import { useSettingsStore } from '@/stores/settings-store';
 import { nodeTypes } from './nodes';
 import { edgeTypes } from './edges';
 import { NodeToolbar } from './NodeToolbar';
@@ -258,7 +260,7 @@ export function Canvas() {
         connectionLineType={ConnectionLineType.Bezier}
         connectionLineStyle={{ stroke: '#6366f1', strokeWidth: 2 }}
         proOptions={{ hideAttribution: true }}
-        snapToGrid
+        snapToGrid={useSettingsStore.getState().gridSnap}
         snapGrid={[20, 20]}
         panOnDrag={activeTool === 'pan'}
         panOnScroll={false}
@@ -277,6 +279,14 @@ export function Canvas() {
           size={1.2}
           color="var(--canvas-dots)"
         />
+        {useSettingsStore.getState().showMinimap && (
+          <MiniMap
+            nodeStrokeWidth={3}
+            zoomable
+            pannable
+            style={{ backgroundColor: 'var(--canvas-bg)' }}
+          />
+        )}
         <ZoomControls />
       </ReactFlow>
     </div>
