@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { ENABLED_IMAGE_MODELS, ENABLED_VIDEO_MODELS, type ImageModelType, type VideoModelType } from '@/lib/types';
 
 // Generation history item
 export interface GenerationHistoryItem {
@@ -37,6 +38,8 @@ export interface DefaultGenerationSettings {
   aspectRatio: string;
   imageCount: number;
   magicPrompt: boolean;
+  enabledImageModels: ImageModelType[];
+  enabledVideoModels: VideoModelType[];
 }
 
 // Canvas preferences
@@ -62,6 +65,8 @@ interface SettingsState {
     key: K,
     value: DefaultGenerationSettings[K]
   ) => void;
+  toggleImageModel: (modelId: ImageModelType) => void;
+  toggleVideoModel: (modelId: VideoModelType) => void;
 
   // Canvas Preferences
   canvasPreferences: CanvasPreferences;
@@ -92,12 +97,40 @@ const defaultApiKeys: ApiKeys = {
   openAi: '',
 };
 
+// Curated defaults — only the best models shown by default
+const DEFAULT_ENABLED_IMAGE: ImageModelType[] = [
+  'nanobanana-2',
+  'flux-2-pro',
+  'flux-kontext',
+  'recraft-v4',
+  'seedream-5',
+  'ideogram-v3',
+];
+
+const DEFAULT_ENABLED_VIDEO: VideoModelType[] = [
+  'seedance-2.0-fast-t2v',
+  'seedance-2.0-fast-i2v',
+  'seedance-2.0-t2v',
+  'seedance-2.0-i2v',
+  'veo-3',
+  'veo-3.1-i2v',
+  'veo-3.1-fast-i2v',
+  'kling-3.0-t2v',
+  'kling-3.0-i2v',
+  'wan-2.6-t2v',
+  'wan-2.6-i2v',
+  'hailuo-02-t2v',
+  'hailuo-02-i2v',
+];
+
 const defaultGenerationSettings: DefaultGenerationSettings = {
-  imageModel: 'flux-schnell',
-  videoModel: 'kling-2.6-t2v',
+  imageModel: 'auto',
+  videoModel: 'auto',
   aspectRatio: '1:1',
   imageCount: 1,
   magicPrompt: true,
+  enabledImageModels: DEFAULT_ENABLED_IMAGE,
+  enabledVideoModels: DEFAULT_ENABLED_VIDEO,
 };
 
 const defaultCanvasPreferences: CanvasPreferences = {
@@ -124,6 +157,23 @@ export const useSettingsStore = create<SettingsState>()(
         set((state) => ({
           defaultSettings: { ...state.defaultSettings, [key]: value },
         })),
+      toggleImageModel: (modelId) =>
+        set((state) => {
+          const current = state.defaultSettings.enabledImageModels || DEFAULT_ENABLED_IMAGE;
+          const isEnabled = current.includes(modelId);
+          // Must keep at least 1 enabled
+          if (isEnabled && current.length <= 1) return state;
+          const next = isEnabled ? current.filter((m) => m !== modelId) : [...current, modelId];
+          return { defaultSettings: { ...state.defaultSettings, enabledImageModels: next } };
+        }),
+      toggleVideoModel: (modelId) =>
+        set((state) => {
+          const current = state.defaultSettings.enabledVideoModels || DEFAULT_ENABLED_VIDEO;
+          const isEnabled = current.includes(modelId);
+          if (isEnabled && current.length <= 1) return state;
+          const next = isEnabled ? current.filter((m) => m !== modelId) : [...current, modelId];
+          return { defaultSettings: { ...state.defaultSettings, enabledVideoModels: next } };
+        }),
 
       // Canvas Preferences
       canvasPreferences: defaultCanvasPreferences,

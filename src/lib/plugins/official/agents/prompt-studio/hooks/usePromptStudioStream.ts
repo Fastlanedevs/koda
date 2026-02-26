@@ -29,6 +29,7 @@ interface StreamContext {
   canvasContext?: {
     connectedNodes: ConnectedNodeInfo[];
   };
+  referenceImages?: string[];
 }
 
 interface ToolCallEvent {

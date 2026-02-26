@@ -178,14 +178,13 @@ function PromptCard({
         <div className={`w-2 h-2 rounded-full shrink-0 transition-colors ${
           isActive ? 'bg-teal-500' : 'bg-[var(--an-text-dim)]/30'
         }`} />
-        <div className={`w-5 h-5 rounded flex items-center justify-center shrink-0 ${modelColor.bg}`}>
-          <Camera className={`w-3 h-3 ${modelColor.text}`} />
+        <div className="w-5 h-5 rounded flex items-center justify-center shrink-0 bg-[var(--an-accent-bg)]">
+          <Sparkles className="w-3 h-3 text-[var(--an-accent-text)]" />
         </div>
         <div className="flex-1 min-w-0">
           <span className="text-[11px] font-medium text-[var(--an-text-secondary)] truncate block">
             {prompt.label || 'Generated Prompt'}
           </span>
-          <span className={`text-[10px] ${modelColor.text}`}>{prompt.targetModel}</span>
         </div>
         <button
           onClick={(e) => { e.stopPropagation(); handleCopy(); }}
@@ -425,7 +424,7 @@ function PromptStudioNodeComponent({ id, data, selected }: NodeProps<PromptStudi
   }, [inputValue]);
 
   // ── Gather connected canvas nodes for context ──
-  const getCanvasContext = useCallback((): { connectedNodes: ConnectedNodeInfo[] } | undefined => {
+  const getCanvasContext = useCallback((): { connectedNodes: ConnectedNodeInfo[]; referenceImages: string[] } | undefined => {
     const store = useCanvasStore.getState();
     const edges = store.edges;
     const nodes = store.nodes;
@@ -458,6 +457,7 @@ function PromptStudioNodeComponent({ id, data, selected }: NodeProps<PromptStudi
     }
 
     // Upstream: edges where this node is the target
+    const referenceImages: string[] = [];
     for (const edge of edges) {
       if (edge.target !== id) continue;
       const sourceNode = nodes.find(n => n.id === edge.source);
@@ -474,16 +474,22 @@ function PromptStudioNodeComponent({ id, data, selected }: NodeProps<PromptStudi
       } else if (sourceNode.type === 'media') {
         info.name = 'Media';
         info.detail = (d.mediaType as string) || 'image';
+        const url = d.url as string;
+        if (url) referenceImages.push(url);
       } else if (sourceNode.type === 'imageGenerator') {
         info.name = 'Image Generator';
         info.detail = d.model as string;
+        const url = (d.outputUrl as string) || ((d.outputUrls as string[])?.[0]);
+        if (url) referenceImages.push(url);
       } else if (sourceNode.type === 'text') {
         info.name = 'Text Node';
       }
       connected.push(info);
     }
 
-    return connected.length > 0 ? { connectedNodes: connected } : undefined;
+    return connected.length > 0 || referenceImages.length > 0
+      ? { connectedNodes: connected, referenceImages }
+      : undefined;
   }, [id]);
 
   // ── Active prompt (for output edge) ──
@@ -630,8 +636,14 @@ function PromptStudioNodeComponent({ id, data, selected }: NodeProps<PromptStudi
       setLs(prev => ({ ...prev, streamingText: undefined }));
     };
 
-    const canvasContext = getCanvasContext();
-    await stream(agentMessages, { nodeId: id, phase: 'generating', canvasContext }, {
+    const canvasCtx = getCanvasContext();
+    const referenceImages = canvasCtx?.referenceImages?.length ? canvasCtx.referenceImages : undefined;
+    await stream(agentMessages, {
+      nodeId: id,
+      phase: 'generating',
+      canvasContext: canvasCtx ? { connectedNodes: canvasCtx.connectedNodes } : undefined,
+      referenceImages,
+    }, {
       onTextDelta: (delta) => {
         streamingAssistantText += delta;
         setLs(prev => ({ ...prev, streamingText: streamingAssistantText }));

@@ -15,7 +15,7 @@ import { SearchableSelect } from '@/components/ui/searchable-select';
 import { useCanvasStore, createMediaNode } from '@/stores/canvas-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { ImageGeneratorNode as ImageGeneratorNodeType, RecraftStyle, IdeogramStyle } from '@/lib/types';
-import { MODEL_CAPABILITIES, ENABLED_IMAGE_MODELS, getApproxDimensions, FLUX_IMAGE_SIZES, RECRAFT_STYLE_LABELS, IDEOGRAM_STYLE_LABELS, type FluxImageSize, type NanoBananaResolution } from '@/lib/types';
+import { MODEL_CAPABILITIES, ENABLED_IMAGE_MODELS, getApproxDimensions, FLUX_IMAGE_SIZES, RECRAFT_STYLE_LABELS, IDEOGRAM_STYLE_LABELS, type FluxImageSize, type NanoBananaResolution, type ImageModelType } from '@/lib/types';
 import {
   ImageIcon,
   Play,
@@ -39,6 +39,8 @@ function ImageGeneratorNodeComponent({ id, data, selected, positionAbsoluteX, po
   const isReadOnly = useCanvasStore((state) => state.isReadOnly);
   const edges = useCanvasStore((state) => state.edges);
   const addToHistory = useSettingsStore((state) => state.addToHistory);
+  const enabledImageModels = useSettingsStore((s) => s.defaultSettings.enabledImageModels) || [...ENABLED_IMAGE_MODELS];
+  const visibleImageModels: ImageModelType[] = ['auto' as ImageModelType, ...ENABLED_IMAGE_MODELS.filter((m) => enabledImageModels.includes(m))];
   const updateNodeInternals = useUpdateNodeInternals();
   const [isEditingName, setIsEditingName] = useState(false);
   const [nodeName, setNodeName] = useState(data.name || 'Image Generator');
@@ -608,7 +610,7 @@ function ImageGeneratorNodeComponent({ id, data, selected, positionAbsoluteX, po
                 <SearchableSelect
                   value={data.model}
                   onValueChange={handleModelChange}
-                  options={ENABLED_IMAGE_MODELS.map(key => ({
+                  options={visibleImageModels.map(key => ({
                     value: key,
                     label: MODEL_CAPABILITIES[key].label,
                     description: MODEL_CAPABILITIES[key].description,

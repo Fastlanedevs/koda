@@ -647,6 +647,10 @@ export async function POST(request: Request) {
     // If so, block all execution tools to force the user to approve first.
     let planCalledInStream = false;
 
+    // ── Video delivery tracking (for credit refund) ─────────────────
+    // If the stream completes without delivering a video, refund credits.
+    let videoDelivered = false;
+
     const readable = new ReadableStream({
       async start(controller) {
         const safeEnqueue = (data: Uint8Array) => {
@@ -792,6 +796,17 @@ export async function POST(request: Request) {
                   }
                 }
 
+                // Track video delivery from render_final success
+                if (
+                  chunk.payload.toolName === 'render_final' &&
+                  !isErr &&
+                  resultPayload?.success &&
+                  resultPayload?.videoUrl
+                ) {
+                  videoDelivered = true;
+                  console.log(`⏱ [Animation API] Video delivered via render_final`);
+                }
+
                 sseData = JSON.stringify({
                   type: 'tool-result',
                   toolCallId: chunk.payload.toolCallId,
@@ -875,6 +890,7 @@ export async function POST(request: Request) {
           if (!closed) {
             const lastVideoUrl = requestContext.get('lastVideoUrl' as never) as string | undefined;
             if (lastVideoUrl) {
+              videoDelivered = true;
               const duration = requestContext.get('duration' as never) as number | undefined;
               const lastVersionId = requestContext.get('lastVersionId' as never) as string | undefined;
               console.log(`⏱ [Animation API] Emitting video-ready recovery event: ${lastVideoUrl} (versionId=${lastVersionId})`);
@@ -945,6 +961,25 @@ export async function POST(request: Request) {
             })}\n\n`));
           }
           safeClose();
+        }
+
+        // ── Credit refund if no video was delivered ──────────────────
+        // Covers: plan-only streams, agent errors, maxSteps exhaustion,
+        // render failures, and any other case where the stream ends
+        // without a successful video delivery.
+        if (!videoDelivered && animUserId && animCreditCost) {
+          const reason = planCalledInStream ? 'no-video:plan-only' : 'no-video:animation';
+          try {
+            await refundCredits(animUserId, animCreditCost, reason, {
+              engine: peekEngine,
+              duration: peekDuration,
+              planCalledInStream,
+              discoveredSandboxId,
+            });
+            console.log(`⏱ [Animation API] Refunded ${animCreditCost} credits — ${reason}`);
+          } catch (refundErr) {
+            console.error(`⏱ [Animation API] Credit refund failed:`, refundErr);
+          }
         }
       },
       cancel() {

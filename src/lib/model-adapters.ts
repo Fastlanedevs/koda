@@ -233,13 +233,49 @@ class SD35Adapter implements ModelAdapter {
   }
 }
 
+// Seedream 5.0 (ByteDance)
+class Seedream5Adapter implements ModelAdapter {
+  buildInput(request: GenerateRequest): Record<string, unknown> {
+    return {
+      prompt: request.prompt,
+      image_size: request.imageSize || ASPECT_TO_FLUX_SIZE[request.aspectRatio] || 'square_hd',
+      num_images: request.numImages || 1,
+    };
+  }
+
+  extractImageUrls(result: { data?: { images?: Array<{ url: string }> } }): string[] {
+    return result.data?.images?.map((img) => img.url) || [];
+  }
+}
+
+// Flux Kontext (text + image context editing)
+class FluxKontextAdapter implements ModelAdapter {
+  buildInput(request: GenerateRequest): Record<string, unknown> {
+    return {
+      prompt: request.prompt,
+      num_images: request.numImages || 1,
+      ...(request.referenceUrl && { image_url: request.referenceUrl }),
+    };
+  }
+
+  extractImageUrls(result: { data?: { images?: Array<{ url: string }> } }): string[] {
+    return result.data?.images?.map((img) => img.url) || [];
+  }
+}
+
 // Adapter factory
 const adapters: Record<ImageModelType, ModelAdapter> = {
+  'auto': new FluxAdapter(), // resolved before adapter lookup
   'flux-schnell': new FluxAdapter(),
   'flux-pro': new FluxAdapter(),
+  'flux-2-pro': new FluxAdapter(),
+  'flux-2-max': new FluxAdapter(),
+  'flux-kontext': new FluxKontextAdapter(),
   'nanobanana-pro': new NanoBananaAdapter(),
   'nanobanana-2': new NanoBanana2Adapter(),
   'recraft-v3': new RecraftAdapter(),
+  'recraft-v4': new RecraftAdapter(), // same API shape as V3
+  'seedream-5': new Seedream5Adapter(),
   'ideogram-v3': new IdeogramAdapter(),
   'sd-3.5': new SD35Adapter(),
 };
@@ -705,8 +741,73 @@ class RunwayGen3Adapter implements VideoModelAdapter {
   }
 }
 
+// Wan 2.6 Text-to-Video
+class Wan26T2VAdapter implements VideoModelAdapter {
+  buildInput(request: VideoGenerateRequest): Record<string, unknown> {
+    return {
+      prompt: request.prompt,
+      aspect_ratio: request.aspectRatio,
+      ...(request.resolution && { resolution: request.resolution }),
+      duration: String(request.duration),
+    };
+  }
+
+  extractVideoUrl(result: Record<string, unknown>): string | undefined {
+    const data = result.data as { video?: { url: string } } | undefined;
+    return data?.video?.url;
+  }
+}
+
+// Wan 2.6 Image-to-Video
+class Wan26I2VAdapter implements VideoModelAdapter {
+  buildInput(request: VideoGenerateRequest): Record<string, unknown> {
+    return {
+      prompt: request.prompt,
+      ...(request.referenceUrl && { image_url: request.referenceUrl }),
+      aspect_ratio: request.aspectRatio,
+      ...(request.resolution && { resolution: request.resolution }),
+      duration: String(request.duration),
+    };
+  }
+
+  extractVideoUrl(result: Record<string, unknown>): string | undefined {
+    const data = result.data as { video?: { url: string } } | undefined;
+    return data?.video?.url;
+  }
+}
+
+// Hailuo (Minimax) Text-to-Video
+class HailuoT2VAdapter implements VideoModelAdapter {
+  buildInput(request: VideoGenerateRequest): Record<string, unknown> {
+    return {
+      prompt: request.prompt,
+    };
+  }
+
+  extractVideoUrl(result: Record<string, unknown>): string | undefined {
+    const data = result.data as { video?: { url: string } } | undefined;
+    return data?.video?.url;
+  }
+}
+
+// Hailuo (Minimax) Image-to-Video
+class HailuoI2VAdapter implements VideoModelAdapter {
+  buildInput(request: VideoGenerateRequest): Record<string, unknown> {
+    return {
+      prompt: request.prompt,
+      ...(request.referenceUrl && { image_url: request.referenceUrl }),
+    };
+  }
+
+  extractVideoUrl(result: Record<string, unknown>): string | undefined {
+    const data = result.data as { video?: { url: string } } | undefined;
+    return data?.video?.url;
+  }
+}
+
 // Video adapter factory
 const videoAdapters: Record<VideoModelType, VideoModelAdapter> = {
+  'auto': new Veo3Adapter(), // resolved before adapter lookup
   'veo-3': new Veo3Adapter(),
   'veo-3.1-i2v': new Veo31I2VAdapter(),
   'veo-3.1-fast-i2v': new Veo31I2VAdapter(), // Uses same adapter as regular I2V
@@ -730,6 +831,12 @@ const videoAdapters: Record<VideoModelType, VideoModelAdapter> = {
   'seedance-2.0-i2v': new Seedance2I2VAdapter('seedance_2.0'),
   'seedance-2.0-fast-t2v': new Seedance2T2VAdapter('seedance_2.0_fast'),
   'seedance-2.0-fast-i2v': new Seedance2I2VAdapter('seedance_2.0_fast'),
+  'wan-2.6-t2v': new Wan26T2VAdapter(),
+  'wan-2.6-i2v': new Wan26I2VAdapter(),
+  'hailuo-02-t2v': new HailuoT2VAdapter(),
+  'hailuo-02-i2v': new HailuoI2VAdapter(),
+  'hailuo-2.3-t2v': new HailuoT2VAdapter(), // same API shape
+  'hailuo-2.3-i2v': new HailuoI2VAdapter(), // same API shape
   'luma-ray2': new LumaRay2Adapter(),
   'minimax-video': new MinimaxVideoAdapter(),
   'runway-gen3': new RunwayGen3Adapter(),

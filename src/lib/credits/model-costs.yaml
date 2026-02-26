@@ -38,6 +38,21 @@ image:
   sd-3.5:
     fal_cost: 0.065
     credits: 2
+  flux-2-pro:
+    fal_cost: 0.03
+    credits: 1
+  flux-2-max:
+    fal_cost: 0.07
+    credits: 3
+  flux-kontext:
+    fal_cost: 0.04
+    credits: 2
+  seedream-5:
+    fal_cost: 0.035
+    credits: 2
+  recraft-v4:
+    fal_cost: 0.04
+    credits: 2
 
 video:
   # Per-second models — fal_cost is per second, credits are for 5s base duration
@@ -161,6 +176,30 @@ video:
   seedance-2.0-fast-i2v:
     fal_cost_per_video: 0.00
     credits: 3
+  # Wan 2.6
+  wan-2.6-t2v:
+    fal_cost_per_sec: 0.10
+    base_duration: 5
+    credits: 15
+  wan-2.6-i2v:
+    fal_cost_per_sec: 0.10
+    base_duration: 5
+    credits: 15
+  # Hailuo (Minimax)
+  hailuo-02-t2v:
+    fal_cost_per_sec: 0.08
+    base_duration: 5
+    credits: 12
+  hailuo-02-i2v:
+    fal_cost_per_sec: 0.08
+    base_duration: 5
+    credits: 12
+  hailuo-2.3-t2v:
+    fal_cost_per_video: 0.33
+    credits: 10
+  hailuo-2.3-i2v:
+    fal_cost_per_video: 0.33
+    credits: 10
   # Flat-rate models
   luma-ray2:
     fal_cost_per_video: 0.50
@@ -188,6 +227,9 @@ svg:
   gemini-3.1-pro-preview:
     fal_cost: 0.02
     credits: 2
+  quiver-arrow:
+    fal_cost: 0.30
+    credits: 10
 
 animation:
   remotion:

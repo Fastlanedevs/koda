@@ -11,7 +11,8 @@ import {
 } from '@/components/ui/select';
 import { useCanvasStore } from '@/stores/canvas-store';
 import type { VideoGeneratorNodeData, VideoModelType, VideoAspectRatio, VideoDuration, VideoResolution } from '@/lib/types';
-import { VIDEO_MODEL_CAPABILITIES, ENABLED_VIDEO_MODELS } from '@/lib/types';
+import { VIDEO_MODEL_CAPABILITIES, ENABLED_VIDEO_MODELS, type VideoModelType as VideoModelTypeImport } from '@/lib/types';
+import { useSettingsStore } from '@/stores/settings-store';
 import {
   X,
   Play,
@@ -35,6 +36,8 @@ export function VideoSettingsPanel() {
   const getNode = useCanvasStore((state) => state.getNode);
   const updateNodeData = useCanvasStore((state) => state.updateNodeData);
   const getConnectedInputs = useCanvasStore((state) => state.getConnectedInputs);
+  const enabledVideoModels = useSettingsStore((s) => s.defaultSettings.enabledVideoModels) || [...ENABLED_VIDEO_MODELS];
+  const visibleVideoModels: VideoModelTypeImport[] = ['auto' as VideoModelTypeImport, ...ENABLED_VIDEO_MODELS.filter((m) => enabledVideoModels.includes(m))];
 
   const node = videoSettingsPanelNodeId ? getNode(videoSettingsPanelNodeId) : null;
   const data = node?.data as VideoGeneratorNodeData | undefined;
@@ -343,7 +346,7 @@ export function VideoSettingsPanel() {
               <SelectValue>{modelCapabilities.label}</SelectValue>
             </SelectTrigger>
             <SelectContent className="bg-popover border-border">
-              {ENABLED_VIDEO_MODELS.map(key => (
+              {visibleVideoModels.map(key => (
                 <SelectItem key={key} value={key} className="flex flex-col items-start text-foreground">
                   <span>{VIDEO_MODEL_CAPABILITIES[key].label}</span>
                 </SelectItem>

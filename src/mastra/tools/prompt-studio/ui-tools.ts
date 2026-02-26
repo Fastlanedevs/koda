@@ -61,7 +61,7 @@ export const generatePromptTool = createTool({
  */
 export const askQuestionsTool = createTool({
   id: 'ask_questions',
-  description: 'Ask the user clarifying questions with clickable suggested options. Use this instead of writing questions as plain text. The UI renders interactive chips the user can click. Use this when you need to clarify: target model, subject, mood, lighting, composition style, aspect ratio, etc.',
+  description: 'Ask the user clarifying questions with clickable suggested options. Use this instead of writing questions as plain text. The UI renders interactive chips the user can click. NEVER ask about models — infer from intent. Use for: subject details, mood, lighting, composition style, color palette. IMPORTANT: After calling this tool, STOP. Do not call generate_prompt in the same turn — wait for user answers.',
   inputSchema: z.object({
     questions: z.array(z.object({
       id: z.string().describe('Unique ID for the question (e.g. "subject", "mood", "model")'),

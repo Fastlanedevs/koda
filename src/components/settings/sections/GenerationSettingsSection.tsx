@@ -3,23 +3,24 @@
 import { useSettingsStore } from '@/stores/settings-store';
 import { toast } from 'sonner';
 
+import { MODEL_CAPABILITIES, VIDEO_MODEL_CAPABILITIES, ENABLED_IMAGE_MODELS, ENABLED_VIDEO_MODELS, type ImageModelType, type VideoModelType } from '@/lib/types';
+
 const imageModels = [
-  { id: 'flux-schnell', name: 'Flux Schnell', description: 'Fast, good quality' },
-  { id: 'flux-pro', name: 'Flux Pro', description: 'High quality, slower' },
-  { id: 'nanobanana-pro', name: 'NanoBanana Pro', description: 'Artistic style' },
-  { id: 'nanobanana-2', name: 'Nano Banana 2', description: '4x faster, low cost' },
-  { id: 'recraft-v3', name: 'Recraft V3', description: 'Design focused' },
-  { id: 'ideogram-v3', name: 'Ideogram V3', description: 'Text rendering' },
-  { id: 'sd-3.5', name: 'Stable Diffusion 3.5', description: 'Versatile' },
+  { id: 'auto', name: 'Auto', description: 'Best model for the task' },
+  ...ENABLED_IMAGE_MODELS.map((id) => ({
+    id,
+    name: MODEL_CAPABILITIES[id].label,
+    description: MODEL_CAPABILITIES[id].description,
+  })),
 ];
 
 const videoModels = [
-  { id: 'kling-2.6-t2v', name: 'Kling 2.6 T2V', description: 'Text to video' },
-  { id: 'kling-2.6-i2v', name: 'Kling 2.6 I2V', description: 'Image to video' },
-  { id: 'veo-3', name: 'Veo 3', description: 'High quality' },
-  { id: 'luma-ray2', name: 'Luma Ray2', description: 'Cinematic' },
-  { id: 'minimax-video', name: 'Minimax Video', description: 'Fast generation' },
-  { id: 'runway-gen3', name: 'Runway Gen3', description: 'Professional' },
+  { id: 'auto', name: 'Auto', description: 'Best model for the task' },
+  ...ENABLED_VIDEO_MODELS.map((id) => ({
+    id,
+    name: VIDEO_MODEL_CAPABILITIES[id].label,
+    description: VIDEO_MODEL_CAPABILITIES[id].description,
+  })),
 ];
 
 const aspectRatios = [

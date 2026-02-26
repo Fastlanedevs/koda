@@ -25,6 +25,7 @@ const PromptStudioRequestSchema = z.object({
   context: z.object({
     nodeId: z.string().max(128).optional(),
     phase: z.string().max(64).optional(),
+    referenceImages: z.array(z.string()).max(10).optional(),
     canvasContext: z.object({
       connectedNodes: z.array(z.object({
         direction: z.enum(['upstream', 'downstream']),
@@ -88,7 +89,8 @@ export async function POST(request: Request) {
 
     const { prompt, messages, context } = parsedBody.data;
 
-    let agentMessages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- content may be multimodal parts
+    let agentMessages: Array<{ role: 'user' | 'assistant' | 'system'; content: any }>;
 
     if (messages && messages.length > 0) {
       agentMessages = [...messages];
@@ -107,6 +109,25 @@ export async function POST(request: Request) {
         { error: 'Either prompt or messages is required' },
         { status: 400 }
       );
+    }
+
+    // Inject reference images as multimodal parts on the last user message
+    if (context?.referenceImages?.length) {
+      for (let i = agentMessages.length - 1; i >= 0; i--) {
+        if (agentMessages[i].role === 'user') {
+          const textContent = agentMessages[i].content as string;
+          const imageParts = context.referenceImages
+            .map(url => { try { return { type: 'image' as const, image: new URL(url) }; } catch { return null; } })
+            .filter(Boolean);
+          if (imageParts.length > 0) {
+            agentMessages[i].content = [
+              { type: 'text', text: textContent },
+              ...imageParts,
+            ];
+          }
+          break;
+        }
+      }
     }
 
     // Inject canvas context as a system message so the agent knows about connected nodes
@@ -184,6 +205,10 @@ export async function POST(request: Request) {
 
         try {
           const reader = result.fullStream.getReader();
+          // Gate: when ask_questions is called, suppress everything else
+          // and close stream after its tool-result so agent waits for user answers
+          let askQuestionsGate = false;
+          const UI_TOOLS = new Set(['ask_questions', 'set_thinking']);
 
           while (!closed) {
             const { done, value: chunk } = await reader.read();
@@ -193,6 +218,8 @@ export async function POST(request: Request) {
 
             switch (chunk.type) {
               case 'text-delta':
+                // Suppress text after ask_questions (agent may write "Let me ask..." before tool)
+                if (askQuestionsGate) break;
                 sseData = JSON.stringify({
                   type: 'text-delta',
                   text: chunk.payload.text,
@@ -200,6 +227,11 @@ export async function POST(request: Request) {
                 break;
 
               case 'tool-call':
+                if (chunk.payload.toolName === 'ask_questions') {
+                  askQuestionsGate = true;
+                }
+                // After gate, suppress non-UI tool calls (e.g. generate_prompt called in same step)
+                if (askQuestionsGate && !UI_TOOLS.has(chunk.payload.toolName)) break;
                 sseData = JSON.stringify({
                   type: 'tool-call',
                   toolCallId: chunk.payload.toolCallId,
@@ -209,6 +241,8 @@ export async function POST(request: Request) {
                 break;
 
               case 'tool-result':
+                // After gate, suppress non-UI tool results
+                if (askQuestionsGate && !UI_TOOLS.has(chunk.payload.toolName)) break;
                 sseData = JSON.stringify({
                   type: 'tool-result',
                   toolCallId: chunk.payload.toolCallId,
@@ -216,9 +250,20 @@ export async function POST(request: Request) {
                   result: chunk.payload.result,
                   isError: chunk.payload.isError,
                 });
+                // Close stream after ask_questions result — wait for user answers
+                if (chunk.payload.toolName === 'ask_questions' && !chunk.payload.isError) {
+                  if (sseData && !closed) {
+                    safeEnqueue(encoder.encode(`data: ${sseData}\n\n`));
+                  }
+                  safeEnqueue(encoder.encode(`data: ${JSON.stringify({ type: 'complete', text: '' })}\n\n`));
+                  console.log('[Prompt Studio API] ask_questions gate: closing stream to wait for user answers');
+                  safeClose();
+                  return;
+                }
                 break;
 
               case 'tool-error':
+                if (askQuestionsGate && !UI_TOOLS.has(chunk.payload.toolName)) break;
                 sseData = JSON.stringify({
                   type: 'tool-result',
                   toolCallId: chunk.payload.toolCallId,

@@ -1,4 +1,13 @@
-export type SvgStudioPhase = 'idle' | 'working' | 'ready' | 'error';
+export type SvgStudioPhase =
+  | 'idle'
+  | 'reasoning'
+  | 'drafting'
+  | 'generating'
+  | 'finalizing'
+  | 'ready'
+  | 'error';
+
+export type SvgStudioModel = 'gemini' | 'quiver-arrow';
 
 export interface SvgStudioAsset {
   id: string;
@@ -20,9 +29,11 @@ export interface SvgStudioMetadata {
 export interface SvgStudioState {
   phase: SvgStudioPhase;
   mode: 'generate' | 'edit';
+  model: SvgStudioModel;
   prompt: string;
   sourceSvg?: string;
   svg?: string;
+  partialSvg?: string;
   metadata?: SvgStudioMetadata;
   asset?: SvgStudioAsset;
   error?: string;
@@ -40,6 +51,7 @@ export interface SvgStudioNodeData extends Record<string, unknown> {
 export const createDefaultSvgStudioState = (): SvgStudioState => ({
   phase: 'idle',
   mode: 'generate',
+  model: 'gemini',
   prompt: '',
   updatedAt: new Date().toISOString(),
 });

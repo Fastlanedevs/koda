@@ -19,6 +19,12 @@ export const dynamic = 'force-dynamic';
 
 const SVG_MODEL = 'gemini-3.1-pro-preview';
 
+/** Map client model names to cost-config model keys */
+const MODEL_COST_MAP: Record<string, string> = {
+  gemini: SVG_MODEL,
+  'quiver-arrow': 'quiver-arrow',
+};
+
 async function getProvider(): Promise<AssetStorageProvider> {
   const storageType = getAssetStorageType();
 
@@ -34,7 +40,9 @@ async function getProvider(): Promise<AssetStorageProvider> {
 export const POST = withCredits(
   {
     type: 'svg',
-    getCostParams: () => ({ model: SVG_MODEL }),
+    getCostParams: (body) => ({
+      model: MODEL_COST_MAP[(body.model as string) || 'gemini'] || SVG_MODEL,
+    }),
   },
   async (request) => {
     try {
