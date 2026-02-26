@@ -16,6 +16,7 @@ import { toolCallToAppEvent, toolResultToAppEvent } from '../events';
 interface StreamContext {
   nodeId?: string;
   phase?: string;
+  presets?: string[];
 }
 
 interface ToolCallEvent {

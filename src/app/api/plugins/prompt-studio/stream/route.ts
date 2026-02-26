@@ -11,6 +11,7 @@ import { RequestContext } from '@mastra/core/di';
 import { emitLaunchMetric } from '@/lib/observability/launch-metrics';
 import { evaluatePluginLaunchById, emitPluginPolicyAuditEvent } from '@/lib/plugins/launch-policy';
 import { z } from 'zod';
+import { loadPromptRecipes } from '@/mastra/recipes/prompt-studio';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -25,6 +26,7 @@ const PromptStudioRequestSchema = z.object({
   context: z.object({
     nodeId: z.string().max(128).optional(),
     phase: z.string().max(64).optional(),
+    presets: z.array(z.string().max(64)).max(10).optional(),
   }).optional(),
 }).superRefine((value, ctx) => {
   if ((!value.prompt || value.prompt.trim().length === 0) && (!value.messages || value.messages.length === 0)) {
@@ -103,7 +105,16 @@ export async function POST(request: Request) {
       requestContext.set('nodeId' as never, context.nodeId as never);
     }
 
-    console.log(`[Prompt Studio API] Starting stream: nodeId=${context?.nodeId}, messageCount=${agentMessages.length}`);
+    // Inject recipe content if presets are selected
+    const recipeContent = loadPromptRecipes(context?.presets || []);
+    if (recipeContent) {
+      agentMessages.unshift({
+        role: 'system' as const,
+        content: recipeContent,
+      });
+    }
+
+    console.log(`[Prompt Studio API] Starting stream: nodeId=${context?.nodeId}, messageCount=${agentMessages.length}, presets=${context?.presets?.join(',') || 'none'}`);
 
     const result = await promptStudioAgent.stream(
       agentMessages as Parameters<typeof promptStudioAgent.stream>[0],

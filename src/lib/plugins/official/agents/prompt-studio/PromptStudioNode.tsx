@@ -26,7 +26,15 @@ import {
   Camera,
   Palette,
   Zap,
+  Clapperboard,
+  Megaphone,
+  Flame,
+  Swords,
+  ShoppingBag,
+  Wand2,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import { PROMPT_PRESETS, type PromptPreset } from '@/mastra/recipes/prompt-studio';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type {
@@ -54,6 +62,11 @@ function createDefaultState(nodeId: string): PromptStudioNodeState {
 }
 
 const UI_TOOLS = new Set(['set_thinking']);
+
+// ─── Preset icon map ─────────────────────────────────────────────────────
+const PRESET_ICONS: Record<string, LucideIcon> = {
+  Clapperboard, Megaphone, Flame, Swords, Camera, ShoppingBag, Wand2,
+};
 
 // ─── Markdown components (matches AnimationNode) ────────────────────────
 const mdComponents = {
@@ -238,6 +251,8 @@ function PromptStudioNodeComponent({ id, data, selected }: NodeProps<PromptStudi
   const [thinkingMsg, setThinkingMsg] = useState('');
   const [reasoning, setReasoning] = useState('');
   const [showReasoning, setShowReasoning] = useState(false);
+  const [selectedPresets, setSelectedPresets] = useState<string[]>([]);
+  const [showPresets, setShowPresets] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -251,6 +266,13 @@ function PromptStudioNodeComponent({ id, data, selected }: NodeProps<PromptStudi
   const persistState = useCallback((state: PromptStudioNodeState) => {
     updateNodeData(id, { state });
   }, [id, updateNodeData]);
+
+  // ── Preset toggle ──
+  const togglePreset = useCallback((id: string) => {
+    setSelectedPresets(prev =>
+      prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
+    );
+  }, []);
 
   // ── Auto-scroll ──
   useEffect(() => {
@@ -310,7 +332,7 @@ function PromptStudioNodeComponent({ id, data, selected }: NodeProps<PromptStudi
     let streamingAssistantText = '';
     const toolCallArgs = new Map<string, Record<string, unknown>>();
 
-    await stream(agentMessages, { nodeId: id, phase: 'generating' }, {
+    await stream(agentMessages, { nodeId: id, phase: 'generating', presets: selectedPresets.length > 0 ? selectedPresets : undefined }, {
       onTextDelta: (delta) => {
         streamingAssistantText += delta;
         setLs(prev => ({ ...prev, streamingText: streamingAssistantText }));
@@ -661,6 +683,78 @@ function PromptStudioNodeComponent({ id, data, selected }: NodeProps<PromptStudi
 
       {/* ── Chat Input ── */}
       <div className="border-t border-[var(--an-border)] p-3">
+        {/* Style preset pills */}
+        <div className="mb-2">
+          <button
+            onClick={() => setShowPresets(!showPresets)}
+            className="flex items-center gap-1 text-[10px] text-[var(--an-text-muted)] hover:text-[var(--an-text-secondary)] transition-colors mb-1.5"
+          >
+            <Palette className="w-3 h-3" />
+            <span>Style Presets</span>
+            {selectedPresets.length > 0 && (
+              <span className="ml-1 px-1.5 py-0 rounded-full bg-amber-500/20 text-amber-400 text-[9px] font-medium">
+                {selectedPresets.length}
+              </span>
+            )}
+            <ChevronDown className={`w-3 h-3 transition-transform ${showPresets ? 'rotate-180' : ''}`} />
+          </button>
+
+          {showPresets && (
+            <div className="space-y-1.5">
+              {/* Video presets */}
+              <div>
+                <p className="text-[9px] uppercase tracking-wider text-[var(--an-text-muted)]/60 mb-1">Video</p>
+                <div className="flex flex-wrap gap-1">
+                  {PROMPT_PRESETS.filter(p => p.category === 'video').map(preset => {
+                    const isSelected = selectedPresets.includes(preset.id);
+                    const Icon = PRESET_ICONS[preset.icon];
+                    return (
+                      <button
+                        key={preset.id}
+                        onClick={() => togglePreset(preset.id)}
+                        className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-all border ${
+                          isSelected
+                            ? 'bg-amber-500/15 border-amber-500/40 text-amber-400'
+                            : 'bg-[var(--an-bg-card)] border-[var(--an-border)] text-[var(--an-text-muted)] hover:border-amber-500/20 hover:text-[var(--an-text-secondary)]'
+                        }`}
+                        title={preset.description}
+                      >
+                        {Icon && <Icon className="w-3 h-3 shrink-0" />}
+                        <span>{preset.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              {/* Image presets */}
+              <div>
+                <p className="text-[9px] uppercase tracking-wider text-[var(--an-text-muted)]/60 mb-1">Image</p>
+                <div className="flex flex-wrap gap-1">
+                  {PROMPT_PRESETS.filter(p => p.category === 'image').map(preset => {
+                    const isSelected = selectedPresets.includes(preset.id);
+                    const Icon = PRESET_ICONS[preset.icon];
+                    return (
+                      <button
+                        key={preset.id}
+                        onClick={() => togglePreset(preset.id)}
+                        className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-all border ${
+                          isSelected
+                            ? 'bg-amber-500/15 border-amber-500/40 text-amber-400'
+                            : 'bg-[var(--an-bg-card)] border-[var(--an-border)] text-[var(--an-text-muted)] hover:border-amber-500/20 hover:text-[var(--an-text-secondary)]'
+                        }`}
+                        title={preset.description}
+                      >
+                        {Icon && <Icon className="w-3 h-3 shrink-0" />}
+                        <span>{preset.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
         <div className="flex items-end gap-2">
           <div className="flex-1 relative">
             <textarea
