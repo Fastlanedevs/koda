@@ -165,8 +165,7 @@ export function Canvas() {
         ? (sourceNode.data as Record<string, unknown>)
         : null;
       const isSvgStudioSource = sourceNode.type === 'pluginNode'
-        && sourcePluginData?.pluginId === 'svg-studio'
-        && typeof sourcePluginData?.outputUrl === 'string';
+        && sourcePluginData?.pluginId === 'svg-studio';
       const isImageSource = sourceNode.type === 'media' || sourceNode.type === 'imageGenerator' || isSvgStudioSource;
 
       // Image input handles - reference, firstFrame, lastFrame, ref2-ref8 (for multi-ref models)

@@ -515,7 +515,7 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
           w-[420px] rounded-2xl overflow-hidden
           transition-all duration-150
           ${data.isGenerating ? 'animate-subtle-pulse generating-border-subtle' : ''}
-          ${!data.isGenerating ? (selected ? 'node-card-selected' : 'node-card') : ''}
+          ${!data.isGenerating ? (selected ? 'node-card node-card-selected' : 'node-card') : ''}
         `}
       >
         {/* Content Area */}

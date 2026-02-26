@@ -52,6 +52,7 @@
     "drizzle-orm": "^0.38.0",
     "e2b": "^2.12.1",
     "emoji-picker-react": "^4.16.1",
+    "exa-js": "^2.5.0",
     "framer-motion": "^12.34.3",
     "html-to-image": "^1.11.13",
     "js-yaml": "^4.1.1",

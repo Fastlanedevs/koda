@@ -55,6 +55,7 @@ export const SvgStudioResponseSchema = z.object({
 const ALLOWED_TAGS = new Set([
   'svg', 'g', 'path', 'rect', 'circle', 'ellipse', 'line', 'polyline', 'polygon',
   'defs', 'linearGradient', 'radialGradient', 'stop', 'clipPath', 'mask', 'title', 'desc',
+  'text', 'tspan',
 ]);
 
 const DISALLOWED_TAGS_RE = /<\s*\/?\s*(script|foreignObject|iframe|object|embed|audio|video|image|use)\b/i;

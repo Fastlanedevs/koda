@@ -6,6 +6,12 @@
  * Creative director chat — generates production-quality prompts
  * for image/video models. Text output handle connects to generators.
  * UI matches AnimationNode / SvgStudioNode patterns exactly.
+ *
+ * Features:
+ * - Selectable prompt cards (active prompt flows through output edge)
+ * - Interactive QnA cards with clickable chips
+ * - Search result cards from web search
+ * - Conversational flow (text segments between tool calls)
  */
 
 import { memo, useState, useRef, useCallback, useEffect, useMemo } from 'react';
@@ -18,7 +24,6 @@ import {
   ArrowUp,
   Copy,
   Check,
-  Loader2,
   RotateCcw,
   Terminal,
   Square,
@@ -27,6 +32,9 @@ import {
   Palette,
   Image as ImageIcon,
   Type,
+  Globe,
+  ExternalLink,
+  CircleCheck,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -36,6 +44,9 @@ import type {
   ToolCallItem,
   ThinkingBlockItem,
   GeneratedPrompt,
+  QnASet,
+  QnAQuestion,
+  SearchResult,
 } from './types';
 import { TOOL_DISPLAY_NAMES } from './events';
 import { usePromptStudioStream } from './hooks';
@@ -49,12 +60,12 @@ function createDefaultState(nodeId: string): PromptStudioNodeState {
     toolCalls: [],
     thinkingBlocks: [],
     generatedPrompts: [],
+    qnaSets: [],
+    searchResults: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
 }
-
-const UI_TOOLS = new Set(['set_thinking']);
 
 // ─── Markdown components (matches AnimationNode ChatMessages.tsx) ────────
 const mdComponents = {
@@ -105,10 +116,33 @@ const mdComponents = {
 let globalSeq = 0;
 function nextSeq(): number { return ++globalSeq; }
 
+// ─── Model color helper ─────────────────────────────────────────────────
+function getModelColor(model: string): { bg: string; text: string } {
+  const m = model.toLowerCase();
+  if (m.includes('midjourney')) return { bg: 'bg-blue-500/15', text: 'text-blue-400' };
+  if (m.includes('dall') || m.includes('openai')) return { bg: 'bg-green-500/15', text: 'text-green-400' };
+  if (m.includes('stable') || m.includes('sdxl') || m.includes('sd3')) return { bg: 'bg-purple-500/15', text: 'text-purple-400' };
+  if (m.includes('flux')) return { bg: 'bg-cyan-500/15', text: 'text-cyan-400' };
+  if (m.includes('imagen')) return { bg: 'bg-red-500/15', text: 'text-red-400' };
+  if (m.includes('nano') || m.includes('banana')) return { bg: 'bg-yellow-500/15', text: 'text-yellow-400' };
+  if (m.includes('kling') || m.includes('runway') || m.includes('sora') || m.includes('luma')) return { bg: 'bg-pink-500/15', text: 'text-pink-400' };
+  if (m.includes('ideogram')) return { bg: 'bg-orange-500/15', text: 'text-orange-400' };
+  if (m.includes('leonardo')) return { bg: 'bg-emerald-500/15', text: 'text-emerald-400' };
+  return { bg: 'bg-[var(--an-accent-bg)]', text: 'text-[var(--an-accent-text)]' };
+}
+
 // ─── Prompt Card Component ──────────────────────────────────────────────
-function PromptCard({ prompt, isLatest }: { prompt: GeneratedPrompt; isLatest: boolean }) {
+function PromptCard({
+  prompt,
+  isActive,
+  onSelect,
+}: {
+  prompt: GeneratedPrompt;
+  isActive: boolean;
+  onSelect: () => void;
+}) {
   const [copied, setCopied] = useState(false);
-  const [expanded, setExpanded] = useState(isLatest);
+  const [expanded, setExpanded] = useState(false);
 
   const handleCopy = useCallback(async () => {
     try {
@@ -126,15 +160,19 @@ function PromptCard({ prompt, isLatest }: { prompt: GeneratedPrompt; isLatest: b
   const modelColor = getModelColor(prompt.targetModel);
 
   return (
-    <div className={`rounded-lg border overflow-hidden transition-all duration-200 ${
-      isLatest
-        ? 'border-[var(--an-accent)]/40 bg-[var(--an-accent-bg)]/30'
-        : 'border-[var(--an-border)] bg-[var(--an-bg-card)]'
-    }`}>
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-2 px-3 py-2 text-left"
-      >
+    <div
+      className={`rounded-lg border overflow-hidden transition-all duration-200 cursor-pointer ${
+        isActive
+          ? 'border-teal-500/60 bg-teal-500/5 ring-1 ring-teal-500/20'
+          : 'border-[var(--an-border)] bg-[var(--an-bg-card)] hover:border-[var(--an-border-hover)]'
+      }`}
+      onClick={onSelect}
+    >
+      <div className="w-full flex items-center gap-2 px-3 py-2">
+        {/* Active indicator */}
+        <div className={`w-2 h-2 rounded-full shrink-0 transition-colors ${
+          isActive ? 'bg-teal-500' : 'bg-[var(--an-text-dim)]/30'
+        }`} />
         <div className={`w-5 h-5 rounded flex items-center justify-center shrink-0 ${modelColor.bg}`}>
           <Camera className={`w-3 h-3 ${modelColor.text}`} />
         </div>
@@ -154,8 +192,13 @@ function PromptCard({ prompt, isLatest }: { prompt: GeneratedPrompt; isLatest: b
             : <Copy className="w-3 h-3 text-[var(--an-text-dim)]" />
           }
         </button>
-        <ChevronDown className={`w-3 h-3 text-[var(--an-text-dim)] transition-transform shrink-0 ${expanded ? 'rotate-180' : ''}`} />
-      </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+          className="p-0.5 shrink-0"
+        >
+          <ChevronDown className={`w-3 h-3 text-[var(--an-text-dim)] transition-transform ${expanded ? 'rotate-180' : ''}`} />
+        </button>
+      </div>
 
       {expanded && (
         <div className="px-3 pb-3 space-y-2">
@@ -185,18 +228,125 @@ function PromptCard({ prompt, isLatest }: { prompt: GeneratedPrompt; isLatest: b
   );
 }
 
-function getModelColor(model: string): { bg: string; text: string } {
-  const m = model.toLowerCase();
-  if (m.includes('midjourney')) return { bg: 'bg-blue-500/15', text: 'text-blue-400' };
-  if (m.includes('dall') || m.includes('openai')) return { bg: 'bg-green-500/15', text: 'text-green-400' };
-  if (m.includes('stable') || m.includes('sdxl') || m.includes('sd3')) return { bg: 'bg-purple-500/15', text: 'text-purple-400' };
-  if (m.includes('flux')) return { bg: 'bg-cyan-500/15', text: 'text-cyan-400' };
-  if (m.includes('imagen')) return { bg: 'bg-red-500/15', text: 'text-red-400' };
-  if (m.includes('nano') || m.includes('banana')) return { bg: 'bg-yellow-500/15', text: 'text-yellow-400' };
-  if (m.includes('kling') || m.includes('runway') || m.includes('sora') || m.includes('luma')) return { bg: 'bg-pink-500/15', text: 'text-pink-400' };
-  if (m.includes('ideogram')) return { bg: 'bg-orange-500/15', text: 'text-orange-400' };
-  if (m.includes('leonardo')) return { bg: 'bg-emerald-500/15', text: 'text-emerald-400' };
-  return { bg: 'bg-[var(--an-accent-bg)]', text: 'text-[var(--an-accent-text)]' };
+// ─── QnA Card Component ─────────────────────────────────────────────────
+function QnACard({
+  qna,
+  onAnswer,
+  disabled,
+}: {
+  qna: QnASet;
+  onAnswer: (answers: Record<string, string>) => void;
+  disabled: boolean;
+}) {
+  const [selections, setSelections] = useState<Record<string, string>>({});
+
+  const handleChipClick = (questionId: string, value: string) => {
+    if (qna.answered || disabled) return;
+    setSelections(prev => ({
+      ...prev,
+      [questionId]: prev[questionId] === value ? '' : value,
+    }));
+  };
+
+  const handleSubmit = () => {
+    const filled = Object.entries(selections).filter(([, v]) => v);
+    if (filled.length === 0) return;
+    onAnswer(selections);
+  };
+
+  const hasSelection = Object.values(selections).some(v => v);
+
+  if (qna.answered) {
+    return (
+      <div className="rounded-lg border border-[var(--an-border)] bg-[var(--an-bg-card)] px-3 py-2 opacity-60">
+        <div className="flex items-center gap-1.5 mb-1">
+          <CircleCheck className="w-3 h-3 text-green-400" />
+          <span className="text-[10px] text-[var(--an-text-dim)]">Answered</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-[var(--an-accent)]/30 bg-[var(--an-accent-bg)]/20 overflow-hidden">
+      <div className="px-3 py-2.5 space-y-3">
+        {qna.questions.map((q) => (
+          <div key={q.id}>
+            <p className="text-[11px] font-medium text-[var(--an-text-secondary)] mb-1.5">{q.question}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {q.suggestions.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => handleChipClick(q.id, s)}
+                  disabled={disabled}
+                  className={`px-2.5 py-1 rounded-full text-[10px] font-medium transition-all ${
+                    selections[q.id] === s
+                      ? 'bg-[var(--an-accent)] text-white'
+                      : 'bg-[var(--an-bg-elevated)] text-[var(--an-text-muted)] hover:bg-[var(--an-bg-hover)] hover:text-[var(--an-text-secondary)]'
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      {hasSelection && !disabled && (
+        <div className="px-3 pb-2.5">
+          <button
+            onClick={handleSubmit}
+            className="w-full py-1.5 rounded-lg bg-[var(--an-accent)] hover:bg-[var(--an-accent-hover)] text-white text-[11px] font-medium transition-colors"
+          >
+            Send answers
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Search Result Card Component ───────────────────────────────────────
+function SearchResultCard({ search }: { search: SearchResult }) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="rounded-lg border border-[var(--an-border)] bg-[var(--an-bg-card)] overflow-hidden">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center gap-2 px-3 py-2 text-left"
+      >
+        <Globe className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+        <span className="text-[11px] text-[var(--an-text-muted)] truncate flex-1">
+          Searched: {search.query}
+        </span>
+        <span className="text-[10px] text-[var(--an-text-dim)] shrink-0">{search.results.length} results</span>
+        <ChevronDown className={`w-3 h-3 text-[var(--an-text-dim)] transition-transform shrink-0 ${expanded ? 'rotate-180' : ''}`} />
+      </button>
+      {expanded && search.results.length > 0 && (
+        <div className="px-3 pb-2.5 space-y-1.5">
+          {search.results.map((r, i) => (
+            <a
+              key={i}
+              href={r.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block rounded-md bg-[var(--an-bg-elevated)] px-2.5 py-2 hover:bg-[var(--an-bg-hover)] transition-colors group"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start gap-1.5">
+                <span className="text-[10px] font-medium text-[var(--an-text-secondary)] leading-tight flex-1">{r.title}</span>
+                <ExternalLink className="w-3 h-3 text-[var(--an-text-dim)] opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-0.5" />
+              </div>
+              {r.summary && (
+                <p className="text-[10px] text-[var(--an-text-dim)] mt-1 leading-tight line-clamp-2">{r.summary}</p>
+              )}
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ─── Main Component ─────────────────────────────────────────────────────
@@ -230,7 +380,7 @@ function PromptStudioNodeComponent({ id, data, selected }: NodeProps<PromptStudi
   // ── Local state ──
   const [ls, setLs] = useState<PromptStudioNodeState>(() => {
     const persisted = data.state as unknown as PromptStudioNodeState | undefined;
-    if (persisted?.nodeId) return persisted;
+    if (persisted?.nodeId) return { ...persisted, qnaSets: persisted.qnaSets || [], searchResults: persisted.searchResults || [] };
     return createDefaultState(id);
   });
 
@@ -259,7 +409,7 @@ function PromptStudioNodeComponent({ id, data, selected }: NodeProps<PromptStudi
   // Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [ls.messages, ls.toolCalls, ls.generatedPrompts]);
+  }, [ls.messages, ls.toolCalls, ls.generatedPrompts, ls.qnaSets, ls.searchResults]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -268,6 +418,17 @@ function PromptStudioNodeComponent({ id, data, selected }: NodeProps<PromptStudi
       textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 100) + 'px';
     }
   }, [inputValue]);
+
+  // ── Active prompt (for output edge) ──
+  const activePromptId = ls.activePromptId || ls.generatedPrompts[ls.generatedPrompts.length - 1]?.id;
+
+  const handleSelectPrompt = useCallback((promptId: string) => {
+    setLs(prev => {
+      const newState = { ...prev, activePromptId: promptId };
+      persistState(newState);
+      return newState;
+    });
+  }, [persistState]);
 
   // ── Node styling (matches AnimationNode) ──
   const nodeClasses = useMemo(() => {
@@ -278,13 +439,16 @@ function PromptStudioNodeComponent({ id, data, selected }: NodeProps<PromptStudi
 
   // ── Header config ──
   const headerConfig = useMemo(() => {
+    const activePrompt = ls.generatedPrompts.find(p => p.id === activePromptId);
+    const activeLabel = activePrompt ? `${activePrompt.label || activePrompt.targetModel}` : '';
+
     switch (ls.phase) {
       case 'idle':
         return { statusColor: 'var(--an-text-placeholder)', statusText: 'Ready' };
       case 'generating':
         return { statusColor: 'var(--an-accent)', statusText: thinkingMsg || 'Generating...' };
       case 'chatting':
-        return { statusColor: '#22c55e', statusText: 'Active' };
+        return { statusColor: '#22c55e', statusText: activeLabel ? `Active — ${activeLabel}` : 'Active' };
       case 'complete':
         return { statusColor: '#22c55e', statusText: 'Complete' };
       case 'error':
@@ -292,13 +456,15 @@ function PromptStudioNodeComponent({ id, data, selected }: NodeProps<PromptStudi
       default:
         return { statusColor: 'var(--an-text-placeholder)', statusText: 'Ready' };
     }
-  }, [ls.phase, thinkingMsg]);
+  }, [ls.phase, thinkingMsg, activePromptId, ls.generatedPrompts]);
 
   // ── Build timeline ──
   type TimelineItem =
     | { kind: 'user'; data: PromptStudioMessage; seq: number }
     | { kind: 'assistant'; data: PromptStudioMessage; seq: number }
     | { kind: 'prompt'; data: GeneratedPrompt; seq: number }
+    | { kind: 'qna'; data: QnASet; seq: number }
+    | { kind: 'search'; data: SearchResult; seq: number }
     | { kind: 'thinking'; data: ThinkingBlockItem; seq: number };
 
   const timeline: TimelineItem[] = [];
@@ -306,13 +472,46 @@ function PromptStudioNodeComponent({ id, data, selected }: NodeProps<PromptStudi
     timeline.push({ kind: m.role === 'user' ? 'user' : 'assistant', data: m, seq: m.seq ?? 0 });
   });
   ls.generatedPrompts.forEach((p, i) => {
-    const seq = ls.toolCalls.find(tc => tc.toolName === 'generate_prompt' && tc.output?.includes(p.id))?.seq ?? (i + 1000);
-    timeline.push({ kind: 'prompt', data: p, seq: typeof seq === 'number' ? seq : 0 });
+    const tc = ls.toolCalls.find(tc => tc.toolName === 'generate_prompt' && tc.output?.includes(p.id));
+    timeline.push({ kind: 'prompt', data: p, seq: tc?.seq ?? (i + 1000) });
+  });
+  ls.qnaSets.forEach((q) => {
+    timeline.push({ kind: 'qna', data: q, seq: q.seq ?? 0 });
+  });
+  ls.searchResults.forEach((s) => {
+    timeline.push({ kind: 'search', data: s, seq: s.seq ?? 0 });
   });
   timeline.sort((a, b) => a.seq - b.seq);
 
   const hasTimelineContent = timeline.length > 0 || !!ls.streamingText;
-  const latestPrompt = ls.generatedPrompts[ls.generatedPrompts.length - 1];
+
+  // ── Handle QnA answer ──
+  const handleQnAAnswer = useCallback((qnaId: string, answers: Record<string, string>) => {
+    // Mark QnA as answered
+    setLs(prev => ({
+      ...prev,
+      qnaSets: prev.qnaSets.map(q => q.id === qnaId ? { ...q, answered: true } : q),
+    }));
+
+    // Build a natural response from the selections
+    const qna = ls.qnaSets.find(q => q.id === qnaId);
+    if (!qna) return;
+
+    const parts: string[] = [];
+    for (const q of qna.questions) {
+      const answer = answers[q.id];
+      if (answer) parts.push(answer);
+    }
+    const responseText = parts.join(', ');
+
+    // Set as input and auto-send
+    setInputValue(responseText);
+    // Use a microtask to let the inputValue state update, then trigger send
+    setTimeout(() => {
+      const sendBtn = document.querySelector(`[data-node-id="${id}"] [data-send-btn]`) as HTMLButtonElement;
+      sendBtn?.click();
+    }, 50);
+  }, [ls.qnaSets, id]);
 
   // ── Handle send ──
   const handleSendMessage = useCallback(async () => {
@@ -347,6 +546,23 @@ function PromptStudioNodeComponent({ id, data, selected }: NodeProps<PromptStudi
     let streamingAssistantText = '';
     const toolCallArgs = new Map<string, Record<string, unknown>>();
 
+    // Helper: commit accumulated text as an assistant message
+    const commitTextSegment = () => {
+      const cleanText = streamingAssistantText.replace(/<[^>]*>/g, '').trim();
+      if (cleanText) {
+        const textMsg: PromptStudioMessage = {
+          id: `msg_${Date.now()}_seg_${Math.random().toString(36).slice(2, 6)}`,
+          role: 'assistant',
+          content: cleanText,
+          timestamp: new Date().toISOString(),
+          seq: nextSeq(),
+        };
+        setLs(prev => ({ ...prev, messages: [...prev.messages, textMsg] }));
+      }
+      streamingAssistantText = '';
+      setLs(prev => ({ ...prev, streamingText: undefined }));
+    };
+
     await stream(agentMessages, { nodeId: id, phase: 'generating' }, {
       onTextDelta: (delta) => {
         streamingAssistantText += delta;
@@ -357,10 +573,32 @@ function PromptStudioNodeComponent({ id, data, selected }: NodeProps<PromptStudi
       },
       onToolCall: (event) => {
         toolCallArgs.set(event.toolCallId, event.args);
+
+        // set_thinking: just update header, don't commit text
         if (event.toolName === 'set_thinking') {
           setThinkingMsg(event.args.message as string || '');
           return;
         }
+
+        // Commit any accumulated text BEFORE this tool call
+        commitTextSegment();
+
+        // ask_questions: create QnA set immediately from tool-call args
+        if (event.toolName === 'ask_questions') {
+          const questions = (event.args.questions as QnAQuestion[]) || [];
+          const qnaSet: QnASet = {
+            id: `qna_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            questions,
+            answered: false,
+            createdAt: new Date().toISOString(),
+            seq: nextSeq(),
+          };
+          setLs(prev => ({ ...prev, qnaSets: [...prev.qnaSets, qnaSet] }));
+          setThinkingMsg('');
+          return;
+        }
+
+        // Other tools: create tool call item
         const tcItem: ToolCallItem = {
           id: `tc_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
           toolCallId: event.toolCallId,
@@ -374,7 +612,9 @@ function PromptStudioNodeComponent({ id, data, selected }: NodeProps<PromptStudi
         setLs(prev => ({ ...prev, toolCalls: [...prev.toolCalls, tcItem] }));
       },
       onToolResult: (event) => {
-        if (event.toolName === 'set_thinking') return;
+        if (event.toolName === 'set_thinking' || event.toolName === 'ask_questions') return;
+
+        // Update tool call status
         setLs(prev => ({
           ...prev,
           toolCalls: prev.toolCalls.map(tc =>
@@ -383,6 +623,8 @@ function PromptStudioNodeComponent({ id, data, selected }: NodeProps<PromptStudi
               : tc
           ),
         }));
+
+        // generate_prompt → create prompt
         if (event.toolName === 'generate_prompt' && !event.isError) {
           const args = toolCallArgs.get(event.toolCallId) || {};
           const newPrompt: GeneratedPrompt = {
@@ -394,12 +636,31 @@ function PromptStudioNodeComponent({ id, data, selected }: NodeProps<PromptStudi
             parameters: args.parameters as Record<string, string> | undefined,
             createdAt: new Date().toISOString(),
           };
-          setLs(prev => ({ ...prev, generatedPrompts: [...prev.generatedPrompts, newPrompt] }));
+          setLs(prev => ({
+            ...prev,
+            generatedPrompts: [...prev.generatedPrompts, newPrompt],
+            // Auto-select the latest prompt
+            activePromptId: newPrompt.id,
+          }));
+        }
+
+        // search_web → create search result
+        if (event.toolName === 'search_web' && !event.isError) {
+          const result = event.result;
+          const searchResult: SearchResult = {
+            id: (result.searchId as string) || `search_${Date.now()}`,
+            query: (result.query as string) || '',
+            results: (result.results as SearchResult['results']) || [],
+            createdAt: new Date().toISOString(),
+            seq: nextSeq(),
+          };
+          setLs(prev => ({ ...prev, searchResults: [...prev.searchResults, searchResult] }));
         }
       },
-      onComplete: (fullText) => {
+      onComplete: () => {
         setThinkingMsg('');
-        const cleanText = fullText.replace(/<[^>]*>/g, '').trim();
+        // Commit any remaining text after the last tool call
+        const cleanText = streamingAssistantText.replace(/<[^>]*>/g, '').trim();
         setLs(prev => {
           const assistantMsg: PromptStudioMessage | null = cleanText ? {
             id: `msg_${Date.now()}_asst`,
@@ -457,7 +718,7 @@ function PromptStudioNodeComponent({ id, data, selected }: NodeProps<PromptStudi
   const canSend = !isStreaming && inputValue.trim().length > 0;
 
   return (
-    <div>
+    <div data-node-id={id}>
       {/* Node Title — matches AnimationNode / SvgStudio */}
       <div className="flex items-center gap-2 mb-2 text-sm font-medium" style={{ color: 'var(--node-title-animation)' }}>
         <Sparkles className="h-4 w-4" />
@@ -490,7 +751,7 @@ function PromptStudioNodeComponent({ id, data, selected }: NodeProps<PromptStudi
         {/* ── Header ── */}
         <div className="flex-shrink-0 flex items-center gap-2 px-3.5 py-2 border-b border-[var(--an-border)]">
           <div className="flex-1 min-w-0">
-            <p className="text-[10px] leading-tight" style={{ color: headerConfig.statusColor }}>
+            <p className="text-[10px] leading-tight truncate" style={{ color: headerConfig.statusColor }}>
               {isStreaming ? (thinkingMsg || 'Generating...') : headerConfig.statusText}
             </p>
           </div>
@@ -514,7 +775,7 @@ function PromptStudioNodeComponent({ id, data, selected }: NodeProps<PromptStudi
             <div>
               <p className="text-xs text-[var(--an-text-secondary)] font-medium">Creative Director</p>
               <p className="text-[10px] text-[var(--an-text-dim)] mt-0.5 max-w-[260px]">
-                Describe what you want to create and I'll craft the perfect prompt for any model.
+                Describe what you want to create and I&apos;ll craft the perfect prompt for any model.
               </p>
             </div>
             <div className="flex flex-wrap gap-1.5 justify-center mt-1">
@@ -562,7 +823,27 @@ function PromptStudioNodeComponent({ id, data, selected }: NodeProps<PromptStudi
                   );
                 }
                 if (item.kind === 'prompt') {
-                  return <PromptCard key={item.data.id} prompt={item.data} isLatest={item.data.id === latestPrompt?.id} />;
+                  return (
+                    <PromptCard
+                      key={item.data.id}
+                      prompt={item.data}
+                      isActive={item.data.id === activePromptId}
+                      onSelect={() => handleSelectPrompt(item.data.id)}
+                    />
+                  );
+                }
+                if (item.kind === 'qna') {
+                  return (
+                    <QnACard
+                      key={item.data.id}
+                      qna={item.data}
+                      onAnswer={(answers) => handleQnAAnswer(item.data.id, answers)}
+                      disabled={isStreaming}
+                    />
+                  );
+                }
+                if (item.kind === 'search') {
+                  return <SearchResultCard key={item.data.id} search={item.data} />;
                 }
                 if (item.kind === 'thinking') {
                   return (
@@ -634,6 +915,7 @@ function PromptStudioNodeComponent({ id, data, selected }: NodeProps<PromptStudi
                   </button>
                 )}
                 <button
+                  data-send-btn
                   onClick={handleSendMessage}
                   disabled={!canSend}
                   className={`flex items-center justify-center w-7 h-7 rounded-full transition-colors ${

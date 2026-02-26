@@ -2,15 +2,16 @@
 
 import { memo, useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import type { Node, NodeProps } from '@xyflow/react';
-import { Handle, Position } from '@xyflow/react';
+import { Handle, Position, useUpdateNodeInternals } from '@xyflow/react';
 import type { PluginNodeData } from '@/lib/types';
 import { useCanvasStore } from '@/stores/canvas-store';
-import { PenTool, Loader2, RefreshCw, Type, ImageIcon, Code, Download, Copy, Check, Eye, CodeIcon } from 'lucide-react';
+import { PenTool, RefreshCw, Type, ImageIcon, Code, Download, Copy, Check, Eye, CodeIcon } from 'lucide-react';
 import { createDefaultSvgStudioState, type SvgStudioNodeData, type SvgStudioState } from './types';
 
 function SvgStudioNodeComponent({ id, data, selected }: NodeProps<Node<PluginNodeData, 'pluginNode'>>) {
   const nodeData = data as unknown as SvgStudioNodeData;
   const updateNodeData = useCanvasStore((s) => s.updateNodeData);
+  const updateNodeInternals = useUpdateNodeInternals();
   const isReadOnly = useCanvasStore((s) => s.isReadOnly);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
@@ -51,6 +52,11 @@ function SvgStudioNodeComponent({ id, data, selected }: NodeProps<Node<PluginNod
     if (!nodeData.state) return base;
     return { ...base, ...nodeData.state };
   }, [nodeData.state]);
+
+  // Re-sync handle positions when node content changes size
+  useEffect(() => {
+    updateNodeInternals(id);
+  }, [id, state.phase, showCode, updateNodeInternals]);
 
   const updateState = (patch: Partial<SvgStudioState>) => {
     updateNodeData(id, {
@@ -182,7 +188,36 @@ function SvgStudioNodeComponent({ id, data, selected }: NodeProps<Node<PluginNod
         )}
       </div>
 
-      <div className={`relative w-[420px] rounded-2xl overflow-visible ${selected ? 'node-card-selected' : 'node-card'}`}>
+      <div className={`
+        relative w-[420px] rounded-2xl overflow-visible
+        transition-all duration-150
+        ${isSubmitting ? 'animate-subtle-pulse generating-border-subtle' : ''}
+        ${!isSubmitting ? (selected ? 'node-card node-card-selected' : 'node-card') : ''}
+      `}>
+        {/* Loading State */}
+        {isSubmitting ? (
+          <div className="p-4 min-h-[200px] flex flex-col items-center justify-center gap-4" style={{ backgroundColor: 'var(--node-card-bg)' }}>
+            {state.prompt && (
+              <p className="text-muted-foreground text-xs text-center line-clamp-2 max-w-[90%]">
+                {state.prompt}
+              </p>
+            )}
+            <div className="text-center">
+              <p
+                className="text-base font-semibold bg-clip-text text-transparent"
+                style={{
+                  backgroundImage:
+                    'linear-gradient(90deg, hsl(var(--muted-foreground)/0.45) 0%, hsl(var(--foreground)/0.95) 45%, hsl(var(--muted-foreground)/0.45) 100%)',
+                  backgroundSize: '200% 100%',
+                  animation: 'shimmer-text 2s ease-in-out infinite',
+                }}
+              >
+                Generating SVG...
+              </p>
+              <p className="text-muted-foreground text-xs mt-1">This may take a moment</p>
+            </div>
+          </div>
+        ) : (
         <div className="p-3 space-y-2">
         <div className="flex gap-1">
           <button
@@ -228,7 +263,7 @@ function SvgStudioNodeComponent({ id, data, selected }: NodeProps<Node<PluginNod
             className="px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-xs text-white"
             aria-label="Generate SVG"
           >
-            {isSubmitting ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Run'}
+            Run
           </button>
 
           {state.phase === 'ready' && (
@@ -309,6 +344,7 @@ function SvgStudioNodeComponent({ id, data, selected }: NodeProps<Node<PluginNod
           </div>
         )}
       </div>
+        )}
 
       {/* Input Handle - Text (left top) */}
       <div className="absolute -left-3 group" style={{ top: '30%', transform: 'translateY(-50%)' }}>

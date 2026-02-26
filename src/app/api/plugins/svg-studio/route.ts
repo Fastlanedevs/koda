@@ -81,7 +81,7 @@ export async function POST(request: Request) {
 
     const result = await aiService.generateStructured(prompt, SvgStudioAgentOutputSchema, {
       systemPrompt: SVG_STUDIO_SYSTEM_PROMPT,
-      model: 'google/gemini-3.1-pro-preview',
+      model: 'anthropic/claude-sonnet-4-6',
       temperature: 0.2,
     });
 
@@ -101,7 +101,7 @@ export async function POST(request: Request) {
           nodeId: input.nodeId,
           canvasId: input.canvasId,
           prompt: input.prompt,
-          model: 'google/gemini-3.1-pro-preview',
+          model: 'anthropic/claude-sonnet-4-6',
         },
       });
 
