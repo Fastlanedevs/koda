@@ -865,6 +865,9 @@ export const XSKILL_VIDEO_MODELS: Partial<Record<VideoModelType, string>> = {
 // Storyboard mode
 export type StoryboardMode = 'transition' | 'single-shot';
 
+// Storyboard target video model family
+export type StoryboardVideoModel = 'veo' | 'kling' | 'seedance';
+
 // Storyboard visual style
 export type StoryboardStyle = 'cinematic' | 'anime' | 'photorealistic' | 'illustrated' | 'commercial';
 
@@ -898,6 +901,8 @@ export interface StoryboardDraft {
   id: string;
   scenes: StoryboardSceneData[];
   summary: string;
+  productIdentity?: string;
+  characterIdentity?: string;
   createdAt: string;
   seq: number;
 }
@@ -912,6 +917,14 @@ export interface StoryboardSceneData {
   mood: string;
   transition?: string;  // For transition mode (motion between scenes)
   motion?: string;      // For single-shot mode (motion within scene)
+  negativePrompt?: string;  // What to exclude from generation
+  audioDirection?: string;  // Sound design cues (SFX, ambient, dialogue)
+}
+
+// Storyboard draft identity fields
+export interface StoryboardDraftIdentity {
+  productIdentity?: string;
+  characterIdentity?: string;
 }
 
 // Storyboard Node Data
@@ -924,6 +937,7 @@ export interface StoryboardNodeData extends Record<string, unknown> {
   sceneCount: number;
   style: StoryboardStyle;
   mode: StoryboardMode;  // 'transition' for N-1 videos between frames, 'single-shot' for N independent videos
+  targetVideoModel: StoryboardVideoModel;  // Target video model family for prompt optimization
   // UI state
   viewState: StoryboardViewState;
   error?: string;

@@ -15,6 +15,7 @@ import {
   buildStoryboardPrompt,
   getRefinementSystemPrompt,
   buildRefinementPrompt,
+  type VideoModelFamily,
 } from '@/lib/plugins/official/storyboard-generator/schema';
 import { emitLaunchMetric } from '@/lib/observability/launch-metrics';
 import { evaluatePluginLaunchById, emitPluginPolicyAuditEvent } from '@/lib/plugins/launch-policy';
@@ -68,9 +69,10 @@ export async function POST(request: Request) {
     if (isRefinement) {
       // Refinement turn: use previous draft + feedback
       const mode = body.mode || 'transition';
+      const targetVideoModel: VideoModelFamily = body.targetVideoModel || 'veo';
       prompt = buildRefinementPrompt(body.previousDraft, body.feedback, mode);
-      systemPrompt = getRefinementSystemPrompt(mode);
-      console.log('[Storyboard] Refinement mode');
+      systemPrompt = getRefinementSystemPrompt(mode, targetVideoModel);
+      console.log('[Storyboard] Refinement mode, target model:', targetVideoModel);
       console.log('[Storyboard] Feedback:', body.feedback);
     } else {
       // Initial generation: validate full input
@@ -98,7 +100,7 @@ export async function POST(request: Request) {
       console.log('[Storyboard] Validated input:', JSON.stringify(input, null, 2));
 
       prompt = buildStoryboardPrompt(input);
-      systemPrompt = getSystemPrompt(input.mode);
+      systemPrompt = getSystemPrompt(input.mode, input.targetVideoModel);
     }
 
     console.log('[Storyboard] Built prompt:\n', prompt);
@@ -122,7 +124,7 @@ export async function POST(request: Request) {
         schema: StoryboardOutputSchema as any,
       },
       modelSettings: {
-        temperature: 0.1,
+        temperature: 0.4,
       },
       providerOptions: {
         google: {
