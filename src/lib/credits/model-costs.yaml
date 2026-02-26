@@ -191,3 +191,7 @@ animation:
     fal_cost_per_sec: 0.04
     base_duration: 5
     credits: 5
+  theatre:
+    fal_cost_per_sec: 0.04
+    base_duration: 5
+    credits: 5

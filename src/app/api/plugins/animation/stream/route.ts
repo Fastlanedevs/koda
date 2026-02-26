@@ -111,19 +111,21 @@ export async function POST(request: Request) {
     }
     await getOrCreateBalance(animUserId!, animPlanKey);
 
-    // Peek at duration from body for per-second credit scaling
+    // Peek at engine + duration from body for per-second credit scaling
     let peekDuration: number | undefined;
+    let peekEngine = 'remotion';
     try {
       const peek = await request.clone().json();
       peekDuration = peek?.context?.duration;
+      peekEngine = peek?.context?.engine || 'remotion';
     } catch { /* body parse failure — handler will deal with it */ }
 
-    animCreditCost = getCreditCost('animation', { model: 'remotion', duration: peekDuration });
+    animCreditCost = getCreditCost('animation', { model: peekEngine, duration: peekDuration });
     const deductResult = await deductCredits(
       animUserId!,
       animCreditCost,
-      'animation:remotion',
-      { model: 'remotion', duration: peekDuration }
+      `animation:${peekEngine}`,
+      { model: peekEngine, duration: peekDuration }
     );
     if (!deductResult.success) {
       return NextResponse.json(
@@ -963,7 +965,7 @@ export async function POST(request: Request) {
     // Refund credits on stream-level failure (actorResult may not be in scope if auth failed)
     try {
       if (typeof animUserId === 'string' && typeof animCreditCost === 'number') {
-        await refundCredits(animUserId, animCreditCost, 'error:animation:remotion', {
+        await refundCredits(animUserId, animCreditCost, 'error:animation', {
           error: error instanceof Error ? error.message : String(error),
         });
       }
