@@ -245,6 +245,7 @@ export const createStoryboardNode = (position: { x: number; y: number }, name?: 
     sceneCount: 4,
     style: 'cinematic',
     mode: 'transition',
+    targetVideoModel: 'veo',
     viewState: 'form',
     chatMessages: [],
     thinkingBlocks: [],

@@ -18,6 +18,7 @@ import type {
   StoryboardSceneData,
   StoryboardStyle,
   StoryboardMode,
+  StoryboardVideoModel,
   StoryboardChatMessage,
   StoryboardThinkingBlock,
   StoryboardDraft,
@@ -38,6 +39,20 @@ const STYLE_OPTIONS: { value: StoryboardStyle; label: string }[] = [
   { value: 'illustrated', label: 'Illustrated' },
   { value: 'commercial', label: 'Commercial' },
 ];
+
+// Video model family options
+const VIDEO_MODEL_OPTIONS: { value: StoryboardVideoModel; label: string; hint: string }[] = [
+  { value: 'veo', label: 'Veo', hint: 'Cinematic polish, audio & lip sync' },
+  { value: 'kling', label: 'Kling', hint: 'Motion physics & multi-shot' },
+  { value: 'seedance', label: 'Seedance', hint: 'Character consistency & multimodal' },
+];
+
+// Model family → video model IDs for canvas node creation
+const VIDEO_MODEL_IDS: Record<StoryboardVideoModel, { transition: string; singleShot: string }> = {
+  veo: { transition: 'veo-3.1-flf', singleShot: 'veo-3.1-i2v' },
+  kling: { transition: 'kling-3.0-i2v', singleShot: 'kling-3.0-i2v' },
+  seedance: { transition: 'seedance-2.0-i2v', singleShot: 'seedance-2.0-i2v' },
+};
 
 // Scene count options
 const SCENE_COUNTS = [4, 5, 6, 8] as const;
@@ -279,7 +294,7 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
           const jsonStr = line.slice(6).trim();
           if (!jsonStr) continue;
 
-          let event: { type: string; text?: string; error?: string; success?: boolean; scenes?: unknown[]; summary?: string };
+          let event: { type: string; text?: string; error?: string; success?: boolean; scenes?: unknown[]; summary?: string; productIdentity?: string; characterIdentity?: string };
           try {
             event = JSON.parse(jsonStr);
           } catch {
@@ -302,6 +317,8 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
               if (event.success && event.scenes) {
                 const scenes = event.scenes as StoryboardSceneData[];
                 const summary = event.summary || '';
+                const productIdentity = event.productIdentity as string | undefined;
+                const characterIdentity = event.characterIdentity as string | undefined;
                 const draftId = `draft_${Date.now()}`;
                 const endedAt = new Date().toISOString();
 
@@ -317,11 +334,13 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
                   currentBlocks[tIdx] = { ...currentBlocks[tIdx], endedAt };
                 }
 
-                // Add draft
+                // Add draft with identity fields
                 const newDraft: StoryboardDraft = {
                   id: draftId,
                   scenes,
                   summary,
+                  productIdentity,
+                  characterIdentity,
                   createdAt: endedAt,
                   seq: nextSeq(),
                 };
@@ -420,6 +439,7 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
       sceneCount: data.sceneCount,
       style: data.style,
       mode,
+      targetVideoModel: data.targetVideoModel || 'veo',
     };
 
     await streamGeneration(input, 'Generating storyboard');
@@ -449,14 +469,17 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
       chatMessages: [...currentMessages, userMsg],
     });
 
-    // Build refinement request
+    // Build refinement request — include full scene data for faithful preservation (#70)
     const body = {
       previousDraft: {
         scenes: latestDraft.scenes,
         summary: latestDraft.summary,
+        productIdentity: latestDraft.productIdentity,
+        characterIdentity: latestDraft.characterIdentity,
       },
       feedback,
       mode,
+      targetVideoModel: data.targetVideoModel || 'veo',
       product: data.product.trim(),
       character: data.character?.trim() || undefined,
       concept: data.concept.trim(),
@@ -472,15 +495,17 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
     abortRef.current?.abort();
   }, []);
 
-  // Helper function to generate fallback transition prompt
+  // Helper function to generate fallback transition prompt — enriched with full scene context
   const generateFallbackTransition = useCallback((fromScene: StoryboardSceneData, toScene: StoryboardSceneData): string => {
-    return `Cinematic transition from "${fromScene.title}" to "${toScene.title}". ${fromScene.camera} transitioning smoothly, maintaining ${fromScene.mood} atmosphere.`;
-  }, []);
+    const style = data.style || 'cinematic';
+    return `Camera transitions from ${fromScene.camera} to ${toScene.camera}. ${fromScene.description} The scene shifts smoothly toward ${toScene.title}, maintaining ${fromScene.mood} atmosphere. ${style} style, consistent lighting throughout.${fromScene.audioDirection ? ` ${fromScene.audioDirection}` : ''}`;
+  }, [data.style]);
 
-  // Helper function to generate fallback motion prompt for single-shot mode
+  // Helper function to generate fallback motion prompt for single-shot mode — enriched
   const generateFallbackMotion = useCallback((scene: StoryboardSceneData): string => {
-    return `${scene.description} ${scene.camera}, ${scene.mood} atmosphere.`;
-  }, []);
+    const style = data.style || 'cinematic';
+    return `${scene.description} Camera: ${scene.camera}, steady. ${scene.mood} atmosphere, ${style} style.${scene.audioDirection ? ` ${scene.audioDirection}` : ''}`;
+  }, [data.style]);
 
   // Get the active draft (latest or explicitly selected)
   const activeDraft = useMemo(() => {
@@ -687,6 +712,8 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
             y: startY + VIDEO_Y_OFFSET,
           };
           const motionPrompt = scene.motion || generateFallbackMotion(scene);
+          const videoModelFamily = data.targetVideoModel || 'veo';
+          const videoModelId = VIDEO_MODEL_IDS[videoModelFamily].singleShot;
 
           nodeInputs.push({
             type: 'videoGenerator',
@@ -694,7 +721,7 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
             name: `Video ${scene.number}: ${scene.title}`,
             data: {
               prompt: motionPrompt,
-              model: 'veo-3.1-i2v',
+              model: videoModelId,
               aspectRatio: '16:9',
               duration: 8,
               resolution: '720p',
@@ -775,6 +802,8 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
           };
 
           const transitionPrompt = currentScene.transition || generateFallbackTransition(currentScene, nextScene);
+          const videoModelFamily = data.targetVideoModel || 'veo';
+          const transitionModelId = VIDEO_MODEL_IDS[videoModelFamily].transition;
 
           nodeInputs.push({
             type: 'videoGenerator',
@@ -782,7 +811,7 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
             name: `Transition ${i + 1}`,
             data: {
               prompt: transitionPrompt,
-              model: 'veo-3.1-flf',
+              model: transitionModelId,
               aspectRatio: '16:9',
               duration: 4,
               resolution: '720p',
@@ -833,7 +862,7 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to create nodes');
     }
-  }, [activeDraft, data.mode, data.product, data.character, data.style, canvas, id, generateFallbackTransition, generateFallbackMotion]);
+  }, [activeDraft, data.mode, data.product, data.character, data.style, data.targetVideoModel, canvas, id, generateFallbackTransition, generateFallbackMotion]);
 
   // Build sorted timeline from chat messages, completed thinking blocks, and drafts
   const timelineItems = useMemo((): TimelineItem[] => {
@@ -1000,6 +1029,39 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
               ? 'Video transitions between consecutive scenes'
               : 'Each scene generates its own video clip'
             }
+          </p>
+        </div>
+      )}
+
+      {/* Video Model Family */}
+      {!isReadOnly && (
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground">Video Model</label>
+          <div className="flex gap-1 p-0.5 bg-muted rounded-lg">
+            {VIDEO_MODEL_OPTIONS.map((opt) => (
+              <TooltipProvider key={opt.value} delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => updateField('targetVideoModel', opt.value)}
+                      className={`flex-1 py-2 px-2 rounded-md text-xs font-medium transition-colors nodrag ${
+                        (data.targetVideoModel || 'veo') === opt.value
+                          ? 'bg-background text-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="bg-zinc-800 border-zinc-700 text-zinc-200 max-w-[200px]">
+                    <p className="text-xs">{opt.hint}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            ))}
+          </div>
+          <p className="text-[10px] text-muted-foreground/80">
+            {VIDEO_MODEL_OPTIONS.find((o) => o.value === (data.targetVideoModel || 'veo'))?.hint}
           </p>
         </div>
       )}
