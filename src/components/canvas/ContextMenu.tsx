@@ -256,6 +256,16 @@ export function ContextMenu({ onPluginLaunch }: ContextMenuProps) {
           ),
           keywords: ['svg', 'vector', 'icon', 'logo'],
         },
+        {
+          id: 'promptStudio',
+          icon: <Sparkle className="h-4 w-4 text-amber-400" />,
+          label: 'Prompt Studio',
+          action: () => handleAddNode(
+            (pos, name) => createPluginNode(pos, 'prompt-studio', name),
+            'Prompt Studio'
+          ),
+          keywords: ['prompt', 'creative', 'director', 'enhance', 'image prompt', 'video prompt'],
+        },
       ],
     },
     {
