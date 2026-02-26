@@ -2516,7 +2516,7 @@ function AnimationNodeComponent({ id, data, selected }: AnimationNodeProps) {
       </div>
 
       {/* Right: Output handle (video) */}
-      <div className="absolute -right-[10px]" style={{ top: 30 }}>
+      <div className="absolute -right-[10px]" style={{ top: '50%', transform: 'translateY(-50%)' }}>
         <div className="w-5 h-5 rounded-full bg-[#A855F7] flex items-center justify-center">
           <Video className="h-3 w-3 text-white" />
         </div>
