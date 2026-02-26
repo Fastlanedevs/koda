@@ -12,7 +12,7 @@
 import { memo, useCallback, useMemo, useEffect, useState, useRef } from 'react';
 import type { NodeProps, Node } from '@xyflow/react';
 import { Handle, Position, useUpdateNodeInternals } from '@xyflow/react';
-import { Clapperboard, Plus, Minus, Image, Video, X } from 'lucide-react';
+import { Clapperboard, Plus, Minus, Image, Video, X, Code } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCanvasStore } from '@/stores/canvas-store';
 import { useSettingsStore } from '@/stores/settings-store';
@@ -313,6 +313,7 @@ function AnimationNodeComponent({ id, data, selected }: AnimationNodeProps) {
       let mediaUrl: string | undefined;
       let mediaType: 'image' | 'video' = 'image';
       let mediaDescription: string | undefined;
+      let svgCode: string | undefined;
 
       if (sourceNode.type === 'imageGenerator' || sourceNode.type === 'media') {
         mediaUrl = (d.outputUrl as string) || (d.imageUrl as string) || (d.url as string);
@@ -325,28 +326,36 @@ function AnimationNodeComponent({ id, data, selected }: AnimationNodeProps) {
       } else if (sourceNode.type === 'pluginNode' && d.pluginId === 'svg-studio') {
         mediaUrl = (d.outputUrl as string) || ((d.state as Record<string, unknown> | undefined)?.asset as { url?: string } | undefined)?.url;
         mediaType = 'image';
-        mediaDescription = (d.name as string) || 'SVG asset';
+        if (edge.sourceHandle === 'code-output') {
+          svgCode = (d.outputSvgCode as string) || (d.state as Record<string, unknown> | undefined)?.svg as string | undefined;
+          mediaDescription = (d.name as string) || 'SVG code';
+        } else {
+          mediaDescription = (d.name as string) || 'SVG asset';
+        }
       }
 
       // Skip video media for Theatre.js (no video ref support in Puppeteer rendering)
       if (engine === 'theatre' && mediaType === 'video') continue;
 
-      if (mediaUrl) {
+      if (mediaUrl || svgCode) {
         // Build a safe filename with proper extension and source node suffix to prevent collisions.
         // NOTE: edge.id starts with "xy-edge__" so slice(0,6) was always "xy-edg" — use source node ID instead.
         const baseName = ((d.name as string) || sourceNode.type || 'media')
           .replace(/[^a-zA-Z0-9_-]/g, '_')
           .toLowerCase();
-        const urlExt = mediaUrl.split('?')[0].match(/\.(png|jpg|jpeg|gif|webp|svg|mp4|webm|mov)$/i)?.[1]?.toLowerCase();
-        const ext = urlExt || (mediaType === 'video' ? 'mp4' : 'png');
+        const urlExt = mediaUrl?.split('?')[0].match(/\.(png|jpg|jpeg|gif|webp|svg|mp4|webm|mov)$/i)?.[1]?.toLowerCase();
+        const ext = svgCode ? 'svg' : (urlExt || (mediaType === 'video' ? 'mp4' : 'png'));
         const mediaName = `${baseName}_${edge.source.slice(-8)}.${ext}`;
 
         const entryId = `edge_${edge.id}`;
 
         // blob: URLs are browser-only — queue for async conversion to data: URL
-        if (mediaUrl.startsWith('blob:')) {
+        if (mediaUrl?.startsWith('blob:')) {
           blobConversions.push({ entryId, blobUrl: mediaUrl, edgeId: edge.id });
         }
+
+        // For SVG code entries without a URL, use empty string — the code itself is the payload
+        const effectiveUrl = mediaUrl || '';
 
         updatedEdgeMedia.push({
           id: entryId,
@@ -355,8 +364,9 @@ function AnimationNodeComponent({ id, data, selected }: AnimationNodeProps) {
           sourceNodeId: edge.source,
           name: mediaName,
           type: mediaType,
-          dataUrl: mediaUrl.startsWith('blob:') ? mediaUrl : cacheIfLarge(entryId, mediaUrl),
+          dataUrl: effectiveUrl.startsWith('blob:') ? effectiveUrl : (effectiveUrl ? cacheIfLarge(entryId, effectiveUrl) : ''),
           description: mediaDescription,
+          ...(svgCode ? { svgCode } : {}),
         });
         changed = true;
       }
@@ -385,6 +395,14 @@ function AnimationNodeComponent({ id, data, selected }: AnimationNodeProps) {
       if (currentDesc !== entry.description) {
         entry.description = currentDesc;
         changed = true;
+      }
+      // Update SVG code if source node re-generated (code-output edge)
+      if (entry.svgCode !== undefined && sourceNode.type === 'pluginNode' && d.pluginId === 'svg-studio') {
+        const currentSvgCode = (d.outputSvgCode as string) || (d.state as Record<string, unknown> | undefined)?.svg as string | undefined;
+        if (currentSvgCode && currentSvgCode !== entry.svgCode) {
+          entry.svgCode = currentSvgCode;
+          changed = true;
+        }
       }
     }
 
@@ -2097,10 +2115,12 @@ function AnimationNodeComponent({ id, data, selected }: AnimationNodeProps) {
   const videoHandleStart = engine !== 'theatre'
     ? IMAGE_HANDLE_START + imageRefCount * HANDLE_SPACING + VIDEO_HANDLE_START_OFFSET
     : 0;
-  // minHeight must accommodate: video handles + their +/- buttons + padding
-  const lastVideoHandleBottom = engine !== 'theatre'
-    ? videoHandleStart + videoRefCount * HANDLE_SPACING + 40 // +40 for +/- buttons
-    : IMAGE_HANDLE_START + imageRefCount * HANDLE_SPACING + 40;
+  // SVG code handle sits after the last video handle +/- buttons
+  const svgCodeHandleTop = engine !== 'theatre'
+    ? videoHandleStart + videoRefCount * HANDLE_SPACING + 48
+    : IMAGE_HANDLE_START + imageRefCount * HANDLE_SPACING + 48;
+  // minHeight must accommodate: all handles + padding
+  const lastVideoHandleBottom = svgCodeHandleTop + HANDLE_SPACING;
   const minHeight = Math.max(200, lastVideoHandleBottom);
 
   // ─── Render ─────────────────────────────────────────────────────────
@@ -2244,6 +2264,19 @@ function AnimationNodeComponent({ id, data, selected }: AnimationNodeProps) {
           )}
         </div>
       )}
+
+      {/* ── Left: SVG code handle ──────────────────────────────────── */}
+      <div className="absolute -left-[10px]" style={{ top: svgCodeHandleTop }}>
+        <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
+          <Code className="h-3 w-3 text-white" />
+        </div>
+        <Handle
+          type="target"
+          position={Position.Left}
+          id="svg-code"
+          className="!absolute !top-1/2 !left-1/2 !-translate-x-1/2 !-translate-y-1/2 !w-5 !h-5 !bg-transparent !border-0"
+        />
+      </div>
 
       {/* ── Header ───────────────────────────────────────────────────── */}
       <div className="flex-shrink-0 flex items-center gap-2 px-3.5 py-2 border-b border-[var(--an-border)]">

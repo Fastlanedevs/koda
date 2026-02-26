@@ -253,6 +253,7 @@ export interface MediaEntry {
   duration?: number;          // Video only, in seconds
   thumbnailUrl?: string;      // For video previews (first frame)
   mimeType?: string;          // e.g. 'image/png', 'video/mp4'
+  svgCode?: string;           // Raw SVG markup (from SVG Studio code-output handle)
 }
 
 // ============================================

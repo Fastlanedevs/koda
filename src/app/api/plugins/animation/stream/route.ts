@@ -45,7 +45,7 @@ interface StreamRequestBody {
     plan?: unknown;
     todos?: Array<{ id: string; label: string; status: string }>;
     attachments?: Array<{ type: string; url: string }>;
-    media?: Array<{ id: string; source: string; name: string; type: string; dataUrl: string; description?: string; duration?: number; mimeType?: string }>;
+    media?: Array<{ id: string; source: string; name: string; type: string; dataUrl: string; description?: string; duration?: number; mimeType?: string; svgCode?: string }>;
     sandboxId?: string;
     engine?: 'remotion' | 'theatre';
     aspectRatio?: '16:9' | '9:16' | '1:1' | '4:3' | '21:9';
@@ -282,6 +282,8 @@ export async function POST(request: Request) {
         };
         const usedPaths = new Set<string>();
         for (const m of context.media) {
+          // SVG code entries without a real URL are handled via svgCodeAssets context — skip file upload
+          if (m.svgCode && !m.dataUrl) continue;
           let safeName = ensureExt(m.name, m.type, m.dataUrl);
           // Deduplicate paths — if two media share a name, append index
           let destPath = `public/media/${safeName}`;
@@ -433,8 +435,10 @@ export async function POST(request: Request) {
           requestContext.set('mediaBuffers' as never, mediaBuffers as never);
         }
 
-        const edgeMedia = context.media.filter(m => m.source === 'edge');
-        const uploadMedia = context.media.filter(m => m.source !== 'edge');
+        // Exclude svgCode-only entries from file-based media lists (handled separately)
+        const fileMedia = context.media.filter(m => !(m.svgCode && !m.dataUrl));
+        const edgeMedia = fileMedia.filter(m => m.source === 'edge');
+        const uploadMedia = fileMedia.filter(m => m.source !== 'edge');
 
         // Engine-aware media reference format
         const mediaRef = engine === 'remotion'
@@ -468,6 +472,31 @@ export async function POST(request: Request) {
         if (uploadMedia.length > 0) {
           contextParts.push(`📎 UPLOADED MEDIA — Determine purpose from prompt context (content vs reference):\n${uploadMedia.map(formatMedia).join('\n')}`);
         }
+
+        // Inject raw SVG code for code-output edges — lets the agent decompose
+        // and animate individual SVG elements instead of just referencing an image file.
+        const svgCodeEntries = context.media.filter(m => m.svgCode);
+        if (svgCodeEntries.length > 0) {
+          const svgBlocks = svgCodeEntries.map(m =>
+            `<svg-source name="${m.name}" description="${m.description || ''}">\n${m.svgCode}\n</svg-source>`
+          ).join('\n');
+          contextParts.push(
+            `<svg-code-assets>\n` +
+            `The following SVG source code was provided via SVG Studio code-output edges.\n` +
+            `You can INLINE these SVGs directly in Remotion components as JSX (convert SVG attributes to React: class→className, stroke-width→strokeWidth, etc.).\n` +
+            `This lets you animate individual SVG elements (paths, groups, circles, etc.) with Remotion's interpolate/spring.\n` +
+            `The SVG is also available as a static file — use whichever approach best fits the animation.\n` +
+            svgBlocks +
+            `\n</svg-code-assets>`
+          );
+          // Store SVG code in requestContext for generate_remotion_code to access
+          const svgCodeMap = new Map<string, string>();
+          for (const m of svgCodeEntries) {
+            svgCodeMap.set(m.name, m.svgCode!);
+          }
+          requestContext.set('svgCodeAssets' as never, svgCodeMap as never);
+        }
+
         const codeGenToolName = engine === 'remotion' ? 'generate_remotion_code' : 'generate_code';
         contextParts.push(
           `For CONTENT media: Pass file paths via mediaFiles to ${codeGenToolName}. ` +

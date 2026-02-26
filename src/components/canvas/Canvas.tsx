@@ -219,6 +219,13 @@ export function Canvas() {
         return isImageSource;
       }
 
+      // Animation node SVG code handle — only from SVG Studio code-output
+      if (targetHandle === 'svg-code') {
+        return sourceNode.type === 'pluginNode'
+          && (sourceNode.data as Record<string, unknown>)?.pluginId === 'svg-studio'
+          && connection.sourceHandle === 'code-output';
+      }
+
       return true;
     },
     [nodes]

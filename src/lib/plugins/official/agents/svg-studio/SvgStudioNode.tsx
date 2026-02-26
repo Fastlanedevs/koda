@@ -5,7 +5,7 @@ import type { Node, NodeProps } from '@xyflow/react';
 import { Handle, Position } from '@xyflow/react';
 import type { PluginNodeData } from '@/lib/types';
 import { useCanvasStore } from '@/stores/canvas-store';
-import { PenTool, Loader2, RefreshCw, Type, ImageIcon, Code } from 'lucide-react';
+import { PenTool, Loader2, RefreshCw, Type, ImageIcon, Code, Download, Copy, Check, Eye, CodeIcon } from 'lucide-react';
 import { createDefaultSvgStudioState, type SvgStudioNodeData, type SvgStudioState } from './types';
 
 function SvgStudioNodeComponent({ id, data, selected }: NodeProps<Node<PluginNodeData, 'pluginNode'>>) {
@@ -14,6 +14,10 @@ function SvgStudioNodeComponent({ id, data, selected }: NodeProps<Node<PluginNod
   const isReadOnly = useCanvasStore((s) => s.isReadOnly);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
+  const [showCode, setShowCode] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [showDownloadMenu, setShowDownloadMenu] = useState(false);
+  const downloadMenuRef = useRef<HTMLDivElement>(null);
   const [nodeName, setNodeName] = useState(nodeData.name || 'SVG Studio');
   const nameInputRef = useRef<HTMLInputElement>(null);
 
@@ -23,6 +27,17 @@ function SvgStudioNodeComponent({ id, data, selected }: NodeProps<Node<PluginNod
       nameInputRef.current.select();
     }
   }, [isEditingName]);
+
+  useEffect(() => {
+    if (!showDownloadMenu) return;
+    const handleClick = (e: MouseEvent) => {
+      if (downloadMenuRef.current && !downloadMenuRef.current.contains(e.target as globalThis.Node)) {
+        setShowDownloadMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showDownloadMenu]);
 
   const handleNameSubmit = useCallback(() => {
     setIsEditingName(false);
@@ -46,6 +61,46 @@ function SvgStudioNodeComponent({ id, data, selected }: NodeProps<Node<PluginNod
       },
     });
   };
+
+  const downloadSvg = useCallback(() => {
+    if (!state.svg) return;
+    const blob = new Blob([state.svg], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${(nodeData.name || 'svg-studio').replace(/\s+/g, '-').toLowerCase()}.svg`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setShowDownloadMenu(false);
+  }, [state.svg, nodeData.name]);
+
+  const downloadPng = useCallback(() => {
+    if (!state.svg) return;
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth * 2;
+      canvas.height = img.naturalHeight * 2;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob((blob) => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${(nodeData.name || 'svg-studio').replace(/\s+/g, '-').toLowerCase()}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 'image/png');
+    };
+    img.src = `data:image/svg+xml;utf8,${encodeURIComponent(state.svg)}`;
+    setShowDownloadMenu(false);
+  }, [state.svg, nodeData.name]);
 
   const submit = async () => {
     if (!state.prompt.trim() || isSubmitting) return;
@@ -189,13 +244,68 @@ function SvgStudioNodeComponent({ id, data, selected }: NodeProps<Node<PluginNod
         {state.error && <div className="text-xs text-red-400">{state.error}</div>}
 
         {state.svg && (
-          <div className="rounded border border-border bg-muted/50 p-2">
-            <div className="text-[10px] text-muted-foreground mb-1">
-              Paths: {state.metadata?.pathCount ?? 0} · Elements: {state.metadata?.elementCount ?? 0}
+          <div className="rounded border border-border bg-muted/50 p-2 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <div className="text-[10px] text-muted-foreground">
+                Paths: {state.metadata?.pathCount ?? 0} · Elements: {state.metadata?.elementCount ?? 0}
+              </div>
+              <div className="flex items-center gap-0.5">
+                <button
+                  onClick={() => setShowCode(false)}
+                  className={`p-1 rounded transition-colors ${!showCode ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                  title="Preview"
+                >
+                  <Eye className="w-3 h-3" />
+                </button>
+                <button
+                  onClick={() => setShowCode(true)}
+                  className={`p-1 rounded transition-colors ${showCode ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                  title="Code"
+                >
+                  <CodeIcon className="w-3 h-3" />
+                </button>
+                <div className="w-px h-3 bg-border mx-0.5" />
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(state.svg!);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 1500);
+                  }}
+                  className="p-1 rounded text-muted-foreground hover:text-foreground transition-colors"
+                  title="Copy SVG code"
+                >
+                  {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                </button>
+                <div className="relative" ref={downloadMenuRef}>
+                  <button
+                    onClick={() => setShowDownloadMenu((s) => !s)}
+                    className="p-1 rounded text-muted-foreground hover:text-foreground transition-colors"
+                    title="Download"
+                  >
+                    <Download className="w-3 h-3" />
+                  </button>
+                  {showDownloadMenu && (
+                    <div className="absolute right-0 top-full mt-1 z-50 min-w-[100px] rounded-md border border-border bg-popover py-0.5 shadow-lg">
+                      <button onClick={downloadSvg} className="flex w-full items-center gap-2 px-2.5 py-1.5 text-[11px] text-foreground hover:bg-muted">
+                        SVG
+                      </button>
+                      <button onClick={downloadPng} className="flex w-full items-center gap-2 px-2.5 py-1.5 text-[11px] text-foreground hover:bg-muted">
+                        PNG
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="bg-white rounded p-1 max-h-[220px] overflow-auto">
-              <img src={`data:image/svg+xml;utf8,${encodeURIComponent(state.svg)}`} alt="SVG output" className="max-w-full h-auto" />
-            </div>
+            {showCode ? (
+              <pre className="bg-background rounded p-2 max-h-[420px] overflow-auto text-[10px] font-mono text-muted-foreground leading-relaxed whitespace-pre-wrap break-all">
+                {state.svg}
+              </pre>
+            ) : (
+              <div className="bg-white rounded p-1 max-h-[420px] overflow-auto">
+                <img src={`data:image/svg+xml;utf8,${encodeURIComponent(state.svg)}`} alt="SVG output" className="max-w-full h-auto" />
+              </div>
+            )}
           </div>
         )}
       </div>
