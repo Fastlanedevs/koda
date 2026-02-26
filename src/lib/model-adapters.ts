@@ -106,6 +106,51 @@ class NanoBananaAdapter implements ModelAdapter {
   }
 }
 
+// Nano Banana 2 (same dual-endpoint pattern as Pro: text-to-image + /edit)
+class NanoBanana2Adapter implements ModelAdapter {
+  private hasImageReferences(request: GenerateRequest): boolean {
+    return (
+      (request.referenceUrls && request.referenceUrls.length > 0) ||
+      !!request.referenceUrl
+    );
+  }
+
+  private getImageUrls(request: GenerateRequest): string[] {
+    if (request.referenceUrls && request.referenceUrls.length > 0) {
+      return request.referenceUrls;
+    }
+    if (request.referenceUrl) {
+      return [request.referenceUrl];
+    }
+    return [];
+  }
+
+  getModelId(request: GenerateRequest): string {
+    if (this.hasImageReferences(request)) {
+      return 'fal-ai/nano-banana-2/edit';
+    }
+    return 'fal-ai/nano-banana-2';
+  }
+
+  buildInput(request: GenerateRequest): Record<string, unknown> {
+    const imageUrls = this.getImageUrls(request);
+    const isEditMode = imageUrls.length > 0;
+
+    return {
+      prompt: request.prompt,
+      aspect_ratio: isEditMode ? 'auto' : request.aspectRatio,
+      resolution: request.resolution || '1K',
+      num_images: request.numImages || 1,
+      output_format: 'png',
+      ...(isEditMode && { image_urls: imageUrls }),
+    };
+  }
+
+  extractImageUrls(result: { data?: { images?: Array<{ url: string }> } }): string[] {
+    return result.data?.images?.map((img) => img.url) || [];
+  }
+}
+
 // Recraft V3
 class RecraftAdapter implements ModelAdapter {
   // Map aspect ratio to Recraft size format
@@ -193,6 +238,7 @@ const adapters: Record<ImageModelType, ModelAdapter> = {
   'flux-schnell': new FluxAdapter(),
   'flux-pro': new FluxAdapter(),
   'nanobanana-pro': new NanoBananaAdapter(),
+  'nanobanana-2': new NanoBanana2Adapter(),
   'recraft-v3': new RecraftAdapter(),
   'ideogram-v3': new IdeogramAdapter(),
   'sd-3.5': new SD35Adapter(),

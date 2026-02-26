@@ -79,13 +79,14 @@ export const IDEOGRAM_STYLE_LABELS: Record<IdeogramStyle, string> = {
 } as const;
 
 // All supported model types
-export type ImageModelType = 'flux-schnell' | 'flux-pro' | 'nanobanana-pro' | 'recraft-v3' | 'ideogram-v3' | 'sd-3.5';
+export type ImageModelType = 'flux-schnell' | 'flux-pro' | 'nanobanana-pro' | 'nanobanana-2' | 'recraft-v3' | 'ideogram-v3' | 'sd-3.5';
 
 // Enabled models - comment/uncomment to toggle visibility in UI
 export const ENABLED_IMAGE_MODELS: ImageModelType[] = [
   'flux-schnell',
   'flux-pro',
   'nanobanana-pro',
+  'nanobanana-2',
   'recraft-v3',
   'ideogram-v3',
   'sd-3.5',
@@ -248,7 +249,7 @@ export const ASPECT_TO_FLUX_SIZE: Record<string, FluxImageSize> = {
 
 // Get dimensions for display (approximation based on aspect ratio)
 export const getApproxDimensions = (aspectRatio: AspectRatio, model: string, resolution?: NanoBananaResolution) => {
-  if (model === 'nanobanana-pro') {
+  if (model === 'nanobanana-pro' || model === 'nanobanana-2') {
     const baseSize = resolution === '4K' ? 4096 : resolution === '2K' ? 2048 : 1024;
     const [w, h] = aspectRatio.split(':').map(Number);
     const ratio = w / h;
@@ -276,6 +277,7 @@ export const FAL_MODELS: Record<ImageModelType, string> = {
   'flux-schnell': 'fal-ai/flux/schnell',
   'flux-pro': 'fal-ai/flux-pro',
   'nanobanana-pro': 'fal-ai/nano-banana-pro',
+  'nanobanana-2': 'fal-ai/nano-banana-2',
   'recraft-v3': 'fal-ai/recraft-v3',
   'ideogram-v3': 'fal-ai/ideogram/v3',
   'sd-3.5': 'fal-ai/stable-diffusion-v35-large',
@@ -336,6 +338,15 @@ export const MODEL_CAPABILITIES: Record<ImageModelType, ModelCapabilities> = {
     aspectRatios: ['1:1', '4:3', '3:4', '16:9', '9:16', '3:2', '2:3', '21:9', '5:4', '4:5'],
     resolutions: ['1K', '2K', '4K'],
     description: 'Up to 14 style refs',
+  },
+  'nanobanana-2': {
+    label: 'Nano Banana 2',
+    maxImages: 4,
+    inputType: 'text-and-image',
+    supportsReferences: true,
+    aspectRatios: ['1:1', '4:3', '3:4', '16:9', '9:16', '3:2', '2:3', '21:9', '5:4', '4:5'],
+    resolutions: ['1K', '2K', '4K'],
+    description: '4x faster, low cost',
   },
   'recraft-v3': {
     label: 'Recraft V3',

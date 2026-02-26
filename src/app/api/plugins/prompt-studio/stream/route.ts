@@ -25,6 +25,16 @@ const PromptStudioRequestSchema = z.object({
   context: z.object({
     nodeId: z.string().max(128).optional(),
     phase: z.string().max(64).optional(),
+    canvasContext: z.object({
+      connectedNodes: z.array(z.object({
+        direction: z.enum(['upstream', 'downstream']),
+        handleId: z.string(),
+        nodeType: z.string(),
+        pluginId: z.string().optional(),
+        name: z.string().optional(),
+        detail: z.string().optional(),
+      })),
+    }).optional(),
   }).optional(),
 }).superRefine((value, ctx) => {
   if ((!value.prompt || value.prompt.trim().length === 0) && (!value.messages || value.messages.length === 0)) {
@@ -85,6 +95,7 @@ export async function POST(request: Request) {
     } else if (prompt) {
       agentMessages = [{ role: 'user', content: prompt }];
     } else {
+
       emitLaunchMetric({
         metric: 'plugin_execution',
         status: 'error',
@@ -98,12 +109,48 @@ export async function POST(request: Request) {
       );
     }
 
+    // Inject canvas context as a system message so the agent knows about connected nodes
+    if (context?.canvasContext?.connectedNodes?.length) {
+      const nodes = context.canvasContext.connectedNodes;
+      const downstream = nodes.filter(n => n.direction === 'downstream');
+      const upstream = nodes.filter(n => n.direction === 'upstream');
+
+      const lines: string[] = ['<canvas-context>'];
+      lines.push('You are on a design canvas. Here are the nodes connected to your Prompt Studio:');
+
+      if (downstream.length > 0) {
+        lines.push('\nDownstream (your prompt output flows TO these nodes):');
+        for (const n of downstream) {
+          const label = n.name || n.pluginId || n.nodeType;
+          const detail = n.detail ? ` (${n.detail})` : '';
+          lines.push(`  - ${label}${detail} [type: ${n.nodeType}, handle: ${n.handleId}]`);
+        }
+      }
+
+      if (upstream.length > 0) {
+        lines.push('\nUpstream (these nodes provide input TO you):');
+        for (const n of upstream) {
+          const label = n.name || n.pluginId || n.nodeType;
+          const detail = n.detail ? ` (${n.detail})` : '';
+          lines.push(`  - ${label}${detail} [type: ${n.nodeType}, handle: ${n.handleId}]`);
+        }
+      }
+
+      lines.push('</canvas-context>');
+
+      // Prepend as system message
+      agentMessages = [
+        { role: 'system', content: lines.join('\n') },
+        ...agentMessages,
+      ];
+    }
+
     const requestContext = new RequestContext();
     if (context?.nodeId) {
       requestContext.set('nodeId' as never, context.nodeId as never);
     }
 
-    console.log(`[Prompt Studio API] Starting stream: nodeId=${context?.nodeId}, messageCount=${agentMessages.length}`);
+    console.log(`[Prompt Studio API] Starting stream: nodeId=${context?.nodeId}, messageCount=${agentMessages.length}, connectedNodes=${context?.canvasContext?.connectedNodes?.length || 0}`);
 
     const result = await promptStudioAgent.stream(
       agentMessages as Parameters<typeof promptStudioAgent.stream>[0],

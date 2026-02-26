@@ -49,7 +49,7 @@ import type {
   SearchResult,
 } from './types';
 import { TOOL_DISPLAY_NAMES } from './events';
-import { usePromptStudioStream } from './hooks';
+import { usePromptStudioStream, type ConnectedNodeInfo } from './hooks';
 
 // ─── Constants ──────────────────────────────────────────────────────────
 function createDefaultState(nodeId: string): PromptStudioNodeState {
@@ -125,7 +125,12 @@ function getModelColor(model: string): { bg: string; text: string } {
   if (m.includes('flux')) return { bg: 'bg-cyan-500/15', text: 'text-cyan-400' };
   if (m.includes('imagen')) return { bg: 'bg-red-500/15', text: 'text-red-400' };
   if (m.includes('nano') || m.includes('banana')) return { bg: 'bg-yellow-500/15', text: 'text-yellow-400' };
-  if (m.includes('kling') || m.includes('runway') || m.includes('sora') || m.includes('luma')) return { bg: 'bg-pink-500/15', text: 'text-pink-400' };
+  if (m.includes('veo')) return { bg: 'bg-blue-500/15', text: 'text-blue-400' };
+  if (m.includes('kling')) return { bg: 'bg-pink-500/15', text: 'text-pink-400' };
+  if (m.includes('seedance')) return { bg: 'bg-violet-500/15', text: 'text-violet-400' };
+  if (m.includes('sora')) return { bg: 'bg-green-500/15', text: 'text-green-400' };
+  if (m.includes('luma') || m.includes('ray')) return { bg: 'bg-amber-500/15', text: 'text-amber-400' };
+  if (m.includes('animation') || m.includes('remotion')) return { bg: 'bg-fuchsia-500/15', text: 'text-fuchsia-400' };
   if (m.includes('ideogram')) return { bg: 'bg-orange-500/15', text: 'text-orange-400' };
   if (m.includes('leonardo')) return { bg: 'bg-emerald-500/15', text: 'text-emerald-400' };
   return { bg: 'bg-[var(--an-accent-bg)]', text: 'text-[var(--an-accent-text)]' };
@@ -419,6 +424,68 @@ function PromptStudioNodeComponent({ id, data, selected }: NodeProps<PromptStudi
     }
   }, [inputValue]);
 
+  // ── Gather connected canvas nodes for context ──
+  const getCanvasContext = useCallback((): { connectedNodes: ConnectedNodeInfo[] } | undefined => {
+    const store = useCanvasStore.getState();
+    const edges = store.edges;
+    const nodes = store.nodes;
+    const connected: ConnectedNodeInfo[] = [];
+
+    // Downstream: edges where this node is the source
+    for (const edge of edges) {
+      if (edge.source !== id) continue;
+      const targetNode = nodes.find(n => n.id === edge.target);
+      if (!targetNode) continue;
+      const info: ConnectedNodeInfo = {
+        direction: 'downstream',
+        handleId: edge.targetHandle || '',
+        nodeType: targetNode.type || 'unknown',
+      };
+      const d = targetNode.data as Record<string, unknown>;
+      if (targetNode.type === 'pluginNode') {
+        info.pluginId = d.pluginId as string;
+        info.name = (d.name as string) || (d.pluginId as string);
+      } else if (targetNode.type === 'imageGenerator') {
+        info.name = 'Image Generator';
+        info.detail = d.model as string;
+      } else if (targetNode.type === 'videoGenerator') {
+        info.name = 'Video Generator';
+        info.detail = d.model as string;
+      } else if (targetNode.type === 'text') {
+        info.name = 'Text Node';
+      }
+      connected.push(info);
+    }
+
+    // Upstream: edges where this node is the target
+    for (const edge of edges) {
+      if (edge.target !== id) continue;
+      const sourceNode = nodes.find(n => n.id === edge.source);
+      if (!sourceNode) continue;
+      const info: ConnectedNodeInfo = {
+        direction: 'upstream',
+        handleId: edge.sourceHandle || '',
+        nodeType: sourceNode.type || 'unknown',
+      };
+      const d = sourceNode.data as Record<string, unknown>;
+      if (sourceNode.type === 'pluginNode') {
+        info.pluginId = d.pluginId as string;
+        info.name = (d.name as string) || (d.pluginId as string);
+      } else if (sourceNode.type === 'media') {
+        info.name = 'Media';
+        info.detail = (d.mediaType as string) || 'image';
+      } else if (sourceNode.type === 'imageGenerator') {
+        info.name = 'Image Generator';
+        info.detail = d.model as string;
+      } else if (sourceNode.type === 'text') {
+        info.name = 'Text Node';
+      }
+      connected.push(info);
+    }
+
+    return connected.length > 0 ? { connectedNodes: connected } : undefined;
+  }, [id]);
+
   // ── Active prompt (for output edge) ──
   const activePromptId = ls.activePromptId || ls.generatedPrompts[ls.generatedPrompts.length - 1]?.id;
 
@@ -563,7 +630,8 @@ function PromptStudioNodeComponent({ id, data, selected }: NodeProps<PromptStudi
       setLs(prev => ({ ...prev, streamingText: undefined }));
     };
 
-    await stream(agentMessages, { nodeId: id, phase: 'generating' }, {
+    const canvasContext = getCanvasContext();
+    await stream(agentMessages, { nodeId: id, phase: 'generating', canvasContext }, {
       onTextDelta: (delta) => {
         streamingAssistantText += delta;
         setLs(prev => ({ ...prev, streamingText: streamingAssistantText }));

@@ -26,6 +26,9 @@ image:
   nanobanana-pro:
     fal_cost: 0.15
     credits: 5
+  nanobanana-2:
+    fal_cost: 0.08
+    credits: 3
   recraft-v3:
     fal_cost: 0.04
     credits: 2

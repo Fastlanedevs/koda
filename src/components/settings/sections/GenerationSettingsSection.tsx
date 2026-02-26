@@ -7,6 +7,7 @@ const imageModels = [
   { id: 'flux-schnell', name: 'Flux Schnell', description: 'Fast, good quality' },
   { id: 'flux-pro', name: 'Flux Pro', description: 'High quality, slower' },
   { id: 'nanobanana-pro', name: 'NanoBanana Pro', description: 'Artistic style' },
+  { id: 'nanobanana-2', name: 'Nano Banana 2', description: '4x faster, low cost' },
   { id: 'recraft-v3', name: 'Recraft V3', description: 'Design focused' },
   { id: 'ideogram-v3', name: 'Ideogram V3', description: 'Text rendering' },
   { id: 'sd-3.5', name: 'Stable Diffusion 3.5', description: 'Versatile' },
