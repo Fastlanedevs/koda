@@ -119,9 +119,9 @@ function SvgStudioNodeComponent({ id, data, selected }: NodeProps<Node<PluginNod
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: state.mode,
+          action: (state.svg || state.sourceSvg) ? 'edit' : 'generate',
           prompt: state.prompt.trim(),
-          svg: state.mode === 'edit' ? state.sourceSvg : undefined,
+          svg: state.svg || state.sourceSvg || undefined,
           persistAsset: true,
           nodeId: id,
         }),
@@ -232,36 +232,10 @@ function SvgStudioNodeComponent({ id, data, selected }: NodeProps<Node<PluginNod
           </div>
         </div>
 
-        {state.mode === 'edit' && (
-          <div className="px-3 pb-2">
-            <div className="node-content-area p-2">
-              <textarea
-                value={state.sourceSvg || ''}
-                onChange={(e) => updateState({ sourceSvg: e.target.value })}
-                placeholder="Paste existing SVG to edit"
-                className="w-full min-h-[90px] text-[10px] bg-transparent border-none text-muted-foreground resize-none font-mono focus:outline-none"
-                aria-label="Source SVG"
-              />
-            </div>
-          </div>
-        )}
-
         {state.error && <div className="text-xs text-red-400 px-4 pb-2">{state.error}</div>}
 
         {/* Bottom Toolbar */}
         <div className="flex items-center gap-1.5 px-3 py-2.5 node-bottom-toolbar">
-          <button
-            onClick={() => updateState({ mode: 'generate' })}
-            className={`h-7 px-2 text-xs rounded-md transition-colors ${state.mode === 'generate' ? 'bg-muted/80 text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}
-          >
-            Generate
-          </button>
-          <button
-            onClick={() => updateState({ mode: 'edit' })}
-            className={`h-7 px-2 text-xs rounded-md transition-colors ${state.mode === 'edit' ? 'bg-muted/80 text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}
-          >
-            Edit
-          </button>
           {state.phase === 'ready' && (
             <button
               onClick={() => updateState({ svg: undefined, metadata: undefined, asset: undefined, phase: 'idle' })}
