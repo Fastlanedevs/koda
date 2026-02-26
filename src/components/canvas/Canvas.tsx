@@ -186,6 +186,10 @@ export function Canvas() {
         if (targetNode.type === 'videoGenerator') {
           return true;
         }
+        // For plugin nodes with image reference handles (e.g. prompt-studio, svg-studio)
+        if (targetNode.type === 'pluginNode') {
+          return true;
+        }
         return false;
       }
 
