@@ -64,6 +64,7 @@ export function StoryboardSandbox({ canvas, onClose, notify }: AgentSandboxProps
         sceneCount,
         style,
         mode: 'transition', // Default to transition mode in legacy sandbox
+        targetVideoModel: 'veo',
       };
 
       const response = await fetch('/api/plugins/storyboard', {

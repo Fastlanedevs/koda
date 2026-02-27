@@ -196,7 +196,7 @@ function MediaNodeComponent({ id, data, selected }: NodeProps<MediaNodeType>) {
         className={`
           w-[280px] rounded-2xl overflow-hidden
           transition-all duration-150
-          ${selected ? 'node-card-selected' : 'node-card'}
+          ${selected ? 'node-card node-card-selected' : 'node-card'}
         `}
       >
         {/* Content Area */}

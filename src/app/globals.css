@@ -374,6 +374,7 @@ select {
 }
 
 .node-card-selected {
+  background-color: var(--node-card-bg);
   border: 2.5px solid var(--node-border-selected) !important;
   box-shadow: var(--node-shadow-selected) !important;
 }

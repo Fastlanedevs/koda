@@ -29,6 +29,13 @@ interface AudioModelConfig {
 }
 
 interface AnimationModelConfig {
+  fal_cost?: number;
+  fal_cost_per_sec?: number;
+  base_duration?: number;
+  credits: number;
+}
+
+interface SvgModelConfig {
   fal_cost: number;
   credits: number;
 }
@@ -39,10 +46,11 @@ interface CostConfig {
   image: Record<string, ImageModelConfig>;
   video: Record<string, VideoModelConfig>;
   audio: Record<string, AudioModelConfig>;
+  svg: Record<string, SvgModelConfig>;
   animation: Record<string, AnimationModelConfig>;
 }
 
-export type GenerationType = 'image' | 'video' | 'audio' | 'animation';
+export type GenerationType = 'image' | 'video' | 'audio' | 'svg' | 'animation';
 
 export interface CreditCostParams {
   model: string;
@@ -108,9 +116,20 @@ export function getCreditCost(
     return modelConfig.credits;
   }
 
+  if (type === 'svg') {
+    const modelConfig = config.svg[model];
+    if (!modelConfig) return 2;
+    return modelConfig.credits;
+  }
+
   if (type === 'animation') {
     const modelConfig = config.animation[model];
     if (!modelConfig) return 5;
+    // Per-second scaling: 1 credit/sec (5 credits base for 5s)
+    if (modelConfig.fal_cost_per_sec && modelConfig.base_duration && duration) {
+      const scale = duration / modelConfig.base_duration;
+      return Math.max(modelConfig.credits, Math.ceil(modelConfig.credits * scale));
+    }
     return modelConfig.credits;
   }
 

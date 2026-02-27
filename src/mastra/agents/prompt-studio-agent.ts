@@ -12,6 +12,8 @@ import { PROMPT_STUDIO_MODEL } from '../models';
 import {
   setThinkingTool,
   generatePromptTool,
+  askQuestionsTool,
+  webSearchTool,
 } from '../tools/prompt-studio';
 
 export const promptStudioAgent = new Agent({
@@ -22,5 +24,7 @@ export const promptStudioAgent = new Agent({
   tools: {
     set_thinking: setThinkingTool,
     generate_prompt: generatePromptTool,
+    ask_questions: askQuestionsTool,
+    search_web: webSearchTool,
   },
 });

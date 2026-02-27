@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { fal } from '@fal-ai/client';
-import { FAL_VIDEO_MODELS, XSKILL_VIDEO_MODELS, VIDEO_MODEL_PROVIDERS, type VideoModelType } from '@/lib/types';
+import { FAL_VIDEO_MODELS, XSKILL_VIDEO_MODELS, VIDEO_MODEL_PROVIDERS, resolveAutoVideoModel, type VideoModelType } from '@/lib/types';
 import { getVideoModelAdapter, type VideoGenerateRequest } from '@/lib/model-adapters';
 import { saveGeneratedVideo } from '@/lib/video-storage';
 import { getAssetStorageType, getExtensionFromUrl, type AssetStorageProvider } from '@/lib/assets';
@@ -162,7 +162,7 @@ export const POST = withCredits(
     const normalizedVideoUrl = normalizeMediaUrl(inputVideoUrl, request);
     const normalizedAudioUrl = normalizeMediaUrl(inputAudioUrl, request);
 
-    const modelType = model as VideoModelType;
+    const modelType = resolveAutoVideoModel(model as VideoModelType);
     const provider = VIDEO_MODEL_PROVIDERS[modelType] || 'fal';
     const { canvasId, nodeId } = body;
 

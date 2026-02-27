@@ -2,4 +2,5 @@
  * Prompt Studio Tools — barrel export
  */
 
-export { setThinkingTool, generatePromptTool } from './ui-tools';
+export { setThinkingTool, generatePromptTool, askQuestionsTool } from './ui-tools';
+export { webSearchTool } from './web-search-tool';

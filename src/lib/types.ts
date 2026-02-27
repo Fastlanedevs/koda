@@ -79,16 +79,23 @@ export const IDEOGRAM_STYLE_LABELS: Record<IdeogramStyle, string> = {
 } as const;
 
 // All supported model types
-export type ImageModelType = 'flux-schnell' | 'flux-pro' | 'nanobanana-pro' | 'recraft-v3' | 'ideogram-v3' | 'sd-3.5';
+export type ImageModelType = 'auto' | 'flux-schnell' | 'flux-pro' | 'flux-2-pro' | 'flux-2-max' | 'flux-kontext' | 'nanobanana-pro' | 'nanobanana-2' | 'recraft-v3' | 'recraft-v4' | 'seedream-5' | 'ideogram-v3' | 'sd-3.5';
+
 
 // Enabled models - comment/uncomment to toggle visibility in UI
+// 'auto' is always available and not in this array
 export const ENABLED_IMAGE_MODELS: ImageModelType[] = [
   'flux-schnell',
   'flux-pro',
+  'flux-2-pro',
+  'flux-2-max',
+  'flux-kontext',
   'nanobanana-pro',
+  'nanobanana-2',
   'recraft-v3',
+  'recraft-v4',
+  'seedream-5',
   'ideogram-v3',
-  'sd-3.5',
 ];
 
 // Image Generator Node
@@ -249,7 +256,7 @@ export const ASPECT_TO_FLUX_SIZE: Record<string, FluxImageSize> = {
 
 // Get dimensions for display (approximation based on aspect ratio)
 export const getApproxDimensions = (aspectRatio: AspectRatio, model: string, resolution?: NanoBananaResolution) => {
-  if (model === 'nanobanana-pro') {
+  if (model === 'nanobanana-pro' || model === 'nanobanana-2') {
     const baseSize = resolution === '4K' ? 4096 : resolution === '2K' ? 2048 : 1024;
     const [w, h] = aspectRatio.split(':').map(Number);
     const ratio = w / h;
@@ -274,10 +281,17 @@ export const ASPECT_RATIO_DIMENSIONS = {
 
 // Model IDs for Fal
 export const FAL_MODELS: Record<ImageModelType, string> = {
+  'auto': '', // resolved at runtime
   'flux-schnell': 'fal-ai/flux/schnell',
   'flux-pro': 'fal-ai/flux-pro',
+  'flux-2-pro': 'fal-ai/flux-2-pro',
+  'flux-2-max': 'fal-ai/flux-2-max',
+  'flux-kontext': 'fal-ai/flux-pro/kontext',
   'nanobanana-pro': 'fal-ai/nano-banana-pro',
+  'nanobanana-2': 'fal-ai/nano-banana-2',
   'recraft-v3': 'fal-ai/recraft-v3',
+  'recraft-v4': 'fal-ai/recraft/v4/text-to-image',
+  'seedream-5': 'fal-ai/bytedance/seedream/v5/lite/text-to-image',
   'ideogram-v3': 'fal-ai/ideogram/v3',
   'sd-3.5': 'fal-ai/stable-diffusion-v35-large',
 } as const;
@@ -310,6 +324,15 @@ export interface ModelCapabilities {
 }
 
 export const MODEL_CAPABILITIES: Record<ImageModelType, ModelCapabilities> = {
+  'auto': {
+    label: 'Auto',
+    maxImages: 4,
+    inputType: 'text-and-image',
+    supportsReferences: true,
+    aspectRatios: ['1:1', '4:3', '3:4', '16:9', '9:16', '3:2', '2:3', '21:9', '5:4', '4:5'],
+    resolutions: ['1K', '2K', '4K'],
+    description: 'Best model for the task',
+  },
   'flux-schnell': {
     label: 'Flux Schnell',
     maxImages: 4,
@@ -337,6 +360,15 @@ export const MODEL_CAPABILITIES: Record<ImageModelType, ModelCapabilities> = {
     aspectRatios: ['1:1', '4:3', '3:4', '16:9', '9:16', '3:2', '2:3', '21:9', '5:4', '4:5'],
     resolutions: ['1K', '2K', '4K'],
     description: 'Up to 14 style refs',
+  },
+  'nanobanana-2': {
+    label: 'Nano Banana 2',
+    maxImages: 4,
+    inputType: 'text-and-image',
+    supportsReferences: true,
+    aspectRatios: ['1:1', '4:3', '3:4', '16:9', '9:16', '3:2', '2:3', '21:9', '5:4', '4:5'],
+    resolutions: ['1K', '2K', '4K'],
+    description: '4x faster, low cost',
   },
   'recraft-v3': {
     label: 'Recraft V3',
@@ -366,6 +398,49 @@ export const MODEL_CAPABILITIES: Record<ImageModelType, ModelCapabilities> = {
     supportsAdvancedParams: true,
     description: 'Open model, img2img',
   },
+  'flux-2-pro': {
+    label: 'FLUX.2 Pro',
+    maxImages: 4,
+    inputType: 'text-only',
+    supportsReferences: false,
+    aspectRatios: ['1:1', '4:3', '3:4', '16:9', '9:16'],
+    imageSizes: ['square_hd', 'square', 'landscape_4_3', 'portrait_4_3', 'landscape_16_9', 'portrait_16_9'],
+    description: 'Next-gen Flux, high quality',
+  },
+  'flux-2-max': {
+    label: 'FLUX.2 Max',
+    maxImages: 4,
+    inputType: 'text-only',
+    supportsReferences: false,
+    aspectRatios: ['1:1', '4:3', '3:4', '16:9', '9:16'],
+    imageSizes: ['square_hd', 'square', 'landscape_4_3', 'portrait_4_3', 'landscape_16_9', 'portrait_16_9'],
+    description: 'Max quality Flux',
+  },
+  'flux-kontext': {
+    label: 'Flux Kontext',
+    maxImages: 4,
+    inputType: 'text-and-image',
+    supportsReferences: true,
+    aspectRatios: ['1:1', '4:3', '3:4', '16:9', '9:16'],
+    description: 'Text + image context editing',
+  },
+  'seedream-5': {
+    label: 'Seedream 5.0',
+    maxImages: 4,
+    inputType: 'text-only',
+    supportsReferences: false,
+    aspectRatios: ['1:1', '4:3', '3:4', '16:9', '9:16'],
+    description: 'ByteDance image gen',
+  },
+  'recraft-v4': {
+    label: 'Recraft V4',
+    maxImages: 4,
+    inputType: 'text-only',
+    supportsReferences: false,
+    aspectRatios: ['1:1', '4:3', '3:4', '16:9', '9:16'],
+    styles: ['realistic_image', 'digital_illustration', 'vector_illustration'] as const,
+    description: 'Latest Recraft, versatile styles',
+  },
 } as const;
 
 // ============================================
@@ -374,6 +449,7 @@ export const MODEL_CAPABILITIES: Record<ImageModelType, ModelCapabilities> = {
 
 // Video model types
 export type VideoModelType =
+  | 'auto'
   | 'veo-3'
   | 'veo-3.1-i2v'
   | 'veo-3.1-fast-i2v'
@@ -397,9 +473,27 @@ export type VideoModelType =
   | 'seedance-2.0-i2v'
   | 'seedance-2.0-fast-t2v'
   | 'seedance-2.0-fast-i2v'
+  | 'wan-2.6-t2v'
+  | 'wan-2.6-i2v'
+  | 'hailuo-02-t2v'
+  | 'hailuo-02-i2v'
+  | 'hailuo-2.3-t2v'
+  | 'hailuo-2.3-i2v'
   | 'luma-ray2'
   | 'minimax-video'
   | 'runway-gen3';
+
+// Auto model constants — resolved at runtime
+export const AUTO_IMAGE_MODEL: ImageModelType = 'nanobanana-2';
+export const AUTO_VIDEO_MODEL: VideoModelType = 'seedance-2.0-fast-t2v';
+
+// Resolve 'auto' to the actual default model
+export function resolveAutoModel(model: ImageModelType): ImageModelType {
+  return model === 'auto' ? AUTO_IMAGE_MODEL : model;
+}
+export function resolveAutoVideoModel(model: VideoModelType): VideoModelType {
+  return model === 'auto' ? AUTO_VIDEO_MODEL : model;
+}
 
 // Video duration options (in seconds)
 export type VideoDuration = 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 15;
@@ -457,6 +551,7 @@ export interface VideoModelCapabilities {
 }
 
 // Enabled video models - comment/uncomment to toggle visibility in UI
+// 'auto' is always available and not in this array
 export const ENABLED_VIDEO_MODELS: VideoModelType[] = [
   'veo-3',
   'veo-3.1-i2v',
@@ -481,12 +576,29 @@ export const ENABLED_VIDEO_MODELS: VideoModelType[] = [
   'seedance-2.0-i2v',
   'seedance-2.0-fast-t2v',
   'seedance-2.0-fast-i2v',
+  'wan-2.6-t2v',
+  'wan-2.6-i2v',
+  'hailuo-02-t2v',
+  'hailuo-02-i2v',
+  'hailuo-2.3-t2v',
+  'hailuo-2.3-i2v',
   'luma-ray2',
   'minimax-video',
   'runway-gen3',
 ];
 
 export const VIDEO_MODEL_CAPABILITIES: Record<VideoModelType, VideoModelCapabilities> = {
+  'auto': {
+    label: 'Auto',
+    group: 'Auto',
+    inputType: 'text-only',
+    inputMode: 'text',
+    durations: [4, 5, 6, 7, 8, 9, 10, 11, 12, 15],
+    defaultDuration: 5,
+    aspectRatios: ['16:9', '9:16', '1:1'],
+    supportsAudio: true,
+    description: 'Best model for the task',
+  },
   'veo-3': {
     label: 'Veo 3',
     group: 'Google Veo',
@@ -790,6 +902,68 @@ export const VIDEO_MODEL_CAPABILITIES: Record<VideoModelType, VideoModelCapabili
     aspectRatios: ['16:9', '9:16'],
     description: 'Premium image-to-video',
   },
+  'wan-2.6-t2v': {
+    label: 'Wan 2.6 Text',
+    group: 'Wan',
+    inputType: 'text-only',
+    inputMode: 'text',
+    durations: [3, 5, 7, 9],
+    defaultDuration: 5,
+    aspectRatios: ['16:9', '9:16', '1:1'],
+    resolutions: ['720p', '1080p'],
+    description: 'High quality text-to-video',
+  },
+  'wan-2.6-i2v': {
+    label: 'Wan 2.6 Image',
+    group: 'Wan',
+    inputType: 'text-and-image',
+    inputMode: 'single-image',
+    durations: [3, 5, 7, 9],
+    defaultDuration: 5,
+    aspectRatios: ['16:9', '9:16', '1:1'],
+    resolutions: ['720p', '1080p'],
+    description: 'Image-to-video generation',
+  },
+  'hailuo-02-t2v': {
+    label: 'Hailuo 02 Text',
+    group: 'Hailuo',
+    inputType: 'text-only',
+    inputMode: 'text',
+    durations: [5],
+    defaultDuration: 5,
+    aspectRatios: ['16:9', '9:16', '1:1'],
+    description: 'Hailuo 02 Pro text-to-video',
+  },
+  'hailuo-02-i2v': {
+    label: 'Hailuo 02 Image',
+    group: 'Hailuo',
+    inputType: 'text-and-image',
+    inputMode: 'single-image',
+    durations: [5],
+    defaultDuration: 5,
+    aspectRatios: ['16:9', '9:16', '1:1'],
+    description: 'Hailuo 02 Pro image-to-video',
+  },
+  'hailuo-2.3-t2v': {
+    label: 'Hailuo 2.3 Text',
+    group: 'Hailuo',
+    inputType: 'text-only',
+    inputMode: 'text',
+    durations: [5],
+    defaultDuration: 5,
+    aspectRatios: ['16:9', '9:16', '1:1'],
+    description: 'Hailuo 2.3 Fast text-to-video',
+  },
+  'hailuo-2.3-i2v': {
+    label: 'Hailuo 2.3 Image',
+    group: 'Hailuo',
+    inputType: 'text-and-image',
+    inputMode: 'single-image',
+    durations: [5],
+    defaultDuration: 5,
+    aspectRatios: ['16:9', '9:16', '1:1'],
+    description: 'Hailuo 2.3 Fast image-to-video',
+  },
 } as const;
 
 // Video model API provider
@@ -797,6 +971,7 @@ export type VideoModelProvider = 'fal' | 'xskill';
 
 /** Which API provider each model uses */
 export const VIDEO_MODEL_PROVIDERS: Record<VideoModelType, VideoModelProvider> = {
+  'auto': 'fal', // resolved at runtime
   'veo-3': 'fal',
   'veo-3.1-i2v': 'fal',
   'veo-3.1-fast-i2v': 'fal',
@@ -821,6 +996,12 @@ export const VIDEO_MODEL_PROVIDERS: Record<VideoModelType, VideoModelProvider> =
   'seedance-2.0-fast-t2v': 'xskill',
   'seedance-2.0-fast-i2v': 'xskill',
   'luma-ray2': 'fal',
+  'wan-2.6-t2v': 'fal',
+  'wan-2.6-i2v': 'fal',
+  'hailuo-02-t2v': 'fal',
+  'hailuo-02-i2v': 'fal',
+  'hailuo-2.3-t2v': 'fal',
+  'hailuo-2.3-i2v': 'fal',
   'minimax-video': 'fal',
   'runway-gen3': 'fal',
 } as const;
@@ -847,6 +1028,12 @@ export const FAL_VIDEO_MODELS: Partial<Record<VideoModelType, string>> = {
   'seedance-1.0-pro-t2v': 'fal-ai/bytedance/seedance/v1/pro/text-to-video',
   'seedance-1.0-pro-i2v': 'fal-ai/bytedance/seedance/v1/pro/image-to-video',
   'luma-ray2': 'fal-ai/luma-dream-machine',
+  'wan-2.6-t2v': 'fal-ai/wan/v2.6/text-to-video',
+  'wan-2.6-i2v': 'fal-ai/wan/v2.6/image-to-video',
+  'hailuo-02-t2v': 'fal-ai/minimax/hailuo-02/pro/text-to-video',
+  'hailuo-02-i2v': 'fal-ai/minimax/hailuo-02/pro/image-to-video',
+  'hailuo-2.3-t2v': 'fal-ai/minimax/hailuo-2.3-fast/pro/text-to-video',
+  'hailuo-2.3-i2v': 'fal-ai/minimax/hailuo-2.3-fast/pro/image-to-video',
   'minimax-video': 'fal-ai/minimax-video/image-to-video',
   'runway-gen3': 'fal-ai/runway-gen3/turbo/image-to-video',
 } as const;
@@ -865,6 +1052,9 @@ export const XSKILL_VIDEO_MODELS: Partial<Record<VideoModelType, string>> = {
 
 // Storyboard mode
 export type StoryboardMode = 'transition' | 'single-shot';
+
+// Storyboard target video model family
+export type StoryboardVideoModel = 'veo' | 'kling' | 'seedance';
 
 // Storyboard visual style
 export type StoryboardStyle = 'cinematic' | 'anime' | 'photorealistic' | 'illustrated' | 'commercial';
@@ -899,6 +1089,8 @@ export interface StoryboardDraft {
   id: string;
   scenes: StoryboardSceneData[];
   summary: string;
+  productIdentity?: string;
+  characterIdentity?: string;
   createdAt: string;
   seq: number;
 }
@@ -913,6 +1105,14 @@ export interface StoryboardSceneData {
   mood: string;
   transition?: string;  // For transition mode (motion between scenes)
   motion?: string;      // For single-shot mode (motion within scene)
+  negativePrompt?: string;  // What to exclude from generation
+  audioDirection?: string;  // Sound design cues (SFX, ambient, dialogue)
+}
+
+// Storyboard draft identity fields
+export interface StoryboardDraftIdentity {
+  productIdentity?: string;
+  characterIdentity?: string;
 }
 
 // Storyboard Node Data
@@ -925,6 +1125,7 @@ export interface StoryboardNodeData extends Record<string, unknown> {
   sceneCount: number;
   style: StoryboardStyle;
   mode: StoryboardMode;  // 'transition' for N-1 videos between frames, 'single-shot' for N independent videos
+  targetVideoModel: StoryboardVideoModel;  // Target video model family for prompt optimization
   // UI state
   viewState: StoryboardViewState;
   error?: string;
@@ -1124,3 +1325,57 @@ export const FAL_AUDIO_MODELS: Record<AudioModelType, string> = {
   'elevenlabs-tts': 'fal-ai/elevenlabs/tts/turbo-v2.5',
   'mmaudio-v2': 'fal-ai/mmaudio/v2',
 } as const;
+
+// ============================================
+// MODEL CREDIT COSTS (mirrors model-costs.yaml `credits` field — what we charge users)
+// ============================================
+
+export const IMAGE_MODEL_CREDITS: Partial<Record<ImageModelType, number>> = {
+  'flux-schnell': 1,
+  'flux-pro': 2,
+  'flux-2-pro': 1,
+  'flux-2-max': 3,
+  'flux-kontext': 2,
+  'nanobanana-pro': 5,
+  'nanobanana-2': 3,
+  'recraft-v3': 2,
+  'recraft-v4': 2,
+  'seedream-5': 2,
+  'ideogram-v3': 2,
+  'sd-3.5': 2,
+};
+
+export const VIDEO_MODEL_CREDITS: Partial<Record<VideoModelType, number>> = {
+  'veo-3': 30,
+  'veo-3.1-i2v': 30,
+  'veo-3.1-fast-i2v': 15,
+  'veo-3.1-ref': 30,
+  'veo-3.1-flf': 30,
+  'veo-3.1-fast-flf': 15,
+  'kling-2.6-t2v': 11,
+  'kling-2.6-i2v': 11,
+  'kling-o3-t2v': 34,
+  'kling-o3-i2v': 26,
+  'kling-o3-pro-i2v': 34,
+  'kling-3.0-t2v': 26,
+  'kling-3.0-i2v': 26,
+  'kling-3.0-pro-t2v': 34,
+  'kling-3.0-pro-i2v': 34,
+  'seedance-1.5-t2v': 4,
+  'seedance-1.5-i2v': 4,
+  'seedance-1.0-pro-t2v': 19,
+  'seedance-1.0-pro-i2v': 19,
+  'seedance-2.0-t2v': 5,
+  'seedance-2.0-i2v': 5,
+  'seedance-2.0-fast-t2v': 3,
+  'seedance-2.0-fast-i2v': 3,
+  'wan-2.6-t2v': 15,
+  'wan-2.6-i2v': 15,
+  'hailuo-02-t2v': 12,
+  'hailuo-02-i2v': 12,
+  'hailuo-2.3-t2v': 10,
+  'hailuo-2.3-i2v': 10,
+  'luma-ray2': 15,
+  'minimax-video': 15,
+  'runway-gen3': 8,
+};

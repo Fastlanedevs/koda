@@ -165,8 +165,7 @@ export function Canvas() {
         ? (sourceNode.data as Record<string, unknown>)
         : null;
       const isSvgStudioSource = sourceNode.type === 'pluginNode'
-        && sourcePluginData?.pluginId === 'svg-studio'
-        && typeof sourcePluginData?.outputUrl === 'string';
+        && sourcePluginData?.pluginId === 'svg-studio';
       const isImageSource = sourceNode.type === 'media' || sourceNode.type === 'imageGenerator' || isSvgStudioSource;
 
       // Image input handles - reference, firstFrame, lastFrame, ref2-ref8 (for multi-ref models)
@@ -187,6 +186,10 @@ export function Canvas() {
         if (targetNode.type === 'videoGenerator') {
           return true;
         }
+        // For plugin nodes with image reference handles (e.g. prompt-studio, svg-studio)
+        if (targetNode.type === 'pluginNode') {
+          return true;
+        }
         return false;
       }
 
@@ -198,9 +201,11 @@ export function Canvas() {
         }
       }
 
-      // Text handle only accepts text nodes
+      // Text handle accepts text nodes and Prompt Studio plugin
       if (connection.targetHandle === 'text') {
-        return sourceNode.type === 'text';
+        if (sourceNode.type === 'text') return true;
+        if (sourceNode.type === 'pluginNode' && (sourceNode.data as Record<string, unknown>)?.pluginId === 'prompt-studio') return true;
+        return false;
       }
 
       // Animation node video ref handles — only allow from videoGenerator, only for Remotion engine

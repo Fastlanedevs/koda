@@ -86,9 +86,17 @@ export interface PromptGeneratedAppEvent {
   parameters?: Record<string, string>;
 }
 
+export interface SearchCompleteAppEvent {
+  kind: 'search_complete';
+  searchId: string;
+  query: string;
+  results: Array<{ title: string; url: string; summary?: string; highlights?: string[] }>;
+}
+
 export type PromptStudioAppEvent =
   | ThinkingAppEvent
-  | PromptGeneratedAppEvent;
+  | PromptGeneratedAppEvent
+  | SearchCompleteAppEvent;
 
 // ============================================
 // TOOL NAME CONSTANTS
@@ -96,10 +104,12 @@ export type PromptStudioAppEvent =
 
 export const UI_TOOL_NAMES = [
   'set_thinking',
+  'ask_questions',
 ] as const;
 
 export const PROMPT_TOOL_NAMES = [
   'generate_prompt',
+  'search_web',
 ] as const;
 
 export type UIToolName = typeof UI_TOOL_NAMES[number];
@@ -110,6 +120,8 @@ export type PromptStudioToolName = UIToolName | PromptToolName;
 export const TOOL_DISPLAY_NAMES: Record<string, string> = {
   set_thinking: 'Thinking',
   generate_prompt: 'Crafting Prompt',
+  ask_questions: 'Asking',
+  search_web: 'Searching',
 };
 
 /**
@@ -121,6 +133,11 @@ export function toolCallToAppEvent(toolName: string, args: Record<string, unknow
       return {
         kind: 'thinking',
         message: args.message as string,
+      };
+    case 'search_web':
+      return {
+        kind: 'thinking',
+        message: `Searching: ${(args.query as string) || '...'}`,
       };
     default:
       return null;
@@ -143,6 +160,13 @@ export function toolResultToAppEvent(toolName: string, args: Record<string, unkn
         label: args.label as string | undefined,
         negativePrompt: args.negativePrompt as string | undefined,
         parameters: args.parameters as Record<string, string> | undefined,
+      };
+    case 'search_web':
+      return {
+        kind: 'search_complete',
+        searchId: result.searchId as string,
+        query: result.query as string,
+        results: (result.results as Array<{ title: string; url: string; summary?: string; highlights?: string[] }>) || [],
       };
     default:
       return null;

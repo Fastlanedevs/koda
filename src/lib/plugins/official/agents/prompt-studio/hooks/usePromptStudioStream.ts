@@ -13,10 +13,23 @@ import { toolCallToAppEvent, toolResultToAppEvent } from '../events';
 // Types
 // ============================================
 
+export interface ConnectedNodeInfo {
+  direction: 'upstream' | 'downstream';
+  handleId: string;
+  nodeType: string;
+  pluginId?: string;
+  name?: string;
+  /** e.g. model name for image/video generators */
+  detail?: string;
+}
+
 interface StreamContext {
   nodeId?: string;
   phase?: string;
-  presets?: string[];
+  canvasContext?: {
+    connectedNodes: ConnectedNodeInfo[];
+  };
+  referenceImages?: string[];
 }
 
 interface ToolCallEvent {

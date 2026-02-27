@@ -2,24 +2,51 @@
 
 import { memo, useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import type { Node, NodeProps } from '@xyflow/react';
-import { Handle, Position } from '@xyflow/react';
+import { Handle, Position, useUpdateNodeInternals } from '@xyflow/react';
 import type { PluginNodeData } from '@/lib/types';
 import { useCanvasStore } from '@/stores/canvas-store';
-import { PenTool, Loader2, RefreshCw, Type, ImageIcon, Code, Download, Copy, Check, Eye, CodeIcon } from 'lucide-react';
-import { createDefaultSvgStudioState, type SvgStudioNodeData, type SvgStudioState } from './types';
+import { PenTool, Play, RefreshCw, Type, ImageIcon, Code, Download, Copy, Check, Eye, CodeIcon, Square, ChevronDown, Sparkles, Loader2 } from 'lucide-react';
+import { useSettingsStore } from '@/stores/settings-store';
+import { createDefaultSvgStudioState, type SvgStudioNodeData, type SvgStudioState, type SvgStudioModel, type SvgStudioPhase } from './types';
+
+const QUIVER_ENABLED = process.env.NEXT_PUBLIC_QUIVER_ENABLED === 'true';
+
+const PHASE_LABELS: Record<SvgStudioPhase, string> = {
+  idle: '',
+  reasoning: 'Thinking...',
+  drafting: 'Drafting...',
+  generating: 'Generating SVG...',
+  finalizing: 'Finalizing...',
+  ready: '',
+  error: '',
+};
+
+const MODEL_OPTIONS: Array<{ value: SvgStudioModel; label: string; credits: number }> = [
+  { value: 'gemini', label: 'Simple', credits: 2 },
+  ...(QUIVER_ENABLED ? [{ value: 'quiver-arrow' as SvgStudioModel, label: 'Premium', credits: 10 }] : []),
+];
 
 function SvgStudioNodeComponent({ id, data, selected }: NodeProps<Node<PluginNodeData, 'pluginNode'>>) {
   const nodeData = data as unknown as SvgStudioNodeData;
   const updateNodeData = useCanvasStore((s) => s.updateNodeData);
+  const updateNodeInternals = useUpdateNodeInternals();
   const isReadOnly = useCanvasStore((s) => s.isReadOnly);
+  const addToHistory = useSettingsStore((s) => s.addToHistory);
+  const getConnectedInputs = useCanvasStore((s) => s.getConnectedInputs);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [showCode, setShowCode] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
+  const [showModelMenu, setShowModelMenu] = useState(false);
+  const [partialSvg, setPartialSvg] = useState<string | null>(null);
+  const [streamPhase, setStreamPhase] = useState<SvgStudioPhase>('idle');
+  const [isEnhancing, setIsEnhancing] = useState(false);
   const downloadMenuRef = useRef<HTMLDivElement>(null);
+  const modelMenuRef = useRef<HTMLDivElement>(null);
   const [nodeName, setNodeName] = useState(nodeData.name || 'SVG Studio');
   const nameInputRef = useRef<HTMLInputElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (isEditingName && nameInputRef.current) {
@@ -39,6 +66,17 @@ function SvgStudioNodeComponent({ id, data, selected }: NodeProps<Node<PluginNod
     return () => document.removeEventListener('mousedown', handleClick);
   }, [showDownloadMenu]);
 
+  useEffect(() => {
+    if (!showModelMenu) return;
+    const handleClick = (e: MouseEvent) => {
+      if (modelMenuRef.current && !modelMenuRef.current.contains(e.target as globalThis.Node)) {
+        setShowModelMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showModelMenu]);
+
   const handleNameSubmit = useCallback(() => {
     setIsEditingName(false);
     if (nodeName.trim() && nodeName !== (nodeData.name || 'SVG Studio')) {
@@ -51,6 +89,11 @@ function SvgStudioNodeComponent({ id, data, selected }: NodeProps<Node<PluginNod
     if (!nodeData.state) return base;
     return { ...base, ...nodeData.state };
   }, [nodeData.state]);
+
+  // Re-sync handle positions when node content changes size
+  useEffect(() => {
+    updateNodeInternals(id);
+  }, [id, state.phase, showCode, partialSvg, updateNodeInternals]);
 
   const updateState = (patch: Partial<SvgStudioState>) => {
     updateNodeData(id, {
@@ -102,53 +145,192 @@ function SvgStudioNodeComponent({ id, data, selected }: NodeProps<Node<PluginNod
     setShowDownloadMenu(false);
   }, [state.svg, nodeData.name]);
 
+  const cancelGeneration = useCallback(() => {
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
+    }
+  }, []);
+
+  const enhancePrompt = useCallback(async () => {
+    if (!state.prompt.trim() || isEnhancing || isSubmitting) return;
+    setIsEnhancing(true);
+    try {
+      const res = await fetch('/api/agents/enhance-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: state.prompt.trim(), type: 'svg' }),
+      });
+      if (!res.ok) throw new Error('Enhancement failed');
+      const data = await res.json();
+      if (data.enhancedPrompt) {
+        updateState({ prompt: data.enhancedPrompt });
+      }
+    } catch (err) {
+      console.error('[svg-studio] Enhance prompt failed:', err);
+    } finally {
+      setIsEnhancing(false);
+    }
+  }, [state.prompt, isEnhancing, isSubmitting, updateState]);
+
   const submit = async () => {
     if (!state.prompt.trim() || isSubmitting) return;
 
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setIsSubmitting(true);
-    updateState({ phase: 'working', error: undefined });
+    setPartialSvg(null);
+    setStreamPhase('generating');
+    updateState({ phase: 'generating', error: undefined, partialSvg: undefined });
+
+    const modelName = state.model || 'gemini';
+
+    // Resolve connected edge inputs
+    const connectedInputs = getConnectedInputs(id);
+    const prompt = connectedInputs.textContent
+      ? `${connectedInputs.textContent}\n\n${state.prompt.trim()}`
+      : state.prompt.trim();
+    const references = connectedInputs.referenceUrl ? [connectedInputs.referenceUrl] : undefined;
 
     try {
-      const res = await fetch('/api/plugins/svg-studio', {
+      const res = await fetch('/api/plugins/svg-studio/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: state.mode,
-          prompt: state.prompt.trim(),
-          svg: state.mode === 'edit' ? state.sourceSvg : undefined,
+          action: (state.svg || state.sourceSvg) ? 'edit' : 'generate',
+          prompt,
+          model: modelName,
+          svg: state.svg || state.sourceSvg || undefined,
+          references,
           persistAsset: true,
           nodeId: id,
         }),
+        signal: controller.signal,
       });
 
-      const payload = await res.json();
-      if (!res.ok || !payload?.success) {
-        throw new Error(payload?.error || 'SVG generation failed');
+      if (!res.ok) {
+        const errorBody = await res.json().catch(() => ({}));
+        throw new Error(
+          (errorBody as Record<string, unknown>)?.error as string
+          || (errorBody as Record<string, unknown>)?.message as string
+          || `HTTP ${res.status}`
+        );
       }
 
-      updateNodeData(id, {
-        outputUrl: payload.asset?.url,
-        outputMimeType: payload.asset?.mimeType ?? 'image/svg+xml',
-        outputType: 'image',
-        outputSvgCode: payload.svg,
-      });
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error('No response stream');
 
-      updateState({
-        phase: 'ready',
-        svg: payload.svg,
-        metadata: payload.metadata,
-        asset: payload.asset,
-        error: undefined,
-      });
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        let currentEvent = '';
+        for (const line of lines) {
+          if (line.startsWith('event: ')) {
+            currentEvent = line.slice(7).trim();
+          } else if (line.startsWith('data: ')) {
+            const dataStr = line.slice(6);
+            try {
+              const eventData = JSON.parse(dataStr) as Record<string, unknown>;
+
+              switch (currentEvent) {
+                case 'phase': {
+                  const phase = eventData.phase as SvgStudioPhase;
+                  setStreamPhase(phase);
+                  break;
+                }
+                case 'svg-update': {
+                  const svg = eventData.svg as string;
+                  if (svg) setPartialSvg(svg);
+                  break;
+                }
+                case 'complete': {
+                  const svg = eventData.svg as string;
+                  const metadata = eventData.metadata as SvgStudioState['metadata'];
+                  const asset = eventData.asset as SvgStudioState['asset'];
+
+                  setPartialSvg(null);
+
+                  updateNodeData(id, {
+                    outputUrl: asset?.url,
+                    outputMimeType: asset?.mimeType ?? 'image/svg+xml',
+                    outputType: 'image',
+                    outputSvgCode: svg,
+                  });
+
+                  updateState({
+                    phase: 'ready',
+                    svg,
+                    metadata,
+                    asset,
+                    partialSvg: undefined,
+                    error: undefined,
+                  });
+
+                  addToHistory({
+                    type: 'svg',
+                    prompt: state.prompt.trim(),
+                    model: modelName === 'quiver-arrow' ? 'quiver-arrow' : 'gemini-3.1-pro-preview',
+                    status: 'completed',
+                    result: { urls: asset?.url ? [asset.url] : [] },
+                  });
+                  break;
+                }
+                case 'error': {
+                  throw new Error(eventData.error as string || 'SVG generation failed');
+                }
+              }
+            } catch (parseErr) {
+              // If it's a thrown error from the switch, re-throw
+              if (parseErr instanceof Error && parseErr.message !== 'SVG generation failed') {
+                // Check if it's from our switch vs JSON.parse
+                if (currentEvent === 'error' || currentEvent === 'complete') {
+                  throw parseErr;
+                }
+              }
+              // Otherwise ignore malformed SSE lines
+            }
+            currentEvent = '';
+          }
+        }
+      }
     } catch (err) {
-      updateState({
-        phase: 'error',
-        error: err instanceof Error ? err.message : 'SVG generation failed',
-      });
+      if ((err as Error)?.name === 'AbortError') {
+        updateState({ phase: 'idle', error: undefined, partialSvg: undefined });
+      } else {
+        const errorMessage = err instanceof Error ? err.message : 'SVG generation failed';
+        updateState({ phase: 'error', error: errorMessage, partialSvg: undefined });
+
+        addToHistory({
+          type: 'svg',
+          prompt: state.prompt.trim() || '(no prompt)',
+          model: modelName === 'quiver-arrow' ? 'quiver-arrow' : 'gemini-3.1-pro-preview',
+          status: 'failed',
+          error: errorMessage,
+        });
+      }
     } finally {
       setIsSubmitting(false);
+      setPartialSvg(null);
+      setStreamPhase('idle');
+      abortRef.current = null;
     }
   };
+
+  // The SVG to display in the preview area — partial during streaming, final when ready
+  const displaySvg = partialSvg || state.svg;
+  const selectedModel = MODEL_OPTIONS.find((m) => m.value === state.model) || MODEL_OPTIONS[0];
+  const connectedInputs = getConnectedInputs(id);
+  const hasReference = !!connectedInputs.referenceUrl;
+  const hasTextInput = !!connectedInputs.textContent;
 
   return (
     <div>
@@ -182,66 +364,168 @@ function SvgStudioNodeComponent({ id, data, selected }: NodeProps<Node<PluginNod
         )}
       </div>
 
-      <div className={`relative w-[420px] rounded-2xl overflow-visible ${selected ? 'node-card-selected' : 'node-card'}`}>
-        <div className="p-3 space-y-2">
-        <div className="flex gap-1">
-          <button
-            onClick={() => updateState({ mode: 'generate' })}
-            className={`px-2 py-1 text-xs rounded ${state.mode === 'generate' ? 'bg-muted text-foreground' : 'bg-muted/40 text-muted-foreground'}`}
-          >
-            Generate
-          </button>
-          <button
-            onClick={() => updateState({ mode: 'edit' })}
-            className={`px-2 py-1 text-xs rounded ${state.mode === 'edit' ? 'bg-muted text-foreground' : 'bg-muted/40 text-muted-foreground'}`}
-          >
-            Edit
-          </button>
-        </div>
+      <div className={`
+        relative w-[420px] rounded-2xl overflow-visible
+        transition-all duration-150
+        ${isSubmitting ? 'node-card animate-subtle-pulse generating-border-subtle' : ''}
+        ${!isSubmitting ? (selected ? 'node-card node-card-selected' : 'node-card') : ''}
+      `}>
+        {/* Streaming State — show partial SVG preview */}
+        {isSubmitting ? (
+          <div className="rounded-2xl" style={{ backgroundColor: 'var(--node-card-bg)' }}>
+            {/* Prompt area — mirrors idle layout */}
+            <div className="p-3">
+              <div className="node-content-area p-3 rounded-xl">
+                <p className="text-sm line-clamp-3" style={{ color: 'var(--text-secondary)' }}>
+                  {state.prompt}
+                </p>
+              </div>
+            </div>
 
-        <div className="node-content-area p-2">
-          <textarea
-            value={state.prompt}
-            onChange={(e) => updateState({ prompt: e.target.value })}
-            placeholder="Describe the SVG you want to create..."
-            className="w-full min-h-[74px] text-xs bg-transparent border-none text-foreground resize-none focus:outline-none"
-            aria-label="SVG prompt"
-          />
-        </div>
+            {/* Progressive SVG preview or shimmer */}
+            {partialSvg ? (
+              <div className="px-3 pb-3">
+                <div
+                  className="rounded-xl p-1 min-h-[200px] max-h-[300px] overflow-auto [&>svg]:w-full [&>svg]:h-full [&>svg]:min-h-[190px]"
+                  style={{ background: 'repeating-conic-gradient(#e5e5e5 0% 25%, #fff 0% 50%) 0 0 / 16px 16px' }}
+                  dangerouslySetInnerHTML={{ __html: partialSvg }}
+                />
+              </div>
+            ) : (
+              <div className="px-3 pb-3">
+                <div className="rounded-xl min-h-[160px] flex flex-col items-center justify-center gap-3" style={{ background: 'repeating-conic-gradient(hsl(var(--muted)/0.5) 0% 25%, hsl(var(--muted)/0.2) 0% 50%) 0 0 / 16px 16px' }}>
+                  <div className="text-center">
+                    <p
+                      className="text-base font-semibold bg-clip-text text-transparent"
+                      style={{
+                        backgroundImage:
+                          'linear-gradient(90deg, hsl(var(--muted-foreground)/0.45) 0%, hsl(var(--foreground)/0.95) 45%, hsl(var(--muted-foreground)/0.45) 100%)',
+                        backgroundSize: '200% 100%',
+                        animation: 'shimmer-text 2s ease-in-out infinite',
+                      }}
+                    >
+                      {PHASE_LABELS[streamPhase] || 'Generating SVG...'}
+                    </p>
+                    <p className="text-muted-foreground text-xs mt-1">
+                      {selectedModel.label} · {selectedModel.credits} credits
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
-        {state.mode === 'edit' && (
-          <div className="node-content-area p-2">
+            {/* Bottom bar — phase + stop button */}
+            <div className="flex items-center gap-1.5 px-3 py-2.5 node-bottom-toolbar rounded-b-2xl">
+              <div className="flex items-center gap-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                <p className="text-muted-foreground text-[11px]">
+                  {PHASE_LABELS[streamPhase] || 'Generating...'}
+                </p>
+              </div>
+              <div className="flex-1" />
+              <button
+                onClick={cancelGeneration}
+                className="h-8 w-8 min-w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                title="Cancel generation"
+              >
+                <Square className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+        ) : (
+        <div>
+        <div className="p-3">
+          <div className="node-content-area p-3 min-h-[120px]">
             <textarea
-              value={state.sourceSvg || ''}
-              onChange={(e) => updateState({ sourceSvg: e.target.value })}
-              placeholder="Paste existing SVG to edit"
-              className="w-full min-h-[90px] text-[10px] bg-transparent border-none text-muted-foreground resize-none font-mono focus:outline-none"
-              aria-label="Source SVG"
+              value={state.prompt}
+              onChange={(e) => updateState({ prompt: e.target.value })}
+              placeholder="Describe the SVG you want to create..."
+              className="w-full h-[90px] bg-transparent border-none text-sm resize-none focus:outline-none"
+              style={{ color: 'var(--text-secondary)' }}
+              aria-label="SVG prompt"
             />
+          </div>
+        </div>
+
+        {/* Connected input indicators */}
+        {(hasReference || hasTextInput) && (
+          <div className="flex items-center gap-1.5 px-4 pb-1.5">
+            {hasTextInput && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/15 text-yellow-500">Text connected</span>
+            )}
+            {hasReference && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-400/15 text-red-400">Reference image</span>
+            )}
           </div>
         )}
 
-        <div className="flex items-center justify-between">
+        {state.error && <div className="text-xs text-red-400 px-4 pb-2">{state.error}</div>}
+
+        {/* Bottom Toolbar */}
+        <div className="flex items-center gap-1.5 px-3 py-2.5 node-bottom-toolbar">
+          {state.phase === 'ready' && (
+            <button
+              onClick={() => updateState({ svg: undefined, metadata: undefined, asset: undefined, phase: 'idle', partialSvg: undefined })}
+              className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+              title="Reset"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+            </button>
+          )}
+
+          {/* Model selector — only visible when Quiver is enabled */}
+          {MODEL_OPTIONS.length > 1 && (
+            <div className="relative" ref={modelMenuRef}>
+              <button
+                onClick={() => setShowModelMenu((s) => !s)}
+                className="h-7 flex items-center gap-1 px-2 rounded-md text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                title="Select model"
+              >
+                <span>{selectedModel.label}</span>
+                <span className="text-[10px] opacity-60">{selectedModel.credits}cr</span>
+                <ChevronDown className="h-3 w-3" />
+              </button>
+              {showModelMenu && (
+                <div className="absolute left-0 bottom-full mb-1 z-50 min-w-[140px] rounded-md border border-border bg-popover py-0.5 shadow-lg">
+                  {MODEL_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => {
+                        updateState({ model: opt.value });
+                        setShowModelMenu(false);
+                      }}
+                      className={`flex w-full items-center justify-between gap-2 px-2.5 py-1.5 text-[11px] hover:bg-muted ${
+                        state.model === opt.value ? 'text-primary font-medium' : 'text-foreground'
+                      }`}
+                    >
+                      <span>{opt.label}</span>
+                      <span className="text-[10px] text-muted-foreground">{opt.credits} cr</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex-1" />
+          <button
+            onClick={enhancePrompt}
+            disabled={isEnhancing || isSubmitting || !state.prompt.trim()}
+            className="h-7 flex items-center gap-1 px-2 rounded-md text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-40"
+            title="Enhance prompt for better SVG results"
+          >
+            {isEnhancing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+            <span>Enhance</span>
+          </button>
           <button
             onClick={submit}
             disabled={isSubmitting || !state.prompt.trim()}
-            className="px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-xs text-white"
+            className="h-8 w-8 min-w-8 flex items-center justify-center bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg disabled:opacity-40 shrink-0 transition-all duration-200 hover:scale-105"
             aria-label="Generate SVG"
           >
-            {isSubmitting ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Run'}
+            <Play className="h-4 w-4" />
           </button>
-
-          {state.phase === 'ready' && (
-            <button
-              onClick={() => updateState({ svg: undefined, metadata: undefined, asset: undefined, phase: 'idle' })}
-              className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
-            >
-              <RefreshCw className="w-3 h-3" /> Reset
-            </button>
-          )}
         </div>
-
-        {state.error && <div className="text-xs text-red-400">{state.error}</div>}
 
         {state.svg && (
           <div className="rounded border border-border bg-muted/50 p-2 space-y-1.5">
@@ -302,13 +586,14 @@ function SvgStudioNodeComponent({ id, data, selected }: NodeProps<Node<PluginNod
                 {state.svg}
               </pre>
             ) : (
-              <div className="bg-white rounded p-1 max-h-[420px] overflow-auto">
+              <div className="rounded p-1 max-h-[420px] overflow-auto" style={{ background: 'repeating-conic-gradient(#e5e5e5 0% 25%, #fff 0% 50%) 0 0 / 16px 16px' }}>
                 <img src={`data:image/svg+xml;utf8,${encodeURIComponent(state.svg)}`} alt="SVG output" className="max-w-full h-auto" />
               </div>
             )}
           </div>
         )}
       </div>
+        )}
 
       {/* Input Handle - Text (left top) */}
       <div className="absolute -left-3 group" style={{ top: '30%', transform: 'translateY(-50%)' }}>

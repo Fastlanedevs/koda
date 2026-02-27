@@ -9,7 +9,12 @@ export const SVG_STUDIO_MAX_DIMENSION = 4096;
 export const SvgStudioRequestSchema = z.object({
   action: z.enum(['generate', 'edit']),
   prompt: z.string().min(3).max(4000),
+  model: z.enum(['gemini', 'quiver-arrow']).default('gemini'),
   svg: z.string().max(SVG_STUDIO_MAX_RAW_SIZE).optional(),
+  /** Quiver-specific: additional instructions for Arrow model */
+  instructions: z.string().max(2000).optional(),
+  /** Reference image URLs (relative or absolute) */
+  references: z.array(z.string().min(1)).max(4).optional(),
   constraints: z.object({
     width: z.number().int().min(16).max(SVG_STUDIO_MAX_DIMENSION).optional(),
     height: z.number().int().min(16).max(SVG_STUDIO_MAX_DIMENSION).optional(),
@@ -55,6 +60,13 @@ export const SvgStudioResponseSchema = z.object({
 const ALLOWED_TAGS = new Set([
   'svg', 'g', 'path', 'rect', 'circle', 'ellipse', 'line', 'polyline', 'polygon',
   'defs', 'linearGradient', 'radialGradient', 'stop', 'clipPath', 'mask', 'title', 'desc',
+  'text', 'tspan',
+  // SVG filter primitives
+  'filter', 'feGaussianBlur', 'feColorMatrix', 'feBlend', 'feComposite', 'feFlood',
+  'feMerge', 'feMergeNode', 'feOffset', 'feDropShadow', 'feMorphology', 'feTurbulence',
+  'feDisplacementMap', 'feComponentTransfer', 'feFuncR', 'feFuncG', 'feFuncB', 'feFuncA',
+  'feSpecularLighting', 'feDiffuseLighting', 'fePointLight', 'feSpotLight', 'feDistantLight',
+  'feTile', 'feConvolveMatrix',
 ]);
 
 const DISALLOWED_TAGS_RE = /<\s*\/?\s*(script|foreignObject|iframe|object|embed|audio|video|image|use)\b/i;
@@ -66,6 +78,16 @@ const SAFE_ATTRS = new Set([
   'stroke-linejoin', 'stroke-miterlimit', 'stroke-dasharray', 'stroke-dashoffset', 'opacity', 'clip-rule',
   'transform', 'offset', 'stop-color', 'stop-opacity', 'gradientUnits', 'gradientTransform',
   'mask', 'clip-path', 'aria-label', 'role',
+  // Filter attributes
+  'filter', 'result', 'in', 'in2', 'stdDeviation', 'dx', 'dy',
+  'flood-color', 'flood-opacity', 'type', 'values', 'mode', 'operator',
+  'k1', 'k2', 'k3', 'k4', 'baseFrequency', 'numOctaves', 'seed',
+  'filterUnits', 'primitiveUnits', 'radius', 'scale',
+  'xChannelSelector', 'yChannelSelector', 'surfaceScale',
+  'specularConstant', 'specularExponent', 'diffuseConstant',
+  'azimuth', 'elevation', 'tableValues', 'slope', 'intercept', 'amplitude', 'exponent',
+  'kernelMatrix', 'divisor', 'bias', 'targetX', 'targetY', 'edgeMode', 'preserveAlpha',
+  'color-interpolation-filters', 'lighting-color',
 ]);
 
 const ROOT_NUMERIC_ATTRS = ['width', 'height'] as const;
@@ -217,12 +239,68 @@ export const SVG_STUDIO_SYSTEM_PROMPT = `You are an expert SVG designer.
 Return concise, production-ready SVG markup for animation pipelines.
 Strict rules:
 - Output SVG only.
-- Use ONLY these tags: svg, g, path, rect, circle, ellipse, line, polyline, polygon, defs, linearGradient, radialGradient, stop, clipPath, mask, title, desc.
+- Use ONLY these tags: svg, g, path, rect, circle, ellipse, line, polyline, polygon, defs, linearGradient, radialGradient, stop, clipPath, mask, title, desc, filter, feGaussianBlur, feColorMatrix, feBlend, feComposite, feFlood, feMerge, feMergeNode, feOffset, feDropShadow, feMorphology, feTurbulence.
 - Never use script, foreignObject, iframe, object, embed, audio, video, image, style, use.
 - Never emit event handlers (onload/onerror/etc).
 - Prefer simple shape composition and clear layering.
 - Keep path count modest and avoid giant path data.
 `;
+
+/** System prompt for streaming mode — requests raw SVG output (no JSON wrapper) */
+export const SVG_STUDIO_STREAMING_SYSTEM_PROMPT = `You are an expert SVG designer.
+Return ONLY raw SVG markup — no JSON wrapper, no markdown fences, no explanation.
+Start your response with <svg and end with </svg>.
+Strict rules:
+- Output SVG only — nothing before <svg> or after </svg>.
+- Use ONLY these tags: svg, g, path, rect, circle, ellipse, line, polyline, polygon, defs, linearGradient, radialGradient, stop, clipPath, mask, title, desc, text, tspan, filter, feGaussianBlur, feColorMatrix, feBlend, feComposite, feFlood, feMerge, feMergeNode, feOffset, feDropShadow, feMorphology, feTurbulence.
+- Never use script, foreignObject, iframe, object, embed, audio, video, image, style, use.
+- Never emit event handlers (onload/onerror/etc).
+- Prefer simple shape composition and clear layering.
+- Keep path count modest and avoid giant path data.
+- Always include xmlns="http://www.w3.org/2000/svg" on the root <svg> element.
+`;
+
+/**
+ * Auto-close unclosed SVG tags so partial LLM output renders correctly.
+ * Uses a simple stack-based approach to track open tags and close them.
+ */
+export function autoCloseSvg(partial: string): string {
+  // If it already ends with </svg>, return as-is
+  if (/<\/svg>\s*$/i.test(partial)) return partial;
+
+  // Ensure we start with <svg
+  const svgStart = partial.indexOf('<svg');
+  if (svgStart === -1) return '';
+
+  const trimmed = partial.slice(svgStart);
+
+  // Track open tags with a simple stack
+  const stack: string[] = [];
+  const tagRe = /<\/?([a-zA-Z][\w:-]*)\b[^>]*?\/?>/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = tagRe.exec(trimmed)) !== null) {
+    const fullMatch = match[0];
+    const tagName = match[1].toLowerCase();
+
+    if (fullMatch.startsWith('</')) {
+      // Closing tag — pop matching from stack
+      const idx = stack.lastIndexOf(tagName);
+      if (idx !== -1) stack.splice(idx, 1);
+    } else if (!fullMatch.endsWith('/>')) {
+      // Opening tag (not self-closing)
+      stack.push(tagName);
+    }
+  }
+
+  // Close remaining tags in reverse order
+  let result = trimmed;
+  for (let i = stack.length - 1; i >= 0; i--) {
+    result += `</${stack[i]}>`;
+  }
+
+  return result;
+}
 
 export function buildSvgStudioPrompt(input: z.infer<typeof SvgStudioRequestSchema>) {
   const constraints = input.constraints;
@@ -247,5 +325,31 @@ export function buildSvgStudioPrompt(input: z.infer<typeof SvgStudioRequestSchem
   }
 
   lines.push('Return JSON with fields: svg (string) and warnings (string[]).');
+  return lines.join('\n');
+}
+
+export function buildStreamingPrompt(input: z.infer<typeof SvgStudioRequestSchema>) {
+  const constraints = input.constraints;
+  const lines: string[] = [
+    `Action: ${input.action}`,
+    `Prompt: ${input.prompt}`,
+  ];
+
+  if (constraints) {
+    lines.push('Constraints:');
+    if (constraints.width) lines.push(`- width=${constraints.width}`);
+    if (constraints.height) lines.push(`- height=${constraints.height}`);
+    if (constraints.viewBox) lines.push(`- viewBox=${constraints.viewBox}`);
+    if (constraints.colorPalette?.length) lines.push(`- palette=${constraints.colorPalette.join(', ')}`);
+    lines.push(`- maxPaths=${constraints.maxPaths ?? 300}`);
+    lines.push(`- forAnimation=${constraints.forAnimation ?? true}`);
+  }
+
+  if (input.action === 'edit' && input.svg) {
+    lines.push('Existing SVG (edit this while preserving intent):');
+    lines.push(input.svg);
+  }
+
+  lines.push('Output raw SVG markup only. No JSON, no markdown fences, no explanation.');
   return lines.join('\n');
 }

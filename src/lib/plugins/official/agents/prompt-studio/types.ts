@@ -65,6 +65,43 @@ export interface ThinkingBlockItem {
 }
 
 // ============================================
+// QNA TYPES
+// ============================================
+
+export interface QnAQuestion {
+  id: string;
+  question: string;
+  suggestions: string[];
+}
+
+export interface QnASet {
+  id: string;
+  questions: QnAQuestion[];
+  answered: boolean;
+  createdAt: string;
+  seq?: number;
+}
+
+// ============================================
+// SEARCH RESULT TYPES
+// ============================================
+
+export interface SearchResultItem {
+  title: string;
+  url: string;
+  summary?: string;
+  highlights?: string[];
+}
+
+export interface SearchResult {
+  id: string;
+  query: string;
+  results: SearchResultItem[];
+  createdAt: string;
+  seq?: number;
+}
+
+// ============================================
 // NODE STATE
 // ============================================
 
@@ -79,6 +116,15 @@ export interface PromptStudioNodeState {
 
   // Generated prompts (accumulate through conversation)
   generatedPrompts: GeneratedPrompt[];
+
+  // Which prompt is selected to flow through the output edge
+  activePromptId?: string;
+
+  // Interactive QnA sets
+  qnaSets: QnASet[];
+
+  // Web search results
+  searchResults: SearchResult[];
 
   // Current streaming state
   streamingText?: string;

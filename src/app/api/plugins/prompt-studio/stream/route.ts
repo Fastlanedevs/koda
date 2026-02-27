@@ -11,7 +11,6 @@ import { RequestContext } from '@mastra/core/di';
 import { emitLaunchMetric } from '@/lib/observability/launch-metrics';
 import { evaluatePluginLaunchById, emitPluginPolicyAuditEvent } from '@/lib/plugins/launch-policy';
 import { z } from 'zod';
-import { loadPromptRecipes } from '@/mastra/recipes/prompt-studio';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -26,7 +25,17 @@ const PromptStudioRequestSchema = z.object({
   context: z.object({
     nodeId: z.string().max(128).optional(),
     phase: z.string().max(64).optional(),
-    presets: z.array(z.string().max(64)).max(10).optional(),
+    referenceImages: z.array(z.string()).max(10).optional(),
+    canvasContext: z.object({
+      connectedNodes: z.array(z.object({
+        direction: z.enum(['upstream', 'downstream']),
+        handleId: z.string(),
+        nodeType: z.string(),
+        pluginId: z.string().optional(),
+        name: z.string().optional(),
+        detail: z.string().optional(),
+      })),
+    }).optional(),
   }).optional(),
 }).superRefine((value, ctx) => {
   if ((!value.prompt || value.prompt.trim().length === 0) && (!value.messages || value.messages.length === 0)) {
@@ -80,13 +89,15 @@ export async function POST(request: Request) {
 
     const { prompt, messages, context } = parsedBody.data;
 
-    let agentMessages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- content may be multimodal parts
+    let agentMessages: Array<{ role: 'user' | 'assistant' | 'system'; content: any }>;
 
     if (messages && messages.length > 0) {
       agentMessages = [...messages];
     } else if (prompt) {
       agentMessages = [{ role: 'user', content: prompt }];
     } else {
+
       emitLaunchMetric({
         metric: 'plugin_execution',
         status: 'error',
@@ -100,21 +111,67 @@ export async function POST(request: Request) {
       );
     }
 
+    // Inject reference images as multimodal parts on the last user message
+    if (context?.referenceImages?.length) {
+      for (let i = agentMessages.length - 1; i >= 0; i--) {
+        if (agentMessages[i].role === 'user') {
+          const textContent = agentMessages[i].content as string;
+          const imageParts = context.referenceImages
+            .map(url => { try { return { type: 'image' as const, image: new URL(url) }; } catch { return null; } })
+            .filter(Boolean);
+          if (imageParts.length > 0) {
+            agentMessages[i].content = [
+              { type: 'text', text: textContent },
+              ...imageParts,
+            ];
+          }
+          break;
+        }
+      }
+    }
+
+    // Inject canvas context as a system message so the agent knows about connected nodes
+    if (context?.canvasContext?.connectedNodes?.length) {
+      const nodes = context.canvasContext.connectedNodes;
+      const downstream = nodes.filter(n => n.direction === 'downstream');
+      const upstream = nodes.filter(n => n.direction === 'upstream');
+
+      const lines: string[] = ['<canvas-context>'];
+      lines.push('You are on a design canvas. Here are the nodes connected to your Prompt Studio:');
+
+      if (downstream.length > 0) {
+        lines.push('\nDownstream (your prompt output flows TO these nodes):');
+        for (const n of downstream) {
+          const label = n.name || n.pluginId || n.nodeType;
+          const detail = n.detail ? ` (${n.detail})` : '';
+          lines.push(`  - ${label}${detail} [type: ${n.nodeType}, handle: ${n.handleId}]`);
+        }
+      }
+
+      if (upstream.length > 0) {
+        lines.push('\nUpstream (these nodes provide input TO you):');
+        for (const n of upstream) {
+          const label = n.name || n.pluginId || n.nodeType;
+          const detail = n.detail ? ` (${n.detail})` : '';
+          lines.push(`  - ${label}${detail} [type: ${n.nodeType}, handle: ${n.handleId}]`);
+        }
+      }
+
+      lines.push('</canvas-context>');
+
+      // Prepend as system message
+      agentMessages = [
+        { role: 'system', content: lines.join('\n') },
+        ...agentMessages,
+      ];
+    }
+
     const requestContext = new RequestContext();
     if (context?.nodeId) {
       requestContext.set('nodeId' as never, context.nodeId as never);
     }
 
-    // Inject recipe content if presets are selected
-    const recipeContent = loadPromptRecipes(context?.presets || []);
-    if (recipeContent) {
-      agentMessages.unshift({
-        role: 'system' as const,
-        content: recipeContent,
-      });
-    }
-
-    console.log(`[Prompt Studio API] Starting stream: nodeId=${context?.nodeId}, messageCount=${agentMessages.length}, presets=${context?.presets?.join(',') || 'none'}`);
+    console.log(`[Prompt Studio API] Starting stream: nodeId=${context?.nodeId}, messageCount=${agentMessages.length}, connectedNodes=${context?.canvasContext?.connectedNodes?.length || 0}`);
 
     const result = await promptStudioAgent.stream(
       agentMessages as Parameters<typeof promptStudioAgent.stream>[0],
@@ -148,6 +205,10 @@ export async function POST(request: Request) {
 
         try {
           const reader = result.fullStream.getReader();
+          // Gate: when ask_questions is called, suppress everything else
+          // and close stream after its tool-result so agent waits for user answers
+          let askQuestionsGate = false;
+          const UI_TOOLS = new Set(['ask_questions', 'set_thinking']);
 
           while (!closed) {
             const { done, value: chunk } = await reader.read();
@@ -157,6 +218,8 @@ export async function POST(request: Request) {
 
             switch (chunk.type) {
               case 'text-delta':
+                // Suppress text after ask_questions (agent may write "Let me ask..." before tool)
+                if (askQuestionsGate) break;
                 sseData = JSON.stringify({
                   type: 'text-delta',
                   text: chunk.payload.text,
@@ -164,6 +227,11 @@ export async function POST(request: Request) {
                 break;
 
               case 'tool-call':
+                if (chunk.payload.toolName === 'ask_questions') {
+                  askQuestionsGate = true;
+                }
+                // After gate, suppress non-UI tool calls (e.g. generate_prompt called in same step)
+                if (askQuestionsGate && !UI_TOOLS.has(chunk.payload.toolName)) break;
                 sseData = JSON.stringify({
                   type: 'tool-call',
                   toolCallId: chunk.payload.toolCallId,
@@ -173,6 +241,8 @@ export async function POST(request: Request) {
                 break;
 
               case 'tool-result':
+                // After gate, suppress non-UI tool results
+                if (askQuestionsGate && !UI_TOOLS.has(chunk.payload.toolName)) break;
                 sseData = JSON.stringify({
                   type: 'tool-result',
                   toolCallId: chunk.payload.toolCallId,
@@ -180,9 +250,20 @@ export async function POST(request: Request) {
                   result: chunk.payload.result,
                   isError: chunk.payload.isError,
                 });
+                // Close stream after ask_questions result — wait for user answers
+                if (chunk.payload.toolName === 'ask_questions' && !chunk.payload.isError) {
+                  if (sseData && !closed) {
+                    safeEnqueue(encoder.encode(`data: ${sseData}\n\n`));
+                  }
+                  safeEnqueue(encoder.encode(`data: ${JSON.stringify({ type: 'complete', text: '' })}\n\n`));
+                  console.log('[Prompt Studio API] ask_questions gate: closing stream to wait for user answers');
+                  safeClose();
+                  return;
+                }
                 break;
 
               case 'tool-error':
+                if (askQuestionsGate && !UI_TOOLS.has(chunk.payload.toolName)) break;
                 sseData = JSON.stringify({
                   type: 'tool-result',
                   toolCallId: chunk.payload.toolCallId,

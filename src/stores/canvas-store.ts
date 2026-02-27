@@ -246,6 +246,7 @@ export const createStoryboardNode = (position: { x: number; y: number }, name?: 
     sceneCount: 4,
     style: 'cinematic',
     mode: 'transition',
+    targetVideoModel: 'veo',
     viewState: 'form',
     chatMessages: [],
     thinkingBlocks: [],
@@ -1017,8 +1018,28 @@ export const useCanvasStore = create<CanvasState>()(
           })
           .filter((url): url is string => !!url);
 
+        // Resolve text content: supports Text nodes and Prompt Studio plugin
+        let resolvedTextContent: string | undefined;
+        if (textNode) {
+          if (textNode.type === 'pluginNode') {
+            const pd = textNode.data as PluginNodeData;
+            if (pd.pluginId === 'prompt-studio') {
+              const st = pd.state as { activePromptId?: string; generatedPrompts?: Array<{ id: string; prompt: string }> };
+              const prompts = st.generatedPrompts;
+              if (prompts?.length) {
+                const active = st.activePromptId
+                  ? prompts.find(p => p.id === st.activePromptId)
+                  : prompts[prompts.length - 1];
+                resolvedTextContent = active?.prompt;
+              }
+            }
+          } else {
+            resolvedTextContent = (textNode.data as TextNodeData)?.content;
+          }
+        }
+
         return {
-          textContent: (textNode?.data as TextNodeData | undefined)?.content,
+          textContent: resolvedTextContent,
           referenceUrl: getImageUrl(refNode),
           firstFrameUrl: getImageUrl(firstFrameNode),
           lastFrameUrl: getImageUrl(lastFrameNode),

@@ -16,6 +16,7 @@ import { SearchableSelect } from '@/components/ui/searchable-select';
 import { useCanvasStore } from '@/stores/canvas-store';
 import type { VideoGeneratorNode as VideoGeneratorNodeType } from '@/lib/types';
 import { VIDEO_MODEL_CAPABILITIES, ENABLED_VIDEO_MODELS, type VideoModelType, type VideoAspectRatio, type VideoDuration } from '@/lib/types';
+import { useSettingsStore } from '@/stores/settings-store';
 import {
   Video,
   Play,
@@ -62,6 +63,8 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
   const openVideoSettingsPanel = useCanvasStore((state) => state.openVideoSettingsPanel);
   const isReadOnly = useCanvasStore((state) => state.isReadOnly);
   const edges = useCanvasStore((state) => state.edges);
+  const enabledVideoModels = useSettingsStore((s) => s.defaultSettings.enabledVideoModels) || [...ENABLED_VIDEO_MODELS];
+  const visibleVideoModels: VideoModelType[] = ['auto' as VideoModelType, ...ENABLED_VIDEO_MODELS.filter((m) => enabledVideoModels.includes(m))];
   const updateNodeInternals = useUpdateNodeInternals();
   const [isEditingName, setIsEditingName] = useState(false);
   const [nodeName, setNodeName] = useState(data.name || 'Video Generator');
@@ -515,7 +518,7 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
           w-[420px] rounded-2xl overflow-hidden
           transition-all duration-150
           ${data.isGenerating ? 'animate-subtle-pulse generating-border-subtle' : ''}
-          ${!data.isGenerating ? (selected ? 'node-card-selected' : 'node-card') : ''}
+          ${!data.isGenerating ? (selected ? 'node-card node-card-selected' : 'node-card') : ''}
         `}
       >
         {/* Content Area */}
@@ -709,7 +712,7 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
           <SearchableSelect
             value={data.model}
             onValueChange={handleModelChange}
-            options={ENABLED_VIDEO_MODELS.map(key => ({
+            options={visibleVideoModels.map(key => ({
               value: key,
               label: VIDEO_MODEL_CAPABILITIES[key].label,
               description: VIDEO_MODEL_CAPABILITIES[key].description,

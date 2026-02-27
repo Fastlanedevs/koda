@@ -13,6 +13,7 @@ import {
   User,
   UserPlus,
   CreditCard,
+  Cpu,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ApiKeysSection } from './sections/ApiKeysSection';
@@ -25,10 +26,12 @@ import { KeyboardShortcutsSection } from './sections/KeyboardShortcutsSection';
 import { ProfileSection } from './sections/ProfileSection';
 import { InviteStatusSection } from './sections/InviteStatusSection';
 import { BillingSection } from './sections/BillingSection';
+import { ModelSettingsSection } from './sections/ModelSettingsSection';
 
 type SettingsTab =
   | 'api-keys'
   | 'generation'
+  | 'models'
   | 'storage'
   | 'history'
   | 'canvas'
@@ -57,6 +60,12 @@ const tabs: TabItem[] = [
     label: 'Generation Defaults',
     icon: Sliders,
     description: 'Default settings for image and video generation',
+  },
+  {
+    id: 'models',
+    label: 'Models',
+    icon: Cpu,
+    description: 'Enable and configure generation models',
   },
   {
     id: 'history',
@@ -160,6 +169,8 @@ export function SettingsContent() {
         return <ApiKeysSection />;
       case 'generation':
         return <GenerationSettingsSection />;
+      case 'models':
+        return <ModelSettingsSection />;
       case 'storage':
         return <StorageSection />;
       case 'history':

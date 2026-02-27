@@ -2179,105 +2179,6 @@ function AnimationNodeComponent({ id, data, selected }: AnimationNodeProps) {
         if (e.dataTransfer.files.length > 0) handleMediaUpload(e.dataTransfer.files);
       }}
     >
-      {/* ── Left: Image reference handles ─────────────────────────────── */}
-      {Array.from({ length: imageRefCount }).map((_, i) => {
-        const top = IMAGE_HANDLE_START + i * HANDLE_SPACING;
-        return (
-          <div key={`img-ref-${i}`} className="absolute -left-[10px]" style={{ top }}>
-            <div className="w-5 h-5 rounded-full bg-[#14B8A6] flex items-center justify-center">
-              <Image className="h-3 w-3 text-white" />
-            </div>
-            <Handle
-              type="target"
-              position={Position.Left}
-              id={`image-ref-${i}`}
-              className="!absolute !top-1/2 !left-1/2 !-translate-x-1/2 !-translate-y-1/2 !w-5 !h-5 !bg-transparent !border-0"
-            />
-          </div>
-        );
-      })}
-
-      {/* Image handle add/remove */}
-      {(selected || isHovered) && (
-        <div
-          className="absolute -left-[10px] flex flex-col gap-1 transition-opacity duration-200"
-          style={{ top: IMAGE_HANDLE_START + imageRefCount * HANDLE_SPACING + 4 }}
-        >
-          {imageRefCount < MAX_IMAGE_REFS && (
-            <button
-              onClick={handleAddImageRef}
-              className="w-4 h-4 rounded-full flex items-center justify-center bg-[var(--an-bg-card)] border border-[var(--an-border-input)] text-[var(--an-text-muted)] hover:border-blue-500 hover:text-blue-400 transition-colors ml-0.5"
-            >
-              <Plus className="h-2.5 w-2.5" />
-            </button>
-          )}
-          {imageRefCount > 1 && (
-            <button
-              onClick={handleRemoveImageRef}
-              className="w-4 h-4 rounded-full flex items-center justify-center bg-[var(--an-bg-card)] border border-[var(--an-border-input)] text-[var(--an-text-muted)] hover:border-red-500 hover:text-red-400 transition-colors ml-0.5"
-            >
-              <Minus className="h-2.5 w-2.5" />
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* ── Left: Video reference handles (hidden for Theatre.js — no video ref support) */}
-      {engine !== 'theatre' && Array.from({ length: videoRefCount }).map((_, i) => {
-        const top = videoHandleStart + i * HANDLE_SPACING;
-        return (
-          <div key={`vid-ref-${i}`} className="absolute -left-[10px]" style={{ top }}>
-            <div className="w-5 h-5 rounded-full bg-[#A855F7] flex items-center justify-center">
-              <Video className="h-3 w-3 text-white" />
-            </div>
-            <Handle
-              type="target"
-              position={Position.Left}
-              id={`video-ref-${i}`}
-              className="!absolute !top-1/2 !left-1/2 !-translate-x-1/2 !-translate-y-1/2 !w-5 !h-5 !bg-transparent !border-0"
-            />
-          </div>
-        );
-      })}
-
-      {/* Video handle add/remove (hidden for Theatre.js) */}
-      {(selected || isHovered) && engine !== 'theatre' && (
-        <div
-          className="absolute -left-[10px] flex flex-col gap-1 transition-opacity duration-200"
-          style={{ top: videoHandleStart + videoRefCount * HANDLE_SPACING + 4 }}
-        >
-          {videoRefCount < MAX_VIDEO_REFS && (
-            <button
-              onClick={handleAddVideoRef}
-              className="w-4 h-4 rounded-full flex items-center justify-center bg-[var(--an-bg-card)] border border-[var(--an-border-input)] text-[var(--an-text-muted)] hover:border-blue-500 hover:text-blue-400 transition-colors ml-0.5"
-            >
-              <Plus className="h-2.5 w-2.5" />
-            </button>
-          )}
-          {videoRefCount > 1 && (
-            <button
-              onClick={handleRemoveVideoRef}
-              className="w-4 h-4 rounded-full flex items-center justify-center bg-[var(--an-bg-card)] border border-[var(--an-border-input)] text-[var(--an-text-muted)] hover:border-red-500 hover:text-red-400 transition-colors ml-0.5"
-            >
-              <Minus className="h-2.5 w-2.5" />
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* ── Left: SVG code handle ──────────────────────────────────── */}
-      <div className="absolute -left-[10px]" style={{ top: svgCodeHandleTop }}>
-        <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
-          <Code className="h-3 w-3 text-white" />
-        </div>
-        <Handle
-          type="target"
-          position={Position.Left}
-          id="svg-code"
-          className="!absolute !top-1/2 !left-1/2 !-translate-x-1/2 !-translate-y-1/2 !w-5 !h-5 !bg-transparent !border-0"
-        />
-      </div>
-
       {/* ── Header ───────────────────────────────────────────────────── */}
       <div className="flex-shrink-0 flex items-center gap-2 px-3.5 py-2 border-b border-[var(--an-border)]">
         <div className="flex-1 min-w-0">
@@ -2486,19 +2387,6 @@ function AnimationNodeComponent({ id, data, selected }: AnimationNodeProps) {
         />
       </div>
 
-      {/* ── Right: Output handle (video) ─────────────────────────────── */}
-      <div className="absolute -right-[10px]" style={{ top: 30 }}>
-        <div className="w-5 h-5 rounded-full bg-[#A855F7] flex items-center justify-center">
-          <Video className="h-3 w-3 text-white" />
-        </div>
-        <Handle
-          type="source"
-          position={Position.Right}
-          id="video"
-          className="!absolute !top-1/2 !left-1/2 !-translate-x-1/2 !-translate-y-1/2 !w-5 !h-5 !bg-transparent !border-0"
-        />
-      </div>
-
       {/* ── Settings Panel (portal) ──────────────────────────────────── */}
       {showSettings && (
         <AnimationSettingsPanel
@@ -2525,6 +2413,121 @@ function AnimationNodeComponent({ id, data, selected }: AnimationNodeProps) {
         />
       )}
     </div>
+
+      {/* ── Handles (outside overflow-hidden card so pointer events aren't clipped) ── */}
+
+      {/* Left: Image reference handles */}
+      {Array.from({ length: imageRefCount }).map((_, i) => {
+        const top = IMAGE_HANDLE_START + i * HANDLE_SPACING;
+        return (
+          <div key={`img-ref-${i}`} className="absolute -left-[10px]" style={{ top }}>
+            <div className="w-5 h-5 rounded-full bg-[#14B8A6] flex items-center justify-center">
+              <Image className="h-3 w-3 text-white" />
+            </div>
+            <Handle
+              type="target"
+              position={Position.Left}
+              id={`image-ref-${i}`}
+              className="!absolute !top-1/2 !left-1/2 !-translate-x-1/2 !-translate-y-1/2 !w-5 !h-5 !bg-transparent !border-0"
+            />
+          </div>
+        );
+      })}
+
+      {/* Image handle add/remove */}
+      {(selected || isHovered) && (
+        <div
+          className="absolute -left-[10px] flex flex-col gap-1 transition-opacity duration-200"
+          style={{ top: IMAGE_HANDLE_START + imageRefCount * HANDLE_SPACING + 4 }}
+        >
+          {imageRefCount < MAX_IMAGE_REFS && (
+            <button
+              onClick={handleAddImageRef}
+              className="w-4 h-4 rounded-full flex items-center justify-center bg-[var(--an-bg-card)] border border-[var(--an-border-input)] text-[var(--an-text-muted)] hover:border-blue-500 hover:text-blue-400 transition-colors ml-0.5"
+            >
+              <Plus className="h-2.5 w-2.5" />
+            </button>
+          )}
+          {imageRefCount > 1 && (
+            <button
+              onClick={handleRemoveImageRef}
+              className="w-4 h-4 rounded-full flex items-center justify-center bg-[var(--an-bg-card)] border border-[var(--an-border-input)] text-[var(--an-text-muted)] hover:border-red-500 hover:text-red-400 transition-colors ml-0.5"
+            >
+              <Minus className="h-2.5 w-2.5" />
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Left: Video reference handles (hidden for Theatre.js) */}
+      {engine !== 'theatre' && Array.from({ length: videoRefCount }).map((_, i) => {
+        const top = videoHandleStart + i * HANDLE_SPACING;
+        return (
+          <div key={`vid-ref-${i}`} className="absolute -left-[10px]" style={{ top }}>
+            <div className="w-5 h-5 rounded-full bg-[#A855F7] flex items-center justify-center">
+              <Video className="h-3 w-3 text-white" />
+            </div>
+            <Handle
+              type="target"
+              position={Position.Left}
+              id={`video-ref-${i}`}
+              className="!absolute !top-1/2 !left-1/2 !-translate-x-1/2 !-translate-y-1/2 !w-5 !h-5 !bg-transparent !border-0"
+            />
+          </div>
+        );
+      })}
+
+      {/* Video handle add/remove (hidden for Theatre.js) */}
+      {(selected || isHovered) && engine !== 'theatre' && (
+        <div
+          className="absolute -left-[10px] flex flex-col gap-1 transition-opacity duration-200"
+          style={{ top: videoHandleStart + videoRefCount * HANDLE_SPACING + 4 }}
+        >
+          {videoRefCount < MAX_VIDEO_REFS && (
+            <button
+              onClick={handleAddVideoRef}
+              className="w-4 h-4 rounded-full flex items-center justify-center bg-[var(--an-bg-card)] border border-[var(--an-border-input)] text-[var(--an-text-muted)] hover:border-blue-500 hover:text-blue-400 transition-colors ml-0.5"
+            >
+              <Plus className="h-2.5 w-2.5" />
+            </button>
+          )}
+          {videoRefCount > 1 && (
+            <button
+              onClick={handleRemoveVideoRef}
+              className="w-4 h-4 rounded-full flex items-center justify-center bg-[var(--an-bg-card)] border border-[var(--an-border-input)] text-[var(--an-text-muted)] hover:border-red-500 hover:text-red-400 transition-colors ml-0.5"
+            >
+              <Minus className="h-2.5 w-2.5" />
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Left: SVG code handle */}
+      <div className="absolute -left-[10px]" style={{ top: svgCodeHandleTop }}>
+        <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
+          <Code className="h-3 w-3 text-white" />
+        </div>
+        <Handle
+          type="target"
+          position={Position.Left}
+          id="svg-code"
+          className="!absolute !top-1/2 !left-1/2 !-translate-x-1/2 !-translate-y-1/2 !w-5 !h-5 !bg-transparent !border-0"
+        />
+      </div>
+
+      {/* Right: Output handle (video) */}
+      <div className="absolute -right-[10px]" style={{ top: '50%', transform: 'translateY(-50%)' }}>
+        <div className="w-5 h-5 rounded-full bg-[#A855F7] flex items-center justify-center">
+          <Video className="h-3 w-3 text-white" />
+        </div>
+        <Handle
+          type="source"
+          position={Position.Right}
+          id="video"
+          className="!absolute !top-1/2 !left-1/2 !-translate-x-1/2 !-translate-y-1/2 !w-5 !h-5 !bg-transparent !border-0"
+        />
+      </div>
+
     </div>
   );
 }
