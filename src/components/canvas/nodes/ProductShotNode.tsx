@@ -430,7 +430,7 @@ function ProductShotNodeComponent({ id, data, selected }: NodeProps<ProductShotN
       )}
 
       {/* Node Title */}
-      <div className="flex items-center gap-2 mb-2 text-sm font-medium" style={{ color: 'var(--node-title-productShot, #d97706)' }}>
+      <div className="flex items-center gap-2 mb-2 text-sm font-medium" style={{ color: 'var(--node-title-default)' }}>
         <Camera className="h-4 w-4" />
         {isEditingName ? (
           <input
@@ -493,10 +493,10 @@ function ProductShotNodeComponent({ id, data, selected }: NodeProps<ProductShotN
               type="target"
               position={Position.Left}
               id="productImage"
-              className={`!relative !transform-none !w-6 !h-6 !rounded-md !border-2 node-handle hover:!border-amber-500 ${hasProductImage ? '!border-green-500' : ''
+              className={`!relative !transform-none !w-6 !h-6 !rounded-md !border-2 node-handle hover:!border-zinc-500 ${hasProductImage ? '!border-zinc-400' : ''
                 }`}
             />
-            <ImageIcon className="absolute inset-0 m-auto h-3.5 w-3.5 pointer-events-none" style={{ color: hasProductImage ? '#4ade80' : 'var(--text-muted)' }} />
+            <ImageIcon className="absolute inset-0 m-auto h-3.5 w-3.5 pointer-events-none" style={{ color: hasProductImage ? '#a1a1aa' : 'var(--text-muted)' }} />
           </div>
           <span className="absolute left-8 top-1/2 -translate-y-1/2 px-2 py-1 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 border node-tooltip">
             {hasProductImage ? 'Product Image (connected)' : 'Product Image'}
