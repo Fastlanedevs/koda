@@ -229,18 +229,18 @@ select {
   --text-muted: #6b7280;
   --text-placeholder: #9ca3af;
 
-  /* Node title colors (specific to node types) */
+  /* Node title colors - monochromatic */
   --node-title-default: #374151;
-  --node-title-image: #0f766e;
-  --node-title-video: #7c3aed;
-  --node-title-text: #92400e;
-  --node-title-media: #dc2626;
-  --node-title-speech: #0891b2;
-  --node-title-music: #ea580c;
-  --node-title-storyboard: #7c3aed;
-  --node-title-animation: #2563eb;
-  --node-title-svg: #059669;
-  --node-title-motion: #2563eb;
+  --node-title-image: #374151;
+  --node-title-video: #374151;
+  --node-title-text: #374151;
+  --node-title-media: #374151;
+  --node-title-speech: #374151;
+  --node-title-music: #374151;
+  --node-title-storyboard: #374151;
+  --node-title-animation: #374151;
+  --node-title-svg: #374151;
+  --node-title-motion: #374151;
 
   /* Inputs */
   --input-bg: #f9fafb;
@@ -261,11 +261,11 @@ select {
   --button-secondary-hover: #e5e7eb;
   --button-secondary-text: #374151;
 
-  /* Edge colors */
-  --edge-text: #3b82f6;
-  --edge-image: #f59e0b;
-  --edge-video: #8b5cf6;
-  --edge-default: #6366f1;
+  /* Edge colors - monochromatic */
+  --edge-text: #9ca3af;
+  --edge-image: #9ca3af;
+  --edge-video: #9ca3af;
+  --edge-default: #9ca3af;
 }
 
 .dark {
@@ -318,18 +318,18 @@ select {
   --text-muted: #71717a;
   --text-placeholder: #52525b;
 
-  /* Node title colors - dark mode accent colors */
+  /* Node title colors - dark mode monochromatic */
   --node-title-default: #a1a1aa;
-  --node-title-image: #14b8a6;
-  --node-title-video: #a855f7;
-  --node-title-text: #fcd34d;
-  --node-title-media: #F87171;
-  --node-title-speech: #22d3ee;
-  --node-title-music: #fb923c;
-  --node-title-storyboard: #a78bfa;
-  --node-title-animation: #3B82F6;
-  --node-title-svg: #34d399;
-  --node-title-motion: #60a5fa;
+  --node-title-image: #a1a1aa;
+  --node-title-video: #a1a1aa;
+  --node-title-text: #a1a1aa;
+  --node-title-media: #a1a1aa;
+  --node-title-speech: #a1a1aa;
+  --node-title-music: #a1a1aa;
+  --node-title-storyboard: #a1a1aa;
+  --node-title-animation: #a1a1aa;
+  --node-title-svg: #a1a1aa;
+  --node-title-motion: #a1a1aa;
 
   /* Inputs */
   --input-bg: transparent;
@@ -350,11 +350,11 @@ select {
   --button-secondary-hover: #3f3f46;
   --button-secondary-text: #d4d4d8;
 
-  /* Edge colors - dark mode (brighter) */
-  --edge-text: #60a5fa;
-  --edge-image: #fbbf24;
-  --edge-video: #a78bfa;
-  --edge-default: #818cf8;
+  /* Edge colors - dark mode monochromatic */
+  --edge-text: #71717a;
+  --edge-image: #71717a;
+  --edge-video: #71717a;
+  --edge-default: #71717a;
 }
 
 

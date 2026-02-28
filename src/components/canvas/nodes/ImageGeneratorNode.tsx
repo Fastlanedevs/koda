@@ -747,7 +747,7 @@ function ImageGeneratorNodeComponent({ id, data, selected, positionAbsoluteX, po
             type="target"
             position={Position.Left}
             id="text"
-            className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-yellow-400 !border-zinc-900 hover:!border-zinc-700"
+            className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-zinc-400 !border-zinc-900 hover:!border-zinc-700"
           />
           <Type className="absolute inset-0 m-auto h-3.5 w-3.5 pointer-events-none text-zinc-900" />
         </div>
@@ -774,7 +774,7 @@ function ImageGeneratorNodeComponent({ id, data, selected, positionAbsoluteX, po
                     type="target"
                     position={Position.Left}
                     id={index === 0 ? 'reference' : `ref${index + 1}`}
-                    className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-red-400 !border-zinc-900 hover:!border-zinc-700"
+                    className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-zinc-400 !border-zinc-900 hover:!border-zinc-700"
                   />
                   <ImageIcon className="absolute inset-0 m-auto h-3.5 w-3.5 pointer-events-none text-zinc-900" />
                 </div>
@@ -790,7 +790,7 @@ function ImageGeneratorNodeComponent({ id, data, selected, positionAbsoluteX, po
               {refHandleCount < maxRefs && (
                 <button
                   onClick={handleAddRefHandle}
-                  className="w-6 h-5 rounded flex items-center justify-center transition-colors hover:border-blue-500"
+                  className="w-6 h-5 rounded flex items-center justify-center transition-colors hover:border-zinc-500"
                   style={{ backgroundColor: 'var(--handle-bg)', borderWidth: '1px', borderColor: 'var(--handle-border)', color: 'var(--text-muted)' }}
                   title={`Add reference (${refHandleCount}/${maxRefs})`}
                 >
@@ -800,7 +800,7 @@ function ImageGeneratorNodeComponent({ id, data, selected, positionAbsoluteX, po
               {refHandleCount > 1 && (
                 <button
                   onClick={handleRemoveRefHandle}
-                  className="w-6 h-5 rounded flex items-center justify-center transition-colors hover:border-red-500"
+                  className="w-6 h-5 rounded flex items-center justify-center transition-colors hover:border-zinc-500"
                   style={{ backgroundColor: 'var(--handle-bg)', borderWidth: '1px', borderColor: 'var(--handle-border)', color: 'var(--text-muted)' }}
                   title="Remove reference"
                 >
@@ -822,7 +822,7 @@ function ImageGeneratorNodeComponent({ id, data, selected, positionAbsoluteX, po
             type="source"
             position={Position.Right}
             id="output"
-            className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-teal-500 !border-zinc-900 hover:!border-zinc-700"
+            className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-zinc-400 !border-zinc-900 hover:!border-zinc-700"
           />
           <ImageIcon className="absolute inset-0 m-auto h-3.5 w-3.5 pointer-events-none text-zinc-900" />
         </div>

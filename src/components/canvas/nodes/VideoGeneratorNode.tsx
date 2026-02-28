@@ -829,7 +829,7 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
               type="target"
               position={Position.Left}
               id="text"
-              className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-yellow-400 !border-zinc-900 hover:!border-zinc-700"
+              className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-zinc-400 !border-zinc-900 hover:!border-zinc-700"
             />
             <Type className="absolute inset-0 m-auto h-3.5 w-3.5 pointer-events-none text-zinc-900" />
           </div>
@@ -850,7 +850,7 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
               type="target"
               position={Position.Left}
               id="reference"
-              className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-red-400 !border-zinc-900 hover:!border-zinc-700"
+              className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-zinc-400 !border-zinc-900 hover:!border-zinc-700"
             />
             <ImageIcon className="absolute inset-0 m-auto h-3.5 w-3.5 pointer-events-none text-zinc-900" />
           </div>
@@ -874,10 +874,10 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
                   type="target"
                   position={Position.Left}
                   id={`ref${num}`}
-                  className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-red-400 !border-zinc-900 hover:!border-zinc-700"
+                  className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-zinc-400 !border-zinc-900 hover:!border-zinc-700"
                 />
                 <ImageIcon className="absolute inset-0 m-auto h-3.5 w-3.5 pointer-events-none text-zinc-900" />
-                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-zinc-900 text-[9px] text-red-300 font-bold rounded-full flex items-center justify-center border border-red-400/60">{num}</span>
+                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-zinc-900 text-[9px] text-zinc-400 font-bold rounded-full flex items-center justify-center border border-zinc-500/60">{num}</span>
               </div>
               <span className="absolute left-9 top-1/2 -translate-y-1/2 px-2 py-1 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 border node-tooltip">
                 @image{num}
@@ -893,10 +893,10 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
                 type="target"
                 position={Position.Left}
                 id="video"
-                className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-blue-400 !border-zinc-900 hover:!border-zinc-700"
+                className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-zinc-400 !border-zinc-900 hover:!border-zinc-700"
               />
               <Video className="absolute inset-0 m-auto h-3.5 w-3.5 pointer-events-none text-zinc-900" />
-              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-zinc-900 text-[9px] text-blue-300 font-bold rounded-full flex items-center justify-center border border-blue-400/60">1</span>
+              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-zinc-900 text-[9px] text-zinc-400 font-bold rounded-full flex items-center justify-center border border-zinc-500/60">1</span>
             </div>
             <span className="absolute left-9 top-1/2 -translate-y-1/2 px-2 py-1 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 border node-tooltip">
               @video1
@@ -913,10 +913,10 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
                 type="target"
                 position={Position.Left}
                 id="audio"
-                className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-purple-400 !border-zinc-900 hover:!border-zinc-700"
+                className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-zinc-400 !border-zinc-900 hover:!border-zinc-700"
               />
               <Music className="absolute inset-0 m-auto h-3.5 w-3.5 pointer-events-none text-zinc-900" />
-              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-zinc-900 text-[9px] text-purple-300 font-bold rounded-full flex items-center justify-center border border-purple-400/60">1</span>
+              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-zinc-900 text-[9px] text-zinc-400 font-bold rounded-full flex items-center justify-center border border-zinc-500/60">1</span>
             </div>
             <span className="absolute left-9 top-1/2 -translate-y-1/2 px-2 py-1 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 border node-tooltip">
               @audio1
@@ -937,7 +937,7 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
                 type="target"
                 position={Position.Left}
                 id="firstFrame"
-                className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-emerald-400 !border-zinc-900 hover:!border-zinc-700"
+                className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-zinc-400 !border-zinc-900 hover:!border-zinc-700"
               />
               <ArrowRightFromLine className="absolute inset-0 m-auto h-3.5 w-3.5 pointer-events-none text-zinc-900" />
             </div>
@@ -954,7 +954,7 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
                 type="target"
                 position={Position.Left}
                 id="lastFrame"
-                className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-rose-400 !border-zinc-900 hover:!border-zinc-700"
+                className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-zinc-400 !border-zinc-900 hover:!border-zinc-700"
               />
               <ArrowLeftFromLine className="absolute inset-0 m-auto h-3.5 w-3.5 pointer-events-none text-zinc-900" />
             </div>
@@ -972,7 +972,7 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
                 type="target"
                 position={Position.Left}
                 id="text"
-                className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-yellow-400 !border-zinc-900 hover:!border-zinc-700"
+                className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-zinc-400 !border-zinc-900 hover:!border-zinc-700"
               />
               <Type className="absolute inset-0 m-auto h-3.5 w-3.5 pointer-events-none text-zinc-900" />
             </div>
@@ -997,7 +997,7 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
                   type="target"
                   position={Position.Left}
                   id={`ref${num}`}
-                  className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-red-400 !border-zinc-900 hover:!border-zinc-700"
+                  className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-zinc-400 !border-zinc-900 hover:!border-zinc-700"
                 />
                 <Images className="absolute inset-0 m-auto h-3.5 w-3.5 pointer-events-none text-zinc-900" />
               </div>
@@ -1019,7 +1019,7 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
             type="source"
             position={Position.Right}
             id="output"
-            className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-purple-500 !border-zinc-900 hover:!border-zinc-700"
+            className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-zinc-400 !border-zinc-900 hover:!border-zinc-700"
           />
           <Video className="absolute inset-0 m-auto h-3.5 w-3.5 pointer-events-none text-zinc-900" />
         </div>

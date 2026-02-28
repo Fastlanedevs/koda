@@ -1342,7 +1342,7 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
                 type="target"
                 position={Position.Left}
                 id="productImage"
-                className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-red-400 !border-zinc-900 hover:!border-zinc-700"
+                className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-zinc-400 !border-zinc-900 hover:!border-zinc-700"
               />
               <ImageIcon className="absolute inset-0 m-auto h-3.5 w-3.5 pointer-events-none text-zinc-900" />
             </div>
@@ -1358,7 +1358,7 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
                 type="target"
                 position={Position.Left}
                 id="characterImage"
-                className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-blue-500 !border-zinc-900 hover:!border-zinc-700"
+                className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-zinc-400 !border-zinc-900 hover:!border-zinc-700"
               />
               <User className="absolute inset-0 m-auto h-3.5 w-3.5 pointer-events-none text-zinc-900" />
             </div>
