@@ -104,6 +104,12 @@ function DraftScenePreview({ scene }: { scene: StoryboardSceneData }) {
           <div className="flex gap-1 text-[10px] flex-wrap">
             <span className="bg-[#14161A] px-1.5 py-0.5 rounded text-foreground/80">{scene.camera}</span>
             <span className="bg-[#14161A] px-1.5 py-0.5 rounded text-foreground/80">{scene.mood}</span>
+            {scene.videoAspectRatio && (
+              <span className="bg-blue-500/15 px-1.5 py-0.5 rounded text-blue-400">{scene.videoAspectRatio}</span>
+            )}
+            {scene.videoDuration && (
+              <span className="bg-blue-500/15 px-1.5 py-0.5 rounded text-blue-400">{scene.videoDuration}s</span>
+            )}
           </div>
           <div className="p-1.5 bg-[#14161A] rounded text-[10px] text-muted-foreground font-mono leading-relaxed">
             {scene.prompt}

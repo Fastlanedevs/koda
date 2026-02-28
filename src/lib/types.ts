@@ -1108,6 +1108,8 @@ export interface StoryboardSceneData {
   motion?: string;      // For single-shot mode (motion within scene)
   negativePrompt?: string;  // What to exclude from generation
   audioDirection?: string;  // Sound design cues (SFX, ambient, dialogue)
+  videoAspectRatio?: string;  // Per-scene video aspect ratio chosen by AI (e.g. '16:9', '9:16')
+  videoDuration?: number;     // Per-scene video duration in seconds chosen by AI
 }
 
 // Storyboard draft identity fields
@@ -1127,6 +1129,7 @@ export interface StoryboardNodeData extends Record<string, unknown> {
   style: StoryboardStyle;
   mode: StoryboardMode;  // 'transition' for N-1 videos between frames, 'single-shot' for N independent videos
   targetVideoModel: StoryboardVideoModel;  // Target video model family for prompt optimization
+  videoRecipes?: string[];  // Selected video recipe preset IDs
   // UI state
   viewState: StoryboardViewState;
   error?: string;

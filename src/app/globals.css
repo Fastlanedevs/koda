@@ -780,6 +780,34 @@ select {
   height: 0 !important;
 }
 
+/* Thin scrollbar for canvas node panels */
+.scrollbar-thin {
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: #3f3f46 transparent; /* Firefox: thumb track */
+}
+.scrollbar-thin::-webkit-scrollbar {
+  width: 5px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #3f3f46;
+  border-radius: 3px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #52525b;
+}
+.light .scrollbar-thin {
+  scrollbar-color: #d4d4d8 transparent;
+}
+.light .scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #d4d4d8;
+}
+.light .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #a1a1aa;
+}
+
 /* Shimmer animation for loading states */
 @keyframes shimmer {
   0% {

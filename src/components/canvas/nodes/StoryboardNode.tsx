@@ -22,14 +22,19 @@ import type {
   StoryboardChatMessage,
   StoryboardThinkingBlock,
   StoryboardDraft,
+  VideoModelType,
+  VideoAspectRatio,
+  VideoDuration,
 } from '@/lib/types';
+import { VIDEO_MODEL_CAPABILITIES } from '@/lib/types';
 import type { CreateNodeInput } from '@/lib/plugins/types';
-import { Clapperboard, Trash2, Sparkles, Grid3X3, ChevronRight, Image as ImageIcon, User, ArrowLeftRight, LayoutGrid, ArrowLeft, Info } from 'lucide-react';
+import { Clapperboard, Trash2, Sparkles, Grid3X3, ChevronRight, Image as ImageIcon, User, ArrowLeftRight, LayoutGrid, ArrowLeft, Info, Wand2, Loader2 } from 'lucide-react';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { ThinkingBlock, UserBubble } from '@/lib/plugins/official/agents/animation-generator/components/ChatMessages';
 import { StoryboardDraftCard } from './storyboard/StoryboardDraftCard';
 import { ChatInput } from '@/lib/plugins/official/agents/animation-generator/components/ChatInput';
+// Video recipes available but not shown in UI — injected server-side if needed
 
 // Style options
 const STYLE_OPTIONS: { value: StoryboardStyle; label: string }[] = [
@@ -53,6 +58,39 @@ const VIDEO_MODEL_IDS: Record<StoryboardVideoModel, { transition: string; single
   kling: { transition: 'kling-3.0-i2v', singleShot: 'kling-3.0-i2v' },
   seedance: { transition: 'seedance-2.0-i2v', singleShot: 'seedance-2.0-i2v' },
 };
+
+// Resolve per-scene video settings with validation against model capabilities
+function resolveVideoSettings(
+  scene: StoryboardSceneData,
+  modelId: string,
+): { aspectRatio?: VideoAspectRatio; duration?: VideoDuration } {
+  const caps = VIDEO_MODEL_CAPABILITIES[modelId as VideoModelType];
+  if (!caps) return {};
+
+  let aspectRatio: VideoAspectRatio | undefined;
+  if (scene.videoAspectRatio) {
+    const ar = scene.videoAspectRatio as VideoAspectRatio;
+    aspectRatio = caps.aspectRatios.includes(ar) ? ar : caps.aspectRatios[0] as VideoAspectRatio;
+  }
+
+  let duration: VideoDuration | undefined;
+  if (scene.videoDuration) {
+    const d = scene.videoDuration as VideoDuration;
+    duration = caps.durations.includes(d) ? d : caps.defaultDuration;
+  }
+
+  return { aspectRatio, duration };
+}
+
+// Determine the correct target handle for image→video edges based on video model's input mode
+function getVideoTargetHandle(modelId: string): string {
+  const caps = VIDEO_MODEL_CAPABILITIES[modelId as VideoModelType];
+  if (!caps) return 'reference';
+  // Omni-reference models (Seedance 2.0) show numbered handles ref1/ref2/ref3, not 'reference'
+  if (caps.supportsVideoRef) return 'ref1';
+  if (caps.inputMode === 'first-last-frame') return 'firstFrame';
+  return 'reference';
+}
 
 // Scene count options
 const SCENE_COUNTS = [4, 5, 6, 8] as const;
@@ -180,11 +218,16 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-scroll chat to bottom when new items appear
+  // Auto-scroll chat to bottom only when NEW content appears (not on every re-render)
+  const prevItemCountRef = useRef(0);
   useEffect(() => {
-    if (data.viewState === 'chat' && chatScrollRef.current) {
+    if (data.viewState !== 'chat' || !chatScrollRef.current) return;
+    const currentCount = (data.chatMessages?.length ?? 0) + (data.thinkingBlocks?.length ?? 0) + (data.drafts?.length ?? 0);
+    // Scroll when items are added or phase changes to streaming
+    if (currentCount > prevItemCountRef.current || data.chatPhase === 'streaming') {
       chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
     }
+    prevItemCountRef.current = currentCount;
   }, [data.viewState, data.chatMessages?.length, data.thinkingBlocks?.length, data.drafts?.length, data.chatPhase]);
 
   const handleNameSubmit = useCallback(() => {
@@ -211,6 +254,44 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
 
   // Validation
   const isValid = (data.product?.trim().length ?? 0) > 0 && (data.concept?.trim().length ?? 0) > 0;
+
+  // Concept auto-generation
+  const [isGeneratingConcept, setIsGeneratingConcept] = useState(false);
+  const handleGenerateConcept = useCallback(async () => {
+    if (!data.product?.trim()) {
+      toast.error('Enter a product/subject first');
+      return;
+    }
+    setIsGeneratingConcept(true);
+    try {
+      const connectedInputs = getConnectedInputs(id);
+      const connectedParts: string[] = [];
+      if (connectedInputs.productImageUrl) connectedParts.push('Product reference image connected');
+      if (connectedInputs.characterImageUrl) connectedParts.push('Character reference image connected');
+
+      const res = await fetch('/api/plugins/storyboard/concept', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          product: data.product?.trim(),
+          character: data.character?.trim() || undefined,
+          style: data.style,
+          targetVideoModel: data.targetVideoModel || 'veo',
+          connectedNodes: connectedParts.join(', ') || undefined,
+        }),
+      });
+      const result = await res.json();
+      if (result.success && result.concept) {
+        updateField('concept', result.concept);
+      } else {
+        toast.error(result.error || 'Failed to generate concept');
+      }
+    } catch {
+      toast.error('Failed to generate concept');
+    } finally {
+      setIsGeneratingConcept(false);
+    }
+  }, [id, data.product, data.character, data.style, data.targetVideoModel, getConnectedInputs, updateField]);
 
   // Helper to flush batched reasoning to store
   const flushReasoning = useCallback(() => {
@@ -432,6 +513,9 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
       error: undefined,
     });
 
+    // Include connected image URLs so the LLM can SEE the actual product/character
+    const connectedImages = getConnectedInputs(id);
+
     const input = {
       product: data.product.trim(),
       character: data.character?.trim() || undefined,
@@ -440,6 +524,9 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
       style: data.style,
       mode,
       targetVideoModel: data.targetVideoModel || 'veo',
+      videoRecipes: data.videoRecipes?.length ? data.videoRecipes : undefined,
+      productImageUrl: connectedImages.productImageUrl || undefined,
+      characterImageUrl: connectedImages.characterImageUrl || undefined,
     };
 
     await streamGeneration(input, 'Generating storyboard');
@@ -470,6 +557,9 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
     });
 
     // Build refinement request — include full scene data for faithful preservation (#70)
+    // Include connected image URLs so the LLM can SEE the actual product/character during refinement
+    const connectedImages = getConnectedInputs(id);
+
     const body = {
       previousDraft: {
         scenes: latestDraft.scenes,
@@ -485,6 +575,8 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
       concept: data.concept.trim(),
       sceneCount: data.sceneCount,
       style: data.style,
+      productImageUrl: connectedImages.productImageUrl || undefined,
+      characterImageUrl: connectedImages.characterImageUrl || undefined,
     };
 
     await streamGeneration(body, 'Refining storyboard');
@@ -560,7 +652,10 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
       let preStepCharacterIndex = -1;
       const styleLabel = data.style || 'cinematic';
       const needsProduct = !productRefNodeId && !!data.product?.trim();
-      const needsCharacter = !characterRefNodeId && !!data.character?.trim();
+      // Auto-detect character from AI output: if the AI generated a characterIdentity
+      // (even when user didn't fill in Character field), create a reference image
+      const needsCharacter = !characterRefNodeId &&
+        (!!data.character?.trim() || !!activeDraft.characterIdentity?.trim());
 
       // Total ref count includes both already-connected and to-be-created refs
       // so positioning is consistent regardless of source
@@ -586,6 +681,9 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
       }
 
       if (needsCharacter) {
+        // Prefer the AI-generated characterIdentity (detailed physical description)
+        // over the user's raw input (which may be vague or personality-focused)
+        const charDescription = activeDraft.characterIdentity?.trim() || data.character!.trim();
         preStepCharacterIndex = preStepNodeInputs.length;
         preStepNodeInputs.push({
           type: 'imageGenerator',
@@ -595,7 +693,7 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
           },
           name: 'Character Reference',
           data: {
-            prompt: `Portrait of ${data.character!.trim()}, ${styleLabel} style, neutral background, detailed features, professional photography`,
+            prompt: `Portrait of ${charDescription}, ${styleLabel} style, neutral background, detailed features, professional photography`,
             model: 'nanobanana-pro',
           },
         });
@@ -697,7 +795,7 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
             name: `Scene ${scene.number}: ${scene.title}`,
             data: {
               prompt: scene.prompt,
-              model: 'nanobanana-pro',
+              model: 'auto',
               refHandleCount: sceneRefCount,
             },
           });
@@ -705,15 +803,25 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
 
         const videoNodeStartIndex = nodeInputs.length;
 
+        const videoModelFamily = data.targetVideoModel || 'veo';
+        const videoModelId = VIDEO_MODEL_IDS[videoModelFamily].singleShot;
+        const videoTargetHandle = getVideoTargetHandle(videoModelId);
+
         activeDraft.scenes.forEach((scene, index) => {
           const imagePos = imagePositions[index];
           const videoPosition = {
             x: imagePos.x + (IMAGE_NODE_WIDTH - VIDEO_NODE_WIDTH) / 2,
             y: startY + VIDEO_Y_OFFSET,
           };
-          const motionPrompt = scene.motion || generateFallbackMotion(scene);
-          const videoModelFamily = data.targetVideoModel || 'veo';
-          const videoModelId = VIDEO_MODEL_IDS[videoModelFamily].singleShot;
+          let motionPrompt = scene.motion || generateFallbackMotion(scene);
+
+          // Seedance R2V: prepend @image1 reference tag for image-to-video mode
+          if (videoModelFamily === 'seedance' && hasProduct) {
+            motionPrompt = `@image1 ${motionPrompt}`;
+          }
+
+          // Validate per-scene video settings against model capabilities
+          const videoSettings = resolveVideoSettings(scene, videoModelId);
 
           nodeInputs.push({
             type: 'videoGenerator',
@@ -722,21 +830,20 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
             data: {
               prompt: motionPrompt,
               model: videoModelId,
-              aspectRatio: '16:9',
-              duration: 8,
-              resolution: '720p',
               generateAudio: true,
+              ...(videoSettings.aspectRatio && { aspectRatio: videoSettings.aspectRatio }),
+              ...(videoSettings.duration && { duration: videoSettings.duration }),
             },
           });
         });
 
         const nodeIds = await canvas.createNodes(nodeInputs);
 
-        // Image → Video edges
+        // Image → Video edges (handle varies by model input mode)
         for (let i = 0; i < activeDraft.scenes.length; i++) {
           const imageNodeId = nodeIds[imageNodeStartIndex + i];
           const videoNodeId = nodeIds[videoNodeStartIndex + i];
-          await canvas.createEdge(imageNodeId, 'output', videoNodeId, 'reference');
+          await canvas.createEdge(imageNodeId, 'output', videoNodeId, videoTargetHandle);
         }
 
         // --- Step 5: Product/Character → ALL scene image generators ---
@@ -799,13 +906,16 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
             name: `Scene ${scene.number}: ${scene.title}`,
             data: {
               prompt: scene.prompt,
-              model: 'nanobanana-pro',
+              model: 'auto',
               refHandleCount: sceneRefCount,
             },
           });
         });
 
         const videoNodeStartIndex = nodeInputs.length;
+
+        const videoModelFamily = data.targetVideoModel || 'veo';
+        const transitionModelId = VIDEO_MODEL_IDS[videoModelFamily].transition;
 
         for (let i = 0; i < activeDraft.scenes.length - 1; i++) {
           const sourcePos = imagePositions[i];
@@ -818,9 +928,15 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
             y: imageStartY + VIDEO_Y_OFFSET,
           };
 
-          const transitionPrompt = currentScene.transition || generateFallbackTransition(currentScene, nextScene);
-          const videoModelFamily = data.targetVideoModel || 'veo';
-          const transitionModelId = VIDEO_MODEL_IDS[videoModelFamily].transition;
+          let transitionPrompt = currentScene.transition || generateFallbackTransition(currentScene, nextScene);
+
+          // Seedance R2V: prepend @image1 reference tag
+          if (videoModelFamily === 'seedance' && hasProduct) {
+            transitionPrompt = `@image1 ${transitionPrompt}`;
+          }
+
+          // Validate per-scene video settings against model capabilities
+          const videoSettings = resolveVideoSettings(currentScene, transitionModelId);
 
           nodeInputs.push({
             type: 'videoGenerator',
@@ -829,10 +945,9 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
             data: {
               prompt: transitionPrompt,
               model: transitionModelId,
-              aspectRatio: '16:9',
-              duration: 4,
-              resolution: '720p',
               generateAudio: true,
+              ...(videoSettings.aspectRatio && { aspectRatio: videoSettings.aspectRatio }),
+              ...(videoSettings.duration && { duration: videoSettings.duration }),
             },
           });
         }
@@ -852,8 +967,15 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
           const sourceImageId = nodeIds[imageNodeStartIndex + i];
           const targetImageId = nodeIds[imageNodeStartIndex + i + 1];
           const videoNodeId = nodeIds[videoNodeStartIndex + i];
-          await canvas.createEdge(sourceImageId, 'output', videoNodeId, 'firstFrame');
-          await canvas.createEdge(targetImageId, 'output', videoNodeId, 'lastFrame');
+          const transitionCaps = VIDEO_MODEL_CAPABILITIES[transitionModelId as VideoModelType];
+          if (transitionCaps?.supportsVideoRef) {
+            // Omni-reference models (Seedance 2.0): use ref1 for first image, ref2 for second
+            await canvas.createEdge(sourceImageId, 'output', videoNodeId, 'ref1');
+            await canvas.createEdge(targetImageId, 'output', videoNodeId, 'ref2');
+          } else {
+            await canvas.createEdge(sourceImageId, 'output', videoNodeId, 'firstFrame');
+            await canvas.createEdge(targetImageId, 'output', videoNodeId, 'lastFrame');
+          }
         }
 
         // --- Step 5: Product/Character → ALL scene image generators ---
@@ -963,9 +1085,34 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
 
       {/* Concept/Story */}
       <div className="space-y-1">
-        <label className="text-xs font-medium text-muted-foreground">
-          Concept / Story {!isReadOnly && <span className="text-red-400">*</span>}
-        </label>
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-medium text-muted-foreground">
+            Concept / Story {!isReadOnly && <span className="text-red-400">*</span>}
+          </label>
+          {!isReadOnly && (
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={handleGenerateConcept}
+                    disabled={isGeneratingConcept || !data.product?.trim()}
+                    className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground hover:text-foreground bg-muted hover:bg-muted/80 rounded transition-colors disabled:opacity-40 nodrag"
+                  >
+                    {isGeneratingConcept ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <Wand2 className="w-3 h-3" />
+                    )}
+                    Auto
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="bg-zinc-800 border-zinc-700 text-zinc-200 max-w-[200px]">
+                  <p className="text-xs">Generate a creative concept from your product and character inputs</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
         <textarea
           {...conceptField}
           placeholder={isReadOnly ? '' : 'e.g., Morning routine ad showing how our coffee mug makes the perfect start...'}
@@ -1127,7 +1274,7 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
       {/* Scrollable timeline */}
       <div
         ref={chatScrollRef}
-        className="flex-1 overflow-y-auto nowheel p-3 space-y-3"
+        className="flex-1 overflow-y-auto nowheel scrollbar-thin p-3 space-y-3"
         onWheel={(e) => !e.ctrlKey && e.stopPropagation()}
       >
         {timelineItems.map((item) => {
@@ -1291,7 +1438,7 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
 
         {/* Content */}
         {data.viewState === 'form' ? (
-          <div className="h-[580px] overflow-y-auto nowheel" onWheel={(e) => !e.ctrlKey && e.stopPropagation()}>
+          <div className="h-[580px] overflow-y-auto nowheel scrollbar-thin" onWheel={(e) => !e.ctrlKey && e.stopPropagation()}>
             {renderForm()}
           </div>
         ) : data.viewState === 'chat' ? (
@@ -1300,7 +1447,7 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
           </div>
         ) : data.viewState === 'loading' ? (
           /* Legacy loading state — show thinking block */
-          <div className="h-[580px] overflow-y-auto nowheel p-4 flex flex-col justify-center" onWheel={(e) => !e.ctrlKey && e.stopPropagation()}>
+          <div className="h-[580px] overflow-y-auto nowheel scrollbar-thin p-4 flex flex-col justify-center" onWheel={(e) => !e.ctrlKey && e.stopPropagation()}>
             <ThinkingBlock
               thinking={data.thinkingText || 'Generating storyboard'}
               reasoning={data.reasoningText}
@@ -1311,7 +1458,7 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
           </div>
         ) : data.viewState === 'preview' ? (
           /* Legacy preview state — show old result */
-          <div className="h-[580px] overflow-y-auto nowheel" onWheel={(e) => !e.ctrlKey && e.stopPropagation()}>
+          <div className="h-[580px] overflow-y-auto nowheel scrollbar-thin" onWheel={(e) => !e.ctrlKey && e.stopPropagation()}>
             {data.result && (
               <div className="p-4 space-y-3">
                 <div className="p-2 bg-muted rounded-lg">

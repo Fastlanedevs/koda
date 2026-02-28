@@ -19,13 +19,46 @@ import {
 } from '@/lib/plugins/official/storyboard-generator/schema';
 import { emitLaunchMetric } from '@/lib/observability/launch-metrics';
 import { evaluatePluginLaunchById, emitPluginPolicyAuditEvent } from '@/lib/plugins/launch-policy';
+import { loadVideoRecipes, VIDEO_RECIPE_PRESETS } from '@/mastra/recipes/video';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
 
 /** Default model for storyboard generation */
-const DEFAULT_MODEL = 'google/gemini-3-pro-preview';
+const DEFAULT_MODEL = 'anthropic/claude-sonnet-4-6';
+
+/**
+ * Fetch an image URL and return base64 data + media type.
+ * Handles both HTTP URLs and data: URLs.
+ * Returns null on failure (non-blocking — storyboard still works without the image).
+ */
+async function fetchImageAsBase64(url: string): Promise<{ base64: string; mediaType: string } | null> {
+  try {
+    // Handle data: URLs directly (already base64-encoded)
+    if (url.startsWith('data:')) {
+      const match = url.match(/^data:([^;]+);base64,(.+)$/);
+      if (match) {
+        return { base64: match[2], mediaType: match[1] };
+      }
+      console.warn('[Storyboard] Malformed data URL');
+      return null;
+    }
+
+    const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+    if (!res.ok) {
+      console.warn(`[Storyboard] Failed to fetch image (${res.status}): ${url}`);
+      return null;
+    }
+    const contentType = res.headers.get('content-type')?.split(';')[0] || 'image/png';
+    const buffer = await res.arrayBuffer();
+    const base64 = Buffer.from(buffer).toString('base64');
+    return { base64, mediaType: contentType };
+  } catch (err) {
+    console.warn('[Storyboard] Image fetch error:', err instanceof Error ? err.message : err);
+    return null;
+  }
+}
 
 export async function POST(request: Request) {
   try {
@@ -66,6 +99,10 @@ export async function POST(request: Request) {
     let prompt: string;
     let systemPrompt: string;
 
+    // Extract image URLs (available in both initial and refinement requests)
+    const productImageUrl: string | undefined = body.productImageUrl;
+    const characterImageUrl: string | undefined = body.characterImageUrl;
+
     if (isRefinement) {
       // Refinement turn: use previous draft + feedback
       const mode = body.mode || 'transition';
@@ -101,7 +138,63 @@ export async function POST(request: Request) {
 
       prompt = buildStoryboardPrompt(input);
       systemPrompt = getSystemPrompt(input.mode, input.targetVideoModel);
+
+      // Inject video recipes if explicitly selected by caller
+      if (input.videoRecipes && input.videoRecipes.length > 0) {
+        const recipeContent = loadVideoRecipes(input.videoRecipes);
+        if (recipeContent) {
+          systemPrompt = `${systemPrompt}\n\n${recipeContent}`;
+          console.log('[Storyboard] Injected video recipes:', input.videoRecipes.join(', '));
+        }
+      }
     }
+
+    // Fetch connected reference images in parallel (non-blocking)
+    const [productImage, characterImage] = await Promise.all([
+      productImageUrl ? fetchImageAsBase64(productImageUrl) : null,
+      characterImageUrl ? fetchImageAsBase64(characterImageUrl) : null,
+    ]);
+
+    // Build multimodal message if we have reference images
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const contentParts: Array<Record<string, any>> = [];
+    const imageLabels: string[] = [];
+
+    if (productImage) {
+      contentParts.push({
+        type: 'file',
+        data: productImage.base64,
+        mediaType: productImage.mediaType,
+      });
+      imageLabels.push('PRODUCT REFERENCE IMAGE');
+      console.log('[Storyboard] Attached product image:', productImageUrl);
+    }
+
+    if (characterImage) {
+      contentParts.push({
+        type: 'file',
+        data: characterImage.base64,
+        mediaType: characterImage.mediaType,
+      });
+      imageLabels.push('CHARACTER REFERENCE IMAGE');
+      console.log('[Storyboard] Attached character image:', characterImageUrl);
+    }
+
+    // Augment prompt with image context instructions
+    if (imageLabels.length > 0) {
+      const imageInstructions = `\n\nREFERENCE IMAGES ATTACHED: ${imageLabels.join(', ')}
+Study the attached image(s) carefully. Your productIdentity and characterIdentity descriptions must match the EXACT visual details you see — colors, materials, textures, shapes, clothing, accessories. Do NOT invent or change any visual attribute. Every scene prompt must reproduce these exact visual details.`;
+      prompt = prompt + imageInstructions;
+    }
+
+    // Add the text prompt as the final content part
+    contentParts.push({ type: 'text', text: prompt });
+
+    // Use multimodal message if images are attached, plain string otherwise
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const agentInput: any = imageLabels.length > 0
+      ? [{ role: 'user', content: contentParts }]
+      : prompt;
 
     console.log('[Storyboard] Built prompt:\n', prompt);
 
@@ -118,21 +211,13 @@ export async function POST(request: Request) {
     console.log('[Storyboard] Starting stream with thinking...');
 
     // Stream with structured output and thinking enabled
-    const result = await agent.stream(prompt, {
+    const result = await agent.stream(agentInput, {
       structuredOutput: {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         schema: StoryboardOutputSchema as any,
       },
       modelSettings: {
         temperature: 0.4,
-      },
-      providerOptions: {
-        google: {
-          thinkingConfig: {
-            thinkingBudget: 10000,
-            includeThoughts: true,
-          },
-        },
       },
     });
 
