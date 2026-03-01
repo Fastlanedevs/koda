@@ -37,6 +37,11 @@ export const motionAnalyzerPlugin: AgentPlugin = {
     collapsible: true,
   },
 
+  launcherHints: {
+    input: 'Upload video inside node',
+    output: 'Animation prompt text',
+  },
+
   capabilities: [
     'canvas:read',
   ],
@@ -54,9 +59,7 @@ export const motionAnalyzerPlugin: AgentPlugin = {
   ],
 
   handles: {
-    inputs: [
-      { id: 'video', name: 'Video', type: 'video', required: true },
-    ],
+    inputs: [],
     outputs: [
       { id: 'prompt-output', name: 'Animation Prompt', type: 'text' },
     ],

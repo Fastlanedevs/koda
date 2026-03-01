@@ -113,6 +113,7 @@ interface CanvasState {
   // React Flow instance (for viewport calculations)
   reactFlowInstance: ReactFlowInstance<AppNode, AppEdge> | null;
   setReactFlowInstance: (instance: ReactFlowInstance<AppNode, AppEdge>) => void;
+  spawnOffsetIndex: number;
   getViewportCenter: () => { x: number; y: number };
 
   // Utility
@@ -350,6 +351,7 @@ export const useCanvasStore = create<CanvasState>()(
     showShortcuts: false,
     activeTool: 'select' as const,
     reactFlowInstance: null,
+    spawnOffsetIndex: 0,
     isReadOnly: false,
 
       // Helper to push current state to history
@@ -904,7 +906,7 @@ export const useCanvasStore = create<CanvasState>()(
       },
 
       getViewportCenter: () => {
-        const { reactFlowInstance } = get();
+        const { reactFlowInstance, spawnOffsetIndex } = get();
         if (!reactFlowInstance) {
           // Fallback if no instance available
           return { x: 200, y: 200 };
@@ -923,10 +925,19 @@ export const useCanvasStore = create<CanvasState>()(
         const centerX = (-x + rect.width / 2) / zoom;
         const centerY = (-y + rect.height / 2) / zoom;
 
-        // Add small random offset to prevent stacking
+        // Deterministic offset pattern to avoid stacking new nodes.
+        const GRID_SIZE = 4;
+        const STEP = 44;
+        const col = spawnOffsetIndex % GRID_SIZE;
+        const row = Math.floor(spawnOffsetIndex / GRID_SIZE) % GRID_SIZE;
+        const half = (GRID_SIZE - 1) / 2;
+        const offsetX = (col - half) * STEP;
+        const offsetY = (row - half) * STEP;
+        set({ spawnOffsetIndex: (spawnOffsetIndex + 1) % (GRID_SIZE * GRID_SIZE) });
+
         return {
-          x: centerX + (Math.random() - 0.5) * 100,
-          y: centerY + (Math.random() - 0.5) * 100,
+          x: centerX + offsetX,
+          y: centerY + offsetY,
         };
       },
 
@@ -1067,7 +1078,7 @@ export const useCanvasStore = create<CanvasState>()(
 
       clearCanvas: () => {
         const { _pushHistory } = get() as CanvasState & { _pushHistory: () => void };
-        set({ nodes: [], edges: [], selectedNodeIds: [] });
+        set({ nodes: [], edges: [], selectedNodeIds: [], spawnOffsetIndex: 0 });
         _pushHistory();
       },
 
@@ -1088,6 +1099,7 @@ export const useCanvasStore = create<CanvasState>()(
           videoSettingsPanelPosition: null,
           contextMenu: null,
           isReadOnly: false,
+          spawnOffsetIndex: 0,
         });
 
         // Initialize history with loaded state
@@ -1116,6 +1128,7 @@ export const useCanvasStore = create<CanvasState>()(
           videoSettingsPanelPosition: null,
           contextMenu: null,
           isReadOnly: true,
+          spawnOffsetIndex: 0,
         });
       },
 
@@ -1236,6 +1249,7 @@ export const useCanvasStore = create<CanvasState>()(
           return node;
         }),
         edges: state.edges,
+        isReadOnly: state.isReadOnly,
       }),
     }
   )

@@ -30,6 +30,8 @@ import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useAgentSandbox } from '@/hooks/useAgentSandbox';
 import { AgentSandbox } from '@/components/plugins/AgentSandbox';
 import { pluginRegistry } from '@/lib/plugins/registry';
+import { evaluatePluginLaunchById, emitPluginPolicyAuditEvent } from '@/lib/plugins/launch-policy';
+import { toast } from 'sonner';
 import '@/lib/plugins/official/storyboard-generator';
 import '@/lib/plugins/official/product-shot';
 import '@/lib/plugins/official/agents/animation-generator';
@@ -66,6 +68,17 @@ export function Canvas() {
   const handlePluginLaunch = useCallback(
     (pluginId: string) => {
       const plugin = pluginRegistry.get(pluginId);
+      const decision = evaluatePluginLaunchById(pluginId);
+      emitPluginPolicyAuditEvent({
+        source: 'canvas',
+        decision,
+        metadata: { interaction: 'launch', pluginFound: !!plugin },
+      });
+
+      if (!decision.allowed) {
+        toast.error(decision.reason);
+        return;
+      }
 
       // Create a canvas node at viewport center
       let position = { x: 400, y: 300 };
@@ -196,11 +209,15 @@ export function Canvas() {
       // Image input handles - reference, firstFrame, lastFrame, ref1-ref8 (for multi-ref models)
       const targetHandle = connection.targetHandle || '';
 
-      // Animation node requires explicit handle targeting to avoid accidental body drops.
+      // Animation node fallback: some custom handle compositions may not always report
+      // targetHandle during drop. Allow typed media/code connections instead of hard-failing.
       if (targetNode.type === 'pluginNode'
         && targetPluginData?.pluginId === 'animation-generator'
         && !targetHandle) {
-        return false;
+        const isSvgCodeSource = sourceNode.type === 'pluginNode'
+          && sourcePluginData?.pluginId === 'svg-studio'
+          && connection.sourceHandle === 'code-output';
+        return isImageSource || isVideoSource || isSvgCodeSource;
       }
       const isImageHandle = ['reference', 'firstFrame', 'lastFrame'].includes(targetHandle) ||
         /^ref[1-8]$/.test(targetHandle);
@@ -287,6 +304,11 @@ export function Canvas() {
     [nodes]
   );
 
+  // UX: In select mode, allow dragging empty canvas to pan.
+  // Hold Shift + drag for marquee selection.
+  const panEnabled = isReadOnly || activeTool === 'pan' || activeTool === 'select';
+  const selectionOnDragEnabled = !isReadOnly && activeTool === 'scissors';
+
   return (
     <div ref={containerRef} className="w-full h-full relative" style={{ backgroundColor: 'var(--canvas-bg)' }} onMouseMove={handleMouseMove}>
       {!isReadOnly && (
@@ -328,14 +350,16 @@ export function Canvas() {
         proOptions={{ hideAttribution: true }}
         snapToGrid={useSettingsStore.getState().canvasPreferences.gridSnap}
         snapGrid={[20, 20]}
-        panOnDrag={isReadOnly ? true : activeTool === 'pan'}
+        panOnDrag={panEnabled}
+        panActivationKeyCode={isReadOnly ? null : 'Space'}
         panOnScroll={false}
         zoomOnScroll
         minZoom={0.25}
         nodesDraggable={!isReadOnly}
         nodesConnectable={!isReadOnly}
         edgesReconnectable={!isReadOnly}
-        selectionOnDrag={isReadOnly ? false : activeTool === 'select' || activeTool === 'scissors'}
+        selectionOnDrag={selectionOnDragEnabled}
+        selectionKeyCode={['Shift']}
         selectionMode={SelectionMode.Partial}
         deleteKeyCode={isReadOnly ? [] : ['Backspace', 'Delete']}
         connectionRadius={30}
