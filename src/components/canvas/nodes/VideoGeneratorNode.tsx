@@ -746,7 +746,7 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
               </div>
               {isPromptExpanded && (
                 <div className="px-3 pb-3 nodrag nopan" onPointerDown={(e) => e.stopPropagation()}>
-                  <div className="node-content-area p-2 min-h-[100px] relative">
+                  <div className="rounded-xl border border-border/50 bg-muted/30 p-2 min-h-[100px] relative">
                     {supportsVideoRef ? (
                       <MentionEditor
                         content={data.prompt}

@@ -584,7 +584,7 @@ function ImageGeneratorNodeComponent({ id, data, selected, positionAbsoluteX, po
               </div>
               {isPromptExpanded && (
                 <div className="px-3 pb-3 nodrag nopan" onPointerDown={(e) => e.stopPropagation()}>
-                  <div className="node-content-area p-2 min-h-[100px]">
+                  <div className="rounded-xl border border-border/50 bg-muted/30 p-2 min-h-[100px]">
                     <textarea
                       value={data.prompt}
                       onChange={handlePromptChange}
