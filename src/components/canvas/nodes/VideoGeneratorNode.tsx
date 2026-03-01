@@ -68,6 +68,9 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
   const updateNodeInternals = useUpdateNodeInternals();
   const [isEditingName, setIsEditingName] = useState(false);
   const [nodeName, setNodeName] = useState(data.name || 'Video Generator');
+  const [isImproving, setIsImproving] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const originalPromptRef = useRef<string>('');
   const [isHovered, setIsHovered] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -207,6 +210,66 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
       updateNodeData(id, { prompt: value });
     },
     [id, updateNodeData]
+  );
+
+  const handlePromptAction = useCallback(
+    async (action: 'improve' | 'translate') => {
+      const currentPrompt = data.prompt?.trim();
+      if (!currentPrompt) return;
+
+      const setLoading = action === 'improve' ? setIsImproving : setIsTranslating;
+      originalPromptRef.current = currentPrompt;
+      setLoading(true);
+      updateNodeData(id, { prompt: '' });
+
+      try {
+        const res = await fetch('/api/plugins/video/prompt-tools', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: currentPrompt, action }),
+        });
+
+        if (!res.ok || !res.body) {
+          throw new Error(`Request failed: ${res.status}`);
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let accumulated = '';
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            try {
+              const event = JSON.parse(line.slice(6));
+              if (event.type === 'text-delta') {
+                accumulated += event.text;
+                updateNodeData(id, { prompt: accumulated });
+              } else if (event.type === 'error') {
+                throw new Error(event.error);
+              }
+            } catch (e) {
+              if (e instanceof SyntaxError) continue;
+              throw e;
+            }
+          }
+        }
+      } catch (err) {
+        updateNodeData(id, { prompt: originalPromptRef.current });
+        toast.error(`Failed to ${action} prompt: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [id, data.prompt, updateNodeData],
   );
 
   const handleModelChange = useCallback(
@@ -674,24 +737,51 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
           ) : (
             /* Prompt Input - Freepik style with inner content area */
             <div className="p-3">
-              <div className="node-content-area p-3 min-h-[160px]">
+              <div className="node-content-area p-3 min-h-[160px] relative">
                 {supportsVideoRef ? (
                   <MentionEditor
                     content={data.prompt}
                     onChange={handlePromptChange}
                     items={mentionItems}
                     placeholder="Type @ to reference connected images/videos..."
-                    disabled={isReadOnly}
+                    disabled={isReadOnly || isImproving || isTranslating}
                   />
                 ) : (
                   <textarea
                     value={data.prompt}
                     onChange={(e) => handlePromptChange(e.target.value)}
                     placeholder={isReadOnly ? '' : 'Describe the video you want to generate...'}
-                    disabled={isReadOnly}
+                    disabled={isReadOnly || isImproving || isTranslating}
                     className={`w-full h-[130px] bg-transparent border-none text-sm resize-none focus:outline-none ${isReadOnly ? 'cursor-default' : ''}`}
                     style={{ color: 'var(--text-secondary)' }}
                   />
+                )}
+                {/* Improve & Translate buttons */}
+                {!isReadOnly && data.prompt?.trim() && (selected || isHovered) && (
+                  <div className="absolute bottom-2 right-2 flex gap-1.5 nodrag">
+                    <button
+                      onClick={() => handlePromptAction('improve')}
+                      disabled={isImproving || isTranslating}
+                      className={`text-[10px] font-medium px-2 py-1 rounded-md transition-colors nodrag ${
+                        isImproving || isTranslating
+                          ? 'opacity-60 cursor-not-allowed'
+                          : 'hover:bg-primary/30'
+                      } bg-primary/20 text-primary`}
+                    >
+                      {isImproving ? 'Improving...' : '✦ Improve'}
+                    </button>
+                    <button
+                      onClick={() => handlePromptAction('translate')}
+                      disabled={isImproving || isTranslating}
+                      className={`text-[10px] font-medium px-2 py-1 rounded-md transition-colors nodrag ${
+                        isImproving || isTranslating
+                          ? 'opacity-60 cursor-not-allowed'
+                          : 'hover:bg-zinc-600/50'
+                      } bg-zinc-700/50 text-zinc-300`}
+                    >
+                      {isTranslating ? 'Translating...' : '中 Translate'}
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
