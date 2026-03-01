@@ -304,6 +304,7 @@ export function AnimationSettingsPanel({
   return createPortal(
     <div
       ref={panelRef}
+      data-node-id={nodeId}
       className="fixed z-[9999] w-[280px] max-h-[560px] flex flex-col rounded-xl overflow-hidden animation-node"
       style={{
         left: adjustedPosition.x,

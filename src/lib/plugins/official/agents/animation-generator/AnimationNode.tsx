@@ -2427,7 +2427,7 @@ function AnimationNodeComponent({ id, data, selected }: AnimationNodeProps) {
                 type="target"
                 position={Position.Left}
                 id={`image-ref-${i}`}
-                className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-[#14B8A6] !border-[#0F766E] hover:!border-[#115E59]"
+                className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full node-handle"
               />
               <Image className="absolute inset-0 m-auto h-3.5 w-3.5 pointer-events-none text-white" />
             </div>
@@ -2470,7 +2470,7 @@ function AnimationNodeComponent({ id, data, selected }: AnimationNodeProps) {
                 type="target"
                 position={Position.Left}
                 id={`video-ref-${i}`}
-                className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-[#A855F7] !border-[#7E22CE] hover:!border-[#6B21A8]"
+                className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full node-handle"
               />
               <Video className="absolute inset-0 m-auto h-3.5 w-3.5 pointer-events-none text-white" />
             </div>
@@ -2510,7 +2510,7 @@ function AnimationNodeComponent({ id, data, selected }: AnimationNodeProps) {
             type="target"
             position={Position.Left}
             id="svg-code"
-            className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-emerald-500 !border-emerald-700 hover:!border-emerald-600"
+            className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full node-handle"
           />
           <Code className="absolute inset-0 m-auto h-3.5 w-3.5 pointer-events-none text-white" />
         </div>
@@ -2523,7 +2523,7 @@ function AnimationNodeComponent({ id, data, selected }: AnimationNodeProps) {
             type="source"
             position={Position.Right}
             id="video"
-            className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-[#A855F7] !border-[#7E22CE] hover:!border-[#6B21A8]"
+            className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full node-handle"
           />
           <Video className="absolute inset-0 m-auto h-3.5 w-3.5 pointer-events-none text-white" />
         </div>

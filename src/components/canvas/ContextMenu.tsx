@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { useCanvasStore, createImageGeneratorNode, createVideoGeneratorNode, createTextNode, createMediaNode, createStickyNoteNode, createStickerNode, createGroupNode, createMusicGeneratorNode, createSpeechNode, createVideoAudioNode, createPluginNode } from '@/stores/canvas-store';
 import { useReactFlow } from '@xyflow/react';
 import {
@@ -29,7 +29,9 @@ import {
   PenTool,
 } from 'lucide-react';
 import { pluginRegistry } from '@/lib/plugins/registry';
+import { evaluatePluginLaunchById, evaluatePluginLaunchPolicy, emitPluginPolicyAuditEvent } from '@/lib/plugins/launch-policy';
 import { uploadAsset } from '@/lib/assets/upload';
+import { toast } from 'sonner';
 // Import official plugins to register them
 import '@/lib/plugins/official/storyboard-generator';
 import '@/lib/plugins/official/product-shot';
@@ -44,6 +46,8 @@ interface MenuItem {
   label: string;
   action: () => void;
   keywords?: string[];
+  disabled?: boolean;
+  subtitle?: string;
 }
 
 interface MenuSection {
@@ -152,7 +156,7 @@ export function ContextMenu({ onPluginLaunch }: ContextMenuProps) {
   const handleUpload = () => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = 'image/*,video/*';
+    input.accept = 'image/*,video/*,audio/*';
     input.multiple = true;
     input.onchange = (e) => {
       const files = (e.target as HTMLInputElement).files;
@@ -160,10 +164,12 @@ export function ContextMenu({ onPluginLaunch }: ContextMenuProps) {
         const position = getNodePosition();
         Array.from(files).forEach(async (file, index) => {
           const isVideo = file.type.startsWith('video/');
+          const isAudio = file.type.startsWith('audio/');
+          const mediaType: 'image' | 'video' | 'audio' = isVideo ? 'video' : isAudio ? 'audio' : 'image';
           const node = createMediaNode({ x: position.x + index * 50, y: position.y + index * 50 });
           try {
             const asset = await uploadAsset(file, { nodeId: node.id });
-            node.data = { ...node.data, url: asset.url, type: isVideo ? 'video' : 'image' };
+            node.data = { ...node.data, url: asset.url, type: mediaType };
             addNode(node);
           } catch (err) {
             console.error('[ContextMenu] Upload failed:', err);
@@ -174,6 +180,20 @@ export function ContextMenu({ onPluginLaunch }: ContextMenuProps) {
     input.click();
     hideContextMenu();
   };
+
+  const guardPluginLaunch = useCallback((pluginId: string): boolean => {
+    const decision = evaluatePluginLaunchById(pluginId);
+    emitPluginPolicyAuditEvent({
+      source: 'context-menu',
+      decision,
+      metadata: { interaction: 'quick-add' },
+    });
+    if (!decision.allowed) {
+      toast.error(decision.reason);
+      return false;
+    }
+    return true;
+  }, []);
 
   // Node menu items
   const nodeMenuItems = useMemo(() => contextMenu?.type === 'node' ? [
@@ -263,30 +283,39 @@ export function ContextMenu({ onPluginLaunch }: ContextMenuProps) {
           id: 'animationGenerator',
           icon: <Clapperboard className="h-4 w-4 text-blue-500" />,
           label: 'Animation Generator',
-          action: () => handleAddNode(
-            (pos, name) => createPluginNode(pos, 'animation-generator', name),
-            'Animation Generator'
-          ),
+          action: () => {
+            if (!guardPluginLaunch('animation-generator')) return;
+            handleAddNode(
+              (pos, name) => createPluginNode(pos, 'animation-generator', name),
+              'Animation Generator'
+            );
+          },
           keywords: ['animation', 'animate', 'motion', 'theatre', 'theater'],
         },
         {
           id: 'svgStudio',
           icon: <PenTool className="h-4 w-4 text-emerald-400" />,
           label: 'SVG Studio',
-          action: () => handleAddNode(
-            (pos, name) => createPluginNode(pos, 'svg-studio', name),
-            'SVG Studio'
-          ),
+          action: () => {
+            if (!guardPluginLaunch('svg-studio')) return;
+            handleAddNode(
+              (pos, name) => createPluginNode(pos, 'svg-studio', name),
+              'SVG Studio'
+            );
+          },
           keywords: ['svg', 'vector', 'icon', 'logo'],
         },
         {
           id: 'promptStudio',
           icon: <Sparkle className="h-4 w-4 text-amber-400" />,
           label: 'Prompt Studio',
-          action: () => handleAddNode(
-            (pos, name) => createPluginNode(pos, 'prompt-studio', name),
-            'Prompt Studio'
-          ),
+          action: () => {
+            if (!guardPluginLaunch('prompt-studio')) return;
+            handleAddNode(
+              (pos, name) => createPluginNode(pos, 'prompt-studio', name),
+              'Prompt Studio'
+            );
+          },
           keywords: ['prompt', 'creative', 'director', 'enhance', 'image prompt', 'video prompt'],
         },
       ],
@@ -360,20 +389,34 @@ export function ContextMenu({ onPluginLaunch }: ContextMenuProps) {
     {
       title: 'PLUGINS',
       collapsible: true,
-      items: pluginRegistry.getAll().map((plugin) => ({
-        id: plugin.id,
-        icon: <plugin.icon className="w-4 h-4" />,
-        label: plugin.name,
-        action: () => {
-          if (onPluginLaunch) {
-            onPluginLaunch(plugin.id);
-          }
-          hideContextMenu();
-        },
-        keywords: [plugin.name.toLowerCase(), plugin.category, 'plugin'],
-      })),
+      items: pluginRegistry.getAll().map((plugin) => {
+        const decision = evaluatePluginLaunchPolicy(plugin);
+        return {
+          id: plugin.id,
+          icon: <plugin.icon className="w-4 h-4" />,
+          label: plugin.name,
+          subtitle: !decision.allowed ? decision.reason : undefined,
+          disabled: !decision.allowed,
+          action: () => {
+            emitPluginPolicyAuditEvent({
+              source: 'context-menu',
+              decision,
+              metadata: { interaction: 'plugin-list' },
+            });
+            if (!decision.allowed) {
+              toast.error(decision.reason);
+              return;
+            }
+            if (onPluginLaunch) {
+              onPluginLaunch(plugin.id);
+            }
+            hideContextMenu();
+          },
+          keywords: [plugin.name.toLowerCase(), plugin.category, 'plugin'],
+        };
+      }),
     },
-  ], [addNode, hideContextMenu, handleUpload, nodes, onPluginLaunch]);
+  ], [addNode, guardPluginLaunch, hideContextMenu, handleUpload, nodes, onPluginLaunch]);
 
   // Filter sections based on search query
   const filteredSections = useMemo(() => {
@@ -523,10 +566,21 @@ export function ContextMenu({ onPluginLaunch }: ContextMenuProps) {
                 <button
                   key={item.id}
                   onClick={item.action}
-                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-muted cursor-pointer transition-colors"
+                  disabled={item.disabled}
+                  className={[
+                    'w-full flex items-center gap-3 px-4 py-2 text-sm transition-colors',
+                    item.disabled
+                      ? 'text-muted-foreground/60 cursor-not-allowed'
+                      : 'text-foreground hover:bg-muted cursor-pointer',
+                  ].join(' ')}
                 >
                   {item.icon}
-                  <span>{item.label}</span>
+                  <span className="flex-1 text-left">
+                    <span className="block truncate">{item.label}</span>
+                    {item.subtitle && (
+                      <span className="block truncate text-[10px] text-muted-foreground/80">{item.subtitle}</span>
+                    )}
+                  </span>
                 </button>
               ))}
             </div>

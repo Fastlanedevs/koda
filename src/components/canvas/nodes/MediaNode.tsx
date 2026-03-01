@@ -326,7 +326,7 @@ function MediaNodeComponent({ id, data, selected }: NodeProps<MediaNodeType>) {
             type="source"
             position={Position.Right}
             id="output"
-            className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-zinc-400 !border-zinc-900 hover:!border-zinc-700"
+            className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full node-handle"
           />
           {data.type === 'audio' ? (
             <Volume2 className="absolute inset-0 m-auto h-3.5 w-3.5 pointer-events-none text-zinc-900" />
