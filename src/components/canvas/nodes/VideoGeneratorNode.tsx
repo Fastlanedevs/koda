@@ -653,8 +653,8 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
               </Button>
               {/* Gradient overlay for better visibility - visible on hover */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover/video:opacity-100 transition-opacity duration-300 pointer-events-none" />
-              {/* Floating Toolbar - visible on hover with smooth animation */}
-              {!isReadOnly && (
+              {/* Floating Toolbar - visible on hover, hidden when prompt expanded */}
+              {!isReadOnly && !isPromptExpanded && (
                 <div className="absolute bottom-3 left-3 right-3 flex items-center gap-1.5 px-2.5 py-2 bg-black/50 backdrop-blur-xl rounded-xl border border-white/10 opacity-0 group-hover/video:opacity-100 transition-all duration-300 ease-out translate-y-2 group-hover/video:translate-y-0 shadow-xl">
                   <SearchableSelect
                     value={data.model}
@@ -800,6 +800,83 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
                 </div>
               )}
             </div>
+            {/* Bottom toolbar when prompt is expanded */}
+            {isPromptExpanded && !isReadOnly && (
+              <div className="flex items-center flex-wrap gap-1.5 px-3 py-2.5 node-bottom-toolbar">
+                <SearchableSelect
+                  value={data.model}
+                  onValueChange={handleModelChange}
+                  options={visibleVideoModels.map(key => ({
+                    value: key,
+                    label: VIDEO_MODEL_CAPABILITIES[key].label,
+                    description: VIDEO_MODEL_CAPABILITIES[key].description,
+                    group: VIDEO_MODEL_CAPABILITIES[key].group,
+                  }))}
+                  placeholder="Select model"
+                  searchPlaceholder="Search models..."
+                  triggerClassName="max-w-[110px]"
+                />
+                <Select value={data.aspectRatio} onValueChange={handleAspectRatioChange}>
+                  <SelectTrigger className="h-7 w-auto bg-muted/80 border-0 text-xs text-foreground gap-1 px-2 rounded-md hover:bg-muted">
+                    <span className="flex items-center gap-1">
+                      <span className="w-2.5 h-2.5 border border-muted-foreground rounded-[2px]" />
+                      <SelectValue />
+                    </span>
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover border-border">
+                    {modelCapabilities.aspectRatios.map((ratio) => (
+                      <SelectItem key={ratio} value={ratio} className="text-xs">{ratio}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={String(data.duration)} onValueChange={handleDurationChange}>
+                  <SelectTrigger className="h-7 w-auto bg-muted/80 border-0 text-xs text-foreground gap-1 px-2 rounded-md hover:bg-muted">
+                    <SelectValue>{data.duration}s</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover border-border">
+                    {modelCapabilities.durations.map((dur) => (
+                      <SelectItem key={dur} value={String(dur)} className="text-xs">{dur}s</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {modelCapabilities.supportsAudio && (
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={handleAudioToggle}
+                    className={`h-7 w-7 shrink-0 ${
+                      data.generateAudio !== false
+                        ? 'text-foreground bg-muted hover:bg-muted/80'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    }`}
+                    title={data.generateAudio !== false ? 'Audio ON' : 'Audio OFF'}
+                  >
+                    {data.generateAudio !== false ? (
+                      <Volume2 className="h-3.5 w-3.5" />
+                    ) : (
+                      <VolumeX className="h-3.5 w-3.5" />
+                    )}
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={handleOpenSettings}
+                  className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-muted/50 shrink-0 cursor-pointer"
+                >
+                  <Settings className="h-3.5 w-3.5" />
+                </Button>
+                <div className="flex-1 min-w-0" />
+                <Button
+                  onClick={handleGenerate}
+                  disabled={!hasValidInput || data.isGenerating}
+                  size="icon-sm"
+                  className="h-8 w-8 min-w-8 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg disabled:opacity-40 shrink-0"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
             </>
           ) : (
             /* Prompt Input - Freepik style with inner content area */
