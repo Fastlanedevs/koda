@@ -65,6 +65,7 @@ export function ContextMenu({ onPluginLaunch }: ContextMenuProps) {
   const deleteSelected = useCanvasStore((state) => state.deleteSelected);
   const duplicateSelected = useCanvasStore((state) => state.duplicateSelected);
   const openSettingsPanel = useCanvasStore((state) => state.openSettingsPanel);
+  const openVideoSettingsPanel = useCanvasStore((state) => state.openVideoSettingsPanel);
   const selectedNodeIds = useCanvasStore((state) => state.selectedNodeIds);
   const addNode = useCanvasStore((state) => state.addNode);
   const groupSelected = useCanvasStore((state) => state.groupSelected);
@@ -77,6 +78,10 @@ export function ContextMenu({ onPluginLaunch }: ContextMenuProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [utilitiesExpanded, setUtilitiesExpanded] = useState(false);
   const [pluginsExpanded, setPluginsExpanded] = useState(false);
+  const selectedNode = useMemo(
+    () => (selectedNodeIds.length === 1 ? nodes.find((node) => node.id === selectedNodeIds[0]) : undefined),
+    [nodes, selectedNodeIds]
+  );
 
   // Clamp menu position so it doesn't overflow the viewport
   const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
@@ -177,10 +182,28 @@ export function ContextMenu({ onPluginLaunch }: ContextMenuProps) {
     { id: 'duplicate', icon: <Duplicate className="h-4 w-4" />, label: 'Duplicate', shortcut: '⌘D', action: duplicateSelected, disabled: selectedNodeIds.length === 0 },
     { id: 'group', icon: <Group className="h-4 w-4" />, label: 'Group Selected', shortcut: '⌘G', action: () => { groupSelected(); hideContextMenu(); }, disabled: selectedNodeIds.length < 2 },
     { id: 'divider1', divider: true },
-    { id: 'settings', icon: <Settings className="h-4 w-4" />, label: 'Settings', action: () => selectedNodeIds[0] && openSettingsPanel(selectedNodeIds[0], { x: contextMenu.x + 10, y: contextMenu.y }), disabled: selectedNodeIds.length !== 1 },
+    {
+      id: 'settings',
+      icon: <Settings className="h-4 w-4" />,
+      label: 'Settings',
+      action: () => {
+        if (!selectedNode) return;
+        const panelPosition = { x: contextMenu.x + 10, y: contextMenu.y };
+        if (selectedNode.type === 'imageGenerator') {
+          openSettingsPanel(selectedNode.id, panelPosition);
+          hideContextMenu();
+          return;
+        }
+        if (selectedNode.type === 'videoGenerator') {
+          openVideoSettingsPanel(selectedNode.id, panelPosition);
+          hideContextMenu();
+        }
+      },
+      disabled: selectedNodeIds.length !== 1 || !selectedNode || (selectedNode.type !== 'imageGenerator' && selectedNode.type !== 'videoGenerator'),
+    },
     { id: 'divider2', divider: true },
     { id: 'delete', icon: <Trash2 className="h-4 w-4" />, label: 'Delete', shortcut: '⌫', action: deleteSelected, disabled: selectedNodeIds.length === 0, danger: true },
-  ] : [], [contextMenu, copySelected, cutSelected, duplicateSelected, groupSelected, deleteSelected, hideContextMenu, openSettingsPanel, selectedNodeIds]);
+  ] : [], [contextMenu, copySelected, cutSelected, duplicateSelected, groupSelected, deleteSelected, hideContextMenu, openSettingsPanel, openVideoSettingsPanel, selectedNodeIds, selectedNode]);
 
   // Canvas menu sections
   const canvasMenuSections: MenuSection[] = useMemo(() => [

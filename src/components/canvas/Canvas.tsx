@@ -14,8 +14,8 @@ import {
 import '@xyflow/react/dist/style.css';
 
 import { useCanvasStore, createStoryboardNode, createProductShotNode, createPluginNode } from '@/stores/canvas-store';
-import type { AppNode, ImageGeneratorNodeData, VideoGeneratorNodeData, ImageModelType, VideoModelType } from '@/lib/types';
-import { MODEL_CAPABILITIES, VIDEO_MODEL_CAPABILITIES } from '@/lib/types';
+import type { AppNode, ImageGeneratorNodeData, ImageModelType, MediaNodeData, PluginNodeData } from '@/lib/types';
+import { MODEL_CAPABILITIES } from '@/lib/types';
 import { useSettingsStore } from '@/stores/settings-store';
 import { nodeTypes } from './nodes';
 import { edgeTypes } from './edges';
@@ -29,7 +29,13 @@ import { ZoomControls } from './ZoomControls';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useAgentSandbox } from '@/hooks/useAgentSandbox';
 import { AgentSandbox } from '@/components/plugins/AgentSandbox';
+import { pluginRegistry } from '@/lib/plugins/registry';
+import '@/lib/plugins/official/storyboard-generator';
+import '@/lib/plugins/official/product-shot';
+import '@/lib/plugins/official/agents/animation-generator';
+import '@/lib/plugins/official/agents/motion-analyzer';
 import '@/lib/plugins/official/agents/svg-studio';
+import '@/lib/plugins/official/agents/prompt-studio';
 
 export function Canvas() {
   const nodes = useCanvasStore((state) => state.nodes);
@@ -59,6 +65,7 @@ export function Canvas() {
   // Handle plugin launch - create node for node-based plugins, open sandbox for others
   const handlePluginLaunch = useCallback(
     (pluginId: string) => {
+      const plugin = pluginRegistry.get(pluginId);
 
       // Create a canvas node at viewport center
       let position = { x: 400, y: 300 };
@@ -71,26 +78,22 @@ export function Canvas() {
           y: (-viewport.y + height / 2 - 200) / viewport.zoom,
         };
       }
+
       if (pluginId === 'storyboard-generator' || pluginId === 'product-shot') {
         const node = pluginId === 'product-shot'
           ? createProductShotNode(position, 'Product Shots')
           : createStoryboardNode(position, 'Storyboard');
         addNode(node);
-      } else if (pluginId === 'animation-generator') {
-        // Animation Generator uses the pluginNode type
-        const node = createPluginNode(position, pluginId, 'Animation Generator');
-        addNode(node);
-      } else if (pluginId === 'motion-analyzer') {
-        const node = createPluginNode(position, pluginId, 'Motion Analyzer');
-        addNode(node);
-      } else if (pluginId === 'svg-studio') {
-        const node = createPluginNode(position, pluginId, 'SVG Studio');
-        addNode(node);
-      } else {
-        // Other plugins still open as modals. Maybe not needed anymore. We'll see.
-        // Other plugins open as modals
-        openSandbox(pluginId);
+        return;
       }
+
+      if (plugin?.rendering?.mode === 'node') {
+        const node = createPluginNode(position, pluginId, plugin.name);
+        addNode(node);
+        return;
+      }
+
+      openSandbox(pluginId);
     },
     [addNode, openSandbox, reactFlowInstance]
   );
@@ -161,18 +164,46 @@ export function Canvas() {
       const targetNode = nodes.find((n) => n.id === connection.target) as AppNode | undefined;
       if (!sourceNode || !targetNode) return false;
 
-      // Check if source provides images (media nodes, image generators, svg-studio plugin output)
       const sourcePluginData = sourceNode.type === 'pluginNode'
-        ? (sourceNode.data as Record<string, unknown>)
+        ? (sourceNode.data as PluginNodeData)
+        : null;
+      const targetPluginData = targetNode.type === 'pluginNode'
+        ? (targetNode.data as PluginNodeData)
+        : null;
+      const sourceMediaType = sourceNode.type === 'media'
+        ? ((sourceNode.data as MediaNodeData).type || 'image')
         : null;
       const isSvgStudioSource = sourceNode.type === 'pluginNode'
         && sourcePluginData?.pluginId === 'svg-studio';
-      const isImageSource = sourceNode.type === 'media' || sourceNode.type === 'imageGenerator' || isSvgStudioSource;
+      const isSvgStudioImageSource = isSvgStudioSource && connection.sourceHandle !== 'code-output';
+      const isAnimationVideoSource = sourceNode.type === 'pluginNode'
+        && sourcePluginData?.pluginId === 'animation-generator'
+        && connection.sourceHandle === 'video';
+      const isImageSource =
+        sourceNode.type === 'imageGenerator'
+        || (sourceNode.type === 'media' && sourceMediaType === 'image')
+        || isSvgStudioImageSource;
+      const isVideoSource =
+        sourceNode.type === 'videoGenerator'
+        || sourceNode.type === 'videoAudio'
+        || (sourceNode.type === 'media' && sourceMediaType === 'video')
+        || isAnimationVideoSource;
+      const isAudioSource =
+        sourceNode.type === 'musicGenerator'
+        || sourceNode.type === 'speech'
+        || (sourceNode.type === 'media' && sourceMediaType === 'audio');
 
-      // Image input handles - reference, firstFrame, lastFrame, ref2-ref8 (for multi-ref models)
+      // Image input handles - reference, firstFrame, lastFrame, ref1-ref8 (for multi-ref models)
       const targetHandle = connection.targetHandle || '';
+
+      // Animation node requires explicit handle targeting to avoid accidental body drops.
+      if (targetNode.type === 'pluginNode'
+        && targetPluginData?.pluginId === 'animation-generator'
+        && !targetHandle) {
+        return false;
+      }
       const isImageHandle = ['reference', 'firstFrame', 'lastFrame'].includes(targetHandle) ||
-        /^ref[2-8]$/.test(targetHandle);
+        /^ref[1-8]$/.test(targetHandle);
       if (isImageHandle) {
         if (!isImageSource) return false;
 
@@ -205,13 +236,32 @@ export function Canvas() {
       // Text handle accepts text nodes and Prompt Studio plugin
       if (connection.targetHandle === 'text') {
         if (sourceNode.type === 'text') return true;
-        if (sourceNode.type === 'pluginNode' && (sourceNode.data as Record<string, unknown>)?.pluginId === 'prompt-studio') return true;
+        if (
+          sourceNode.type === 'pluginNode'
+          && (connection.sourceHandle === 'prompt-output'
+            || (
+              !connection.sourceHandle
+              && ['prompt-studio', 'motion-analyzer'].includes((sourceNode.data as PluginNodeData).pluginId)
+            ))
+        ) {
+          return true;
+        }
         return false;
       }
 
-      // Animation node video ref handles — only allow from videoGenerator, only for Remotion engine
+      // Video handle accepts only video sources
+      if (targetHandle === 'video') {
+        return isVideoSource;
+      }
+
+      // Audio handle accepts only audio sources
+      if (targetHandle === 'audio') {
+        return isAudioSource;
+      }
+
+      // Animation node video ref handles — allow only compatible video sources, only for Remotion engine
       if (targetHandle.startsWith('video-ref-')) {
-        if (sourceNode.type !== 'videoGenerator') return false;
+        if (!isVideoSource) return false;
         // Block video connections to Theatre.js animation nodes
         if (targetNode.type === 'pluginNode') {
           const animData = targetNode.data as Record<string, unknown>;
