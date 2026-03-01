@@ -639,7 +639,7 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
                 }}
               />
               {/* Duration badge - visible on hover */}
-              <div className="absolute top-3 right-3 px-2 py-0.5 bg-black/50 backdrop-blur-sm rounded text-xs text-zinc-300 font-medium opacity-0 group-hover/video:opacity-100 transition-opacity duration-200">
+              <div className="absolute top-3 right-3 px-2 py-0.5 rounded text-xs font-medium opacity-0 group-hover/video:opacity-100 transition-opacity duration-200 border border-border/70 bg-white/85 text-foreground backdrop-blur-sm dark:border-white/10 dark:bg-black/50 dark:text-zinc-300">
                 {data.duration}s
               </div>
               {/* Download button - visible on hover */}
@@ -647,15 +647,15 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
                 variant="ghost"
                 size="icon-sm"
                 onClick={handleDownload}
-                className="absolute top-3 left-3 h-8 w-8 bg-black/50 backdrop-blur-sm text-zinc-300 hover:text-white hover:bg-black/70 rounded-lg opacity-0 group-hover/video:opacity-100 transition-all duration-200 translate-y-1 group-hover/video:translate-y-0"
+                className="absolute top-3 left-3 h-8 w-8 rounded-lg opacity-0 group-hover/video:opacity-100 transition-all duration-200 translate-y-1 group-hover/video:translate-y-0 border border-border/70 bg-white/85 text-foreground/80 hover:bg-white hover:text-foreground backdrop-blur-sm dark:border-white/10 dark:bg-black/50 dark:text-zinc-300 dark:hover:text-white dark:hover:bg-black/70"
               >
                 <Download className="h-4 w-4" />
               </Button>
               {/* Gradient overlay for better visibility - visible on hover */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover/video:opacity-100 transition-opacity duration-300 pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent dark:from-black/60 opacity-0 group-hover/video:opacity-100 transition-opacity duration-300 pointer-events-none" />
               {/* Floating Toolbar - visible on hover, hidden when prompt expanded */}
               {!isReadOnly && !isPromptExpanded && (
-                <div className="absolute bottom-3 left-3 right-3 flex items-center gap-1.5 px-2.5 py-2 bg-black/50 backdrop-blur-xl rounded-xl border border-white/10 opacity-0 group-hover/video:opacity-100 transition-all duration-300 ease-out translate-y-2 group-hover/video:translate-y-0 shadow-xl">
+                <div className="absolute bottom-3 left-3 right-3 flex items-center gap-1.5 px-2.5 py-2 rounded-xl opacity-0 group-hover/video:opacity-100 transition-all duration-300 ease-out translate-y-2 group-hover/video:translate-y-0 shadow-xl border border-border/70 bg-white/85 backdrop-blur-xl dark:border-white/10 dark:bg-black/50">
                   <SearchableSelect
                     value={data.model}
                     onValueChange={handleModelChange}
@@ -667,12 +667,12 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
                     }))}
                     placeholder="Select model"
                     searchPlaceholder="Search models..."
-                    triggerClassName="max-w-[100px] bg-white/10 hover:bg-white/20 border-0"
+                    triggerClassName="max-w-[100px] bg-white/70 hover:bg-white/95 border border-border/60 text-foreground dark:bg-white/10 dark:hover:bg-white/20 dark:border-0 dark:text-white"
                   />
                   <Select value={data.aspectRatio} onValueChange={handleAspectRatioChange}>
-                    <SelectTrigger className="h-7 w-auto bg-white/10 hover:bg-white/20 border-0 text-xs text-white gap-1 px-2 rounded-md">
+                    <SelectTrigger className="h-7 w-auto bg-white/70 hover:bg-white/95 border border-border/60 text-xs text-foreground gap-1 px-2 rounded-md dark:bg-white/10 dark:hover:bg-white/20 dark:border-0 dark:text-white">
                       <span className="flex items-center gap-1">
-                        <span className="w-2.5 h-2.5 border border-white/50 rounded-[2px]" />
+                        <span className="w-2.5 h-2.5 border border-foreground/40 rounded-[2px] dark:border-white/50" />
                         <SelectValue />
                       </span>
                     </SelectTrigger>
@@ -683,7 +683,7 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
                     </SelectContent>
                   </Select>
                   <Select value={String(data.duration)} onValueChange={handleDurationChange}>
-                    <SelectTrigger className="h-7 w-auto bg-white/10 hover:bg-white/20 border-0 text-xs text-white gap-1 px-2 rounded-md">
+                    <SelectTrigger className="h-7 w-auto bg-white/70 hover:bg-white/95 border border-border/60 text-xs text-foreground gap-1 px-2 rounded-md dark:bg-white/10 dark:hover:bg-white/20 dark:border-0 dark:text-white">
                       <SelectValue>{data.duration}s</SelectValue>
                     </SelectTrigger>
                     <SelectContent className="bg-popover border-border">
@@ -699,8 +699,8 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
                       onClick={handleAudioToggle}
                       className={`h-7 w-7 shrink-0 ${
                         data.generateAudio !== false
-                          ? 'text-foreground bg-muted/50 hover:bg-muted/80'
-                          : 'text-white/70 hover:text-white hover:bg-white/10'
+                          ? 'text-foreground bg-white/70 hover:bg-white dark:text-foreground dark:bg-muted/50 dark:hover:bg-muted/80'
+                          : 'text-foreground/70 hover:text-foreground hover:bg-white/60 dark:text-white/70 dark:hover:text-white dark:hover:bg-white/10'
                       }`}
                       title={data.generateAudio !== false ? 'Audio ON' : 'Audio OFF'}
                     >
@@ -715,7 +715,7 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
                     variant="ghost"
                     size="icon-sm"
                     onClick={handleOpenSettings}
-                    className="h-7 w-7 text-white/70 hover:text-white hover:bg-white/10 shrink-0"
+                    className="h-7 w-7 shrink-0 text-foreground/70 hover:text-foreground hover:bg-white/60 dark:text-white/70 dark:hover:text-white dark:hover:bg-white/10"
                   >
                     <Settings className="h-3.5 w-3.5" />
                   </Button>
@@ -734,12 +734,12 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
             {/* Collapsible Prompt Bar */}
             <div className="border-t border-border/50">
               <div
-                className="flex items-center gap-2 px-3 py-2 cursor-pointer nodrag"
+                className="mx-1 my-1 flex items-center gap-2 rounded-md px-2 py-2 cursor-pointer nodrag hover:bg-muted/40 transition-colors"
                 onClick={() => setIsPromptExpanded(!isPromptExpanded)}
               >
-                <ChevronRight className={`h-3 w-3 text-muted-foreground shrink-0 transition-transform duration-200 ${isPromptExpanded ? 'rotate-90' : ''}`} />
+                <ChevronRight className={`h-3 w-3 text-foreground/60 shrink-0 transition-transform duration-200 ${isPromptExpanded ? 'rotate-90' : ''}`} />
                 {!isPromptExpanded && (
-                  <p className="text-xs text-muted-foreground truncate flex-1">
+                  <p className={`text-xs truncate flex-1 ${data.prompt ? 'text-foreground/85' : 'text-muted-foreground'}`}>
                     {data.prompt || 'No prompt'}
                   </p>
                 )}
@@ -761,8 +761,7 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
                         onChange={(e) => handlePromptChange(e.target.value)}
                         placeholder={isReadOnly ? '' : 'Edit your prompt...'}
                         disabled={isReadOnly || isImproving || isTranslating}
-                        className={`w-full h-[80px] bg-transparent border-none text-sm resize-none focus:outline-none ${isReadOnly ? 'cursor-default' : ''}`}
-                        style={{ color: 'var(--text-secondary)' }}
+                        className={`w-full h-[80px] bg-transparent border-none text-sm resize-none focus:outline-none node-text-secondary ${isReadOnly ? 'cursor-default' : ''}`}
                       />
                     )}
                     {/* Prompt tools in expanded bar */}
@@ -788,8 +787,8 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
                             className={`text-[10px] font-medium px-2 py-1 rounded-md transition-colors nodrag ${
                               isImproving || isTranslating
                                 ? 'opacity-60 cursor-not-allowed'
-                                : 'hover:bg-zinc-600/50'
-                            } bg-zinc-700/50 text-zinc-300`}
+                                : 'hover:bg-muted dark:hover:bg-zinc-600/50'
+                            } bg-muted/80 text-foreground/80 dark:bg-zinc-700/50 dark:text-zinc-300`}
                           >
                             {isTranslating ? 'Translating...' : '中 Translate'}
                           </button>
@@ -896,8 +895,7 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
                     onChange={(e) => handlePromptChange(e.target.value)}
                     placeholder={isReadOnly ? '' : 'Describe the video you want to generate...'}
                     disabled={isReadOnly || isImproving || isTranslating}
-                    className={`w-full h-[130px] bg-transparent border-none text-sm resize-none focus:outline-none ${isReadOnly ? 'cursor-default' : ''}`}
-                    style={{ color: 'var(--text-secondary)' }}
+                    className={`w-full h-[130px] bg-transparent border-none text-sm resize-none focus:outline-none node-text-secondary ${isReadOnly ? 'cursor-default' : ''}`}
                   />
                 )}
                 {/* Improve & Translate buttons — gated by model's promptTools config */}
@@ -923,8 +921,8 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
                         className={`text-[10px] font-medium px-2 py-1 rounded-md transition-colors nodrag ${
                           isImproving || isTranslating
                             ? 'opacity-60 cursor-not-allowed'
-                            : 'hover:bg-zinc-600/50'
-                        } bg-zinc-700/50 text-zinc-300`}
+                            : 'hover:bg-muted dark:hover:bg-zinc-600/50'
+                        } bg-muted/80 text-foreground/80 dark:bg-zinc-700/50 dark:text-zinc-300`}
                       >
                         {isTranslating ? 'Translating...' : '中 Translate'}
                       </button>

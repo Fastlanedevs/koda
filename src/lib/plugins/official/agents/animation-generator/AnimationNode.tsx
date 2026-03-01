@@ -2126,6 +2126,7 @@ function AnimationNodeComponent({ id, data, selected }: AnimationNodeProps) {
   // ─── Render ─────────────────────────────────────────────────────────
   return (
     <div
+      className="relative"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -2420,16 +2421,16 @@ function AnimationNodeComponent({ id, data, selected }: AnimationNodeProps) {
       {Array.from({ length: imageRefCount }).map((_, i) => {
         const top = IMAGE_HANDLE_START + i * HANDLE_SPACING;
         return (
-          <div key={`img-ref-${i}`} className="absolute -left-[10px]" style={{ top }}>
-            <div className="w-5 h-5 rounded-full bg-[#14B8A6] flex items-center justify-center">
-              <Image className="h-3 w-3 text-white" />
+          <div key={`img-ref-${i}`} className="absolute -left-3 z-20" style={{ top }}>
+            <div className="relative">
+              <Handle
+                type="target"
+                position={Position.Left}
+                id={`image-ref-${i}`}
+                className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-[#14B8A6] !border-[#0F766E] hover:!border-[#115E59]"
+              />
+              <Image className="absolute inset-0 m-auto h-3.5 w-3.5 pointer-events-none text-white" />
             </div>
-            <Handle
-              type="target"
-              position={Position.Left}
-              id={`image-ref-${i}`}
-              className="!absolute !top-1/2 !left-1/2 !-translate-x-1/2 !-translate-y-1/2 !w-5 !h-5 !bg-transparent !border-0"
-            />
           </div>
         );
       })}
@@ -2437,7 +2438,7 @@ function AnimationNodeComponent({ id, data, selected }: AnimationNodeProps) {
       {/* Image handle add/remove */}
       {(selected || isHovered) && (
         <div
-          className="absolute -left-[10px] flex flex-col gap-1 transition-opacity duration-200"
+          className="absolute -left-[28px] z-10 flex flex-col gap-1 transition-opacity duration-200"
           style={{ top: IMAGE_HANDLE_START + imageRefCount * HANDLE_SPACING + 4 }}
         >
           {imageRefCount < MAX_IMAGE_REFS && (
@@ -2463,16 +2464,16 @@ function AnimationNodeComponent({ id, data, selected }: AnimationNodeProps) {
       {engine !== 'theatre' && Array.from({ length: videoRefCount }).map((_, i) => {
         const top = videoHandleStart + i * HANDLE_SPACING;
         return (
-          <div key={`vid-ref-${i}`} className="absolute -left-[10px]" style={{ top }}>
-            <div className="w-5 h-5 rounded-full bg-[#A855F7] flex items-center justify-center">
-              <Video className="h-3 w-3 text-white" />
+          <div key={`vid-ref-${i}`} className="absolute -left-3 z-20" style={{ top }}>
+            <div className="relative">
+              <Handle
+                type="target"
+                position={Position.Left}
+                id={`video-ref-${i}`}
+                className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-[#A855F7] !border-[#7E22CE] hover:!border-[#6B21A8]"
+              />
+              <Video className="absolute inset-0 m-auto h-3.5 w-3.5 pointer-events-none text-white" />
             </div>
-            <Handle
-              type="target"
-              position={Position.Left}
-              id={`video-ref-${i}`}
-              className="!absolute !top-1/2 !left-1/2 !-translate-x-1/2 !-translate-y-1/2 !w-5 !h-5 !bg-transparent !border-0"
-            />
           </div>
         );
       })}
@@ -2480,7 +2481,7 @@ function AnimationNodeComponent({ id, data, selected }: AnimationNodeProps) {
       {/* Video handle add/remove (hidden for Theatre.js) */}
       {(selected || isHovered) && engine !== 'theatre' && (
         <div
-          className="absolute -left-[10px] flex flex-col gap-1 transition-opacity duration-200"
+          className="absolute -left-[28px] z-10 flex flex-col gap-1 transition-opacity duration-200"
           style={{ top: videoHandleStart + videoRefCount * HANDLE_SPACING + 4 }}
         >
           {videoRefCount < MAX_VIDEO_REFS && (
@@ -2503,29 +2504,29 @@ function AnimationNodeComponent({ id, data, selected }: AnimationNodeProps) {
       )}
 
       {/* Left: SVG code handle */}
-      <div className="absolute -left-[10px]" style={{ top: svgCodeHandleTop }}>
-        <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
-          <Code className="h-3 w-3 text-white" />
+      <div className="absolute -left-3 z-20" style={{ top: svgCodeHandleTop }}>
+        <div className="relative">
+          <Handle
+            type="target"
+            position={Position.Left}
+            id="svg-code"
+            className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-emerald-500 !border-emerald-700 hover:!border-emerald-600"
+          />
+          <Code className="absolute inset-0 m-auto h-3.5 w-3.5 pointer-events-none text-white" />
         </div>
-        <Handle
-          type="target"
-          position={Position.Left}
-          id="svg-code"
-          className="!absolute !top-1/2 !left-1/2 !-translate-x-1/2 !-translate-y-1/2 !w-5 !h-5 !bg-transparent !border-0"
-        />
       </div>
 
       {/* Right: Output handle (video) */}
-      <div className="absolute -right-[10px]" style={{ top: '50%', transform: 'translateY(-50%)' }}>
-        <div className="w-5 h-5 rounded-full bg-[#A855F7] flex items-center justify-center">
-          <Video className="h-3 w-3 text-white" />
+      <div className="absolute -right-3 z-20" style={{ top: '50%', transform: 'translateY(-50%)' }}>
+        <div className="relative">
+          <Handle
+            type="source"
+            position={Position.Right}
+            id="video"
+            className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-[#A855F7] !border-[#7E22CE] hover:!border-[#6B21A8]"
+          />
+          <Video className="absolute inset-0 m-auto h-3.5 w-3.5 pointer-events-none text-white" />
         </div>
-        <Handle
-          type="source"
-          position={Position.Right}
-          id="video"
-          className="!absolute !top-1/2 !left-1/2 !-translate-x-1/2 !-translate-y-1/2 !w-5 !h-5 !bg-transparent !border-0"
-        />
       </div>
 
     </div>

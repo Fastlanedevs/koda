@@ -940,18 +940,27 @@ export const useCanvasStore = create<CanvasState>()(
         const incomingEdges = edges.filter((e) => e.target === nodeId);
 
         // Helper to get image URL from a node
-        const getImageUrl = (node: AppNode | null | undefined): string | undefined => {
+        const getImageUrl = (node: AppNode | null | undefined, sourceHandle?: string | null): string | undefined => {
           if (!node) return undefined;
           if (node.type === 'media') {
-            return (node.data as MediaNodeData).url;
+            const mediaData = node.data as MediaNodeData;
+            return mediaData.type === 'image' ? mediaData.url : undefined;
           } else if (node.type === 'imageGenerator') {
             return (node.data as ImageGeneratorNodeData).outputUrl;
+          } else if (node.type === 'pluginNode') {
+            const pluginData = node.data as PluginNodeData;
+            if (pluginData.pluginId === 'svg-studio') {
+              if (sourceHandle === 'code-output') return undefined;
+              const nodeData = node.data as Record<string, unknown>;
+              const state = pluginData.state as { asset?: { url?: string } } | undefined;
+              return (nodeData.outputUrl as string | undefined) || state?.asset?.url;
+            }
           }
           return undefined;
         };
 
         // Helper to get video URL from a node
-        const getVideoUrl = (node: AppNode | null | undefined): string | undefined => {
+        const getVideoUrl = (node: AppNode | null | undefined, sourceHandle?: string | null): string | undefined => {
           if (!node) return undefined;
           if (node.type === 'media') {
             const mediaData = node.data as MediaNodeData;
@@ -964,6 +973,7 @@ export const useCanvasStore = create<CanvasState>()(
             // Support animation plugin output
             const pluginData = node.data as PluginNodeData;
             if (pluginData.pluginId === 'animation-generator') {
+              if (sourceHandle && sourceHandle !== 'video') return undefined;
               const state = pluginData.state as { preview?: { videoUrl?: string }; output?: { videoUrl?: string }; versions?: Array<{ videoUrl: string }> };
               // Priority: final output > current preview > latest version
               return state.output?.videoUrl || state.preview?.videoUrl || state.versions?.[state.versions.length - 1]?.videoUrl;
@@ -975,12 +985,13 @@ export const useCanvasStore = create<CanvasState>()(
         // Helper to get audio URL from a node
         const getAudioUrl = (node: AppNode | null | undefined): string | undefined => {
           if (!node) return undefined;
-          if (node.type === 'musicGenerator') {
+          if (node.type === 'media') {
+            const mediaData = node.data as MediaNodeData;
+            return mediaData.type === 'audio' ? mediaData.url : undefined;
+          } else if (node.type === 'musicGenerator') {
             return (node.data as MusicGeneratorNodeData).outputUrl;
           } else if (node.type === 'speech') {
             return (node.data as SpeechNodeData).outputUrl;
-          } else if (node.type === 'videoAudio') {
-            return (node.data as VideoAudioNodeData).outputUrl;
           }
           return undefined;
         };
@@ -995,7 +1006,7 @@ export const useCanvasStore = create<CanvasState>()(
         const videoEdge = incomingEdges.find((e) => e.targetHandle === 'video');
         const audioEdge = incomingEdges.find((e) => e.targetHandle === 'audio');
 
-        // Multi-reference handles (ref2-ref8 for ImageGenerator, ref1-ref3 for VideoGenerator)
+        // Multi-reference handles (ref1-ref8 for ImageGenerator, ref1-ref3 for VideoGenerator)
         const refEdges = ['ref1', 'ref2', 'ref3', 'ref4', 'ref5', 'ref6', 'ref7', 'ref8']
           .map((handle) => incomingEdges.find((e) => e.targetHandle === handle))
           .filter(Boolean);
@@ -1014,16 +1025,19 @@ export const useCanvasStore = create<CanvasState>()(
         const referenceUrls = refEdges
           .map((edge) => {
             const node = edge ? nodes.find((n) => n.id === edge.source) : null;
-            return getImageUrl(node);
+            return getImageUrl(node, edge?.sourceHandle);
           })
           .filter((url): url is string => !!url);
 
-        // Resolve text content: supports Text nodes and Prompt Studio plugin
+        // Resolve text content: supports Text nodes and plugin prompt-output handles
         let resolvedTextContent: string | undefined;
         if (textNode) {
           if (textNode.type === 'pluginNode') {
             const pd = textNode.data as PluginNodeData;
-            if (pd.pluginId === 'prompt-studio') {
+            const isPromptOutput =
+              textEdge?.sourceHandle === 'prompt-output'
+              || (!textEdge?.sourceHandle && pd.pluginId === 'prompt-studio');
+            if (isPromptOutput) {
               const st = pd.state as { activePromptId?: string; generatedPrompts?: Array<{ id: string; prompt: string }> };
               const prompts = st.generatedPrompts;
               if (prompts?.length) {
@@ -1040,13 +1054,13 @@ export const useCanvasStore = create<CanvasState>()(
 
         return {
           textContent: resolvedTextContent,
-          referenceUrl: getImageUrl(refNode),
-          firstFrameUrl: getImageUrl(firstFrameNode),
-          lastFrameUrl: getImageUrl(lastFrameNode),
+          referenceUrl: getImageUrl(refNode, refEdge?.sourceHandle),
+          firstFrameUrl: getImageUrl(firstFrameNode, firstFrameEdge?.sourceHandle),
+          lastFrameUrl: getImageUrl(lastFrameNode, lastFrameEdge?.sourceHandle),
           referenceUrls: referenceUrls.length > 0 ? referenceUrls : undefined,
-          productImageUrl: getImageUrl(productImageNode),
-          characterImageUrl: getImageUrl(characterImageNode),
-          videoUrl: getVideoUrl(videoNode),
+          productImageUrl: getImageUrl(productImageNode, productImageEdge?.sourceHandle),
+          characterImageUrl: getImageUrl(characterImageNode, characterImageEdge?.sourceHandle),
+          videoUrl: getVideoUrl(videoNode, videoEdge?.sourceHandle),
           audioUrl: getAudioUrl(audioNode),
         };
       },

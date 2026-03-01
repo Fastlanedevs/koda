@@ -1106,7 +1106,7 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
                     Auto
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="top" className="bg-zinc-800 border-zinc-700 text-zinc-200 max-w-[200px]">
+                <TooltipContent side="top" className="bg-popover border-border text-popover-foreground max-w-[200px]">
                   <p className="text-xs">Generate a creative concept from your product and character inputs</p>
                 </TooltipContent>
               </Tooltip>
@@ -1177,7 +1177,7 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
                   <TooltipTrigger asChild>
                     <Info className="w-3 h-3 text-muted-foreground/60 hover:text-muted-foreground cursor-help shrink-0" />
                   </TooltipTrigger>
-                  <TooltipContent side="top" className="bg-zinc-800 border-zinc-700 text-zinc-200 max-w-[200px]">
+                  <TooltipContent side="top" className="bg-popover border-border text-popover-foreground max-w-[200px]">
                     <p className="text-xs">Creates smooth video transitions between consecutive scenes, blending the end of one scene into the start of the next.</p>
                   </TooltipContent>
                 </Tooltip>
@@ -1198,7 +1198,7 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
                   <TooltipTrigger asChild>
                     <Info className="w-3 h-3 text-muted-foreground/60 hover:text-muted-foreground cursor-help shrink-0" />
                   </TooltipTrigger>
-                  <TooltipContent side="top" className="bg-zinc-800 border-zinc-700 text-zinc-200 max-w-[200px]">
+                  <TooltipContent side="top" className="bg-popover border-border text-popover-foreground max-w-[200px]">
                     <p className="text-xs">Each scene generates an independent video clip. Best for distinct, self-contained scenes.</p>
                   </TooltipContent>
                 </Tooltip>
@@ -1234,7 +1234,7 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
                       {opt.label}
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent side="top" className="bg-zinc-800 border-zinc-700 text-zinc-200 max-w-[200px]">
+                  <TooltipContent side="top" className="bg-popover border-border text-popover-foreground max-w-[200px]">
                     <p className="text-xs">{opt.hint}</p>
                   </TooltipContent>
                 </Tooltip>
@@ -1249,7 +1249,7 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
 
       {/* Error message */}
       {data.error && (
-        <div className="p-2 bg-red-900/30 border border-red-700 rounded-lg text-red-200 text-xs">
+        <div className="p-2 bg-destructive/10 border border-destructive/30 rounded-lg text-destructive text-xs">
           {data.error}
         </div>
       )}
@@ -1259,7 +1259,7 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
         <button
           onClick={handleGenerate}
           disabled={!isValid}
-          className="w-full py-2 px-4 bg-primary hover:bg-[var(--accent-primary-hover)] disabled:bg-muted disabled:text-muted-foreground text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2 nodrag"
+          className="w-full py-2 px-4 bg-primary hover:bg-[var(--accent-primary-hover)] disabled:bg-muted disabled:text-muted-foreground text-primary-foreground text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2 nodrag"
         >
           <Sparkles className="w-4 h-4" />
           Generate Storyboard
@@ -1333,7 +1333,7 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
 
         {/* Error in chat */}
         {data.chatPhase === 'error' && data.error && (
-          <div className="p-2 bg-red-900/30 border border-red-700 rounded-lg text-red-200 text-xs">
+          <div className="p-2 bg-destructive/10 border border-destructive/30 rounded-lg text-destructive text-xs">
             {data.error}
           </div>
         )}
@@ -1489,9 +1489,9 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
                 type="target"
                 position={Position.Left}
                 id="productImage"
-                className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-zinc-400 !border-zinc-900 hover:!border-zinc-700"
+                className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full node-handle"
               />
-              <ImageIcon className="absolute inset-0 m-auto h-3.5 w-3.5 pointer-events-none text-zinc-900" />
+              <ImageIcon className="absolute inset-0 m-auto h-3.5 w-3.5 pointer-events-none" />
             </div>
             <span className="absolute left-9 top-1/2 -translate-y-1/2 px-2 py-1 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 border node-tooltip">
               {hasProductImage ? 'Product Image (connected)' : 'Product Image'}
@@ -1505,9 +1505,9 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
                 type="target"
                 position={Position.Left}
                 id="characterImage"
-                className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full !bg-zinc-400 !border-zinc-900 hover:!border-zinc-700"
+                className="!relative !transform-none !w-7 !h-7 !border-2 !rounded-full node-handle"
               />
-              <User className="absolute inset-0 m-auto h-3.5 w-3.5 pointer-events-none text-zinc-900" />
+              <User className="absolute inset-0 m-auto h-3.5 w-3.5 pointer-events-none" />
             </div>
             <span className="absolute left-9 top-1/2 -translate-y-1/2 px-2 py-1 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 border node-tooltip">
               {hasCharacterImage ? 'Character Image (connected)' : 'Character Image'}
