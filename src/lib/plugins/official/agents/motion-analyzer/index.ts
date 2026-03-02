@@ -60,9 +60,7 @@ export const motionAnalyzerPlugin: AgentPlugin = {
 
   handles: {
     inputs: [],
-    outputs: [
-      { id: 'prompt-output', name: 'Animation Prompt', type: 'text' },
-    ],
+    outputs: [],
   },
 };
 

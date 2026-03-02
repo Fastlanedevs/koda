@@ -1238,11 +1238,27 @@ export const useCanvasStore = create<CanvasState>()(
                   && (((d.logo as Record<string, unknown>).url as string).startsWith('data:'))
                   ? undefined  // data URLs are too large for localStorage
                   : d.logo,
-                // Strip video from motion-analyzer (base64 videos are too large for localStorage)
-                video: d.video && typeof (d.video as Record<string, unknown>).dataUrl === 'string'
-                  && ((d.video as Record<string, unknown>).dataUrl as string).startsWith('data:')
-                  ? undefined
-                  : d.video,
+                // Persist motion-analyzer video safely:
+                // - blob:/data: URLs are session-local and invalid after refresh
+                // - if a stable remoteUrl exists, persist using that as dataUrl
+                // - otherwise drop the video field (cannot be restored reliably)
+                video: (() => {
+                  if (!d.video || typeof d.video !== 'object') return d.video;
+                  const v = d.video as Record<string, unknown>;
+                  const dataUrl = typeof v.dataUrl === 'string' ? v.dataUrl : undefined;
+                  const remoteUrl = typeof v.remoteUrl === 'string' ? v.remoteUrl : undefined;
+
+                  const isTransientDataUrl = !!dataUrl
+                    && (dataUrl.startsWith('data:') || dataUrl.startsWith('blob:'));
+
+                  if (!isTransientDataUrl) return d.video;
+                  if (!remoteUrl) return undefined;
+
+                  return {
+                    ...v,
+                    dataUrl: remoteUrl,
+                  };
+                })(),
               },
             };
           }

@@ -19,6 +19,7 @@ import { PreviewLifecycleQueue } from '@/lib/preview-lifecycle';
 import { useCanvasStore } from './canvas-store';
 import type { Template } from '@/lib/templates/types';
 import { parseSyncCapabilityProbe } from '@/lib/runtime/sync-capability';
+import type { AppNode, PluginNodeData } from '@/lib/types';
 
 type SyncCapability = 'unknown' | 'db-sync-available' | 'local-only' | 'provisioning-blocked';
 
@@ -69,7 +70,9 @@ let saveDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 const SAVE_DEBOUNCE_MS = 1000;
 const PREVIEW_DEBOUNCE_MS = 2000;
 const PREVIEW_SYSTEM_ENABLED = process.env.NEXT_PUBLIC_UX_PREVIEW_SYSTEM_V1 !== 'false';
+const PREVIEW_BUSY_RETRY_MS = 3000;
 let syncStatusUnsubscribe: (() => void) | null = null;
+const previewBusyRetryTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 function buildGraphSignature(canvas: Pick<StoredCanvas, 'nodes' | 'edges'>): string {
   return JSON.stringify({ nodes: canvas.nodes, edges: canvas.edges });
@@ -81,6 +84,38 @@ function mapPreviewErrorCode(error: unknown): 'UPLOAD_FAILED' | 'CAPTURE_FAILED'
     if (error.message.toLowerCase().includes('upload')) return 'UPLOAD_FAILED';
   }
   return 'UNKNOWN';
+}
+
+function isAnimationNodeBusy(node: AppNode): boolean {
+  if (node.type !== 'pluginNode') return false;
+  const pluginData = node.data as PluginNodeData;
+  if (pluginData.pluginId !== 'animation-generator') return false;
+
+  const state = pluginData.state as {
+    phase?: string;
+    sandboxStatus?: string;
+    toolCalls?: Array<{ status?: string }>;
+  } | undefined;
+
+  if (!state) return false;
+  if (state.phase === 'executing') return true;
+  if (state.sandboxStatus === 'busy') return true;
+  return Array.isArray(state.toolCalls) && state.toolCalls.some((tc) => tc?.status === 'running');
+}
+
+function hasActiveAnimationExecution(nodes: AppNode[]): boolean {
+  return nodes.some(isAnimationNodeBusy);
+}
+
+function schedulePreviewRetry(canvasId: string): void {
+  if (previewBusyRetryTimers.has(canvasId)) return;
+  const timer = setTimeout(() => {
+    previewBusyRetryTimers.delete(canvasId);
+    useAppStore.getState().requestPreviewRefresh(canvasId, true).catch((err) => {
+      console.error('[preview] Retry refresh failed:', err);
+    });
+  }, PREVIEW_BUSY_RETRY_MS);
+  previewBusyRetryTimers.set(canvasId, timer);
 }
 
 const previewQueue = new PreviewLifecycleQueue({
@@ -543,6 +578,17 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   requestPreviewRefresh: async (id, force = false) => {
     if (!PREVIEW_SYSTEM_ENABLED) return;
+
+    // Avoid hammering /api/assets/upload while animation generation is actively running.
+    // During execution, plugin state changes frequently (streaming text/tool updates),
+    // which otherwise triggers repeated preview captures and uploads.
+    if (get().currentCanvasId === id) {
+      const liveNodes = useCanvasStore.getState().nodes as AppNode[];
+      if (hasActiveAnimationExecution(liveNodes)) {
+        schedulePreviewRetry(id);
+        return;
+      }
+    }
 
     const provider = getStorageProvider();
     const canvas = await provider.getCanvas(id);
