@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { fal } from '@fal-ai/client';
-import { FAL_AUDIO_MODELS, type ElevenLabsVoice } from '@/lib/types';
+import { FAL_AUDIO_MODELS } from '@/lib/types';
 import { getAssetStorageType, getExtensionFromUrl, type AssetStorageProvider } from '@/lib/assets';
 import { withCredits } from '@/lib/credits/with-credits';
 
@@ -20,7 +20,7 @@ type FalLikeError = {
   };
 };
 
-const ELEVEN_V3_VOICE_MAP: Record<ElevenLabsVoice, string> = {
+const ELEVEN_V3_VOICE_MAP: Record<string, string> = {
   alloy: 'Rachel',
   echo: 'George',
   fable: 'Thomas',
@@ -57,11 +57,14 @@ function snapDialogueStability(value: unknown): 0 | 0.5 | 1 {
   );
 }
 
-function isElevenLabsVoice(value: unknown): value is ElevenLabsVoice {
-  return typeof value === 'string' && value in ELEVEN_V3_VOICE_MAP;
+function normalizeVoice(value: unknown, fallback = 'Rachel'): string {
+  if (typeof value !== 'string') return fallback;
+  const trimmed = value.trim();
+  if (!trimmed) return fallback;
+  return ELEVEN_V3_VOICE_MAP[trimmed.toLowerCase()] || trimmed;
 }
 
-function normalizeDialogueLines(value: unknown): Array<{ text: string; voice: ElevenLabsVoice }> {
+function normalizeDialogueLines(value: unknown): Array<{ text: string; voice: string }> {
   if (!Array.isArray(value)) return [];
   return value
     .map((line) => {
@@ -69,10 +72,10 @@ function normalizeDialogueLines(value: unknown): Array<{ text: string; voice: El
       const candidate = line as { text?: unknown; voice?: unknown };
       const text = typeof candidate.text === 'string' ? candidate.text.trim() : '';
       if (!text) return null;
-      const voice = isElevenLabsVoice(candidate.voice) ? candidate.voice : 'rachel';
+      const voice = normalizeVoice(candidate.voice);
       return { text, voice };
     })
-    .filter((line): line is { text: string; voice: ElevenLabsVoice } => !!line);
+    .filter((line): line is { text: string; voice: string } => !!line);
 }
 
 function parseFalError(error: unknown): { message: string; status: number } {
@@ -203,7 +206,7 @@ export const POST = withCredits(
 
         const mappedInputs = lines.map((line) => ({
           text: line.text,
-          voice: ELEVEN_V3_VOICE_MAP[line.voice] || 'Rachel',
+          voice: normalizeVoice(line.voice),
         }));
 
         modelId = ELEVEN_DIALOGUE_MODEL;
@@ -221,8 +224,7 @@ export const POST = withCredits(
           );
         }
 
-        const selectedVoice = (voice as ElevenLabsVoice) || 'rachel';
-        mappedVoice = ELEVEN_V3_VOICE_MAP[selectedVoice] || 'Rachel';
+        mappedVoice = normalizeVoice(voice);
         modelId = FAL_AUDIO_MODELS['elevenlabs-tts'];
         input = {
           text: finalText,

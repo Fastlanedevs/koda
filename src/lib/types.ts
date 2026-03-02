@@ -1217,29 +1217,8 @@ export type AudioModelType = 'ace-step' | 'elevenlabs-tts' | 'mmaudio-v2';
 export type MusicDuration = 5 | 15 | 30 | 60 | 120 | 180 | 240;
 
 // ElevenLabs voice options
-export type ElevenLabsVoice =
-  | 'alloy'
-  | 'echo'
-  | 'fable'
-  | 'onyx'
-  | 'nova'
-  | 'shimmer'
-  | 'rachel'
-  | 'drew'
-  | 'clyde'
-  | 'paul'
-  | 'domi'
-  | 'dave'
-  | 'fin'
-  | 'sarah'
-  | 'antoni'
-  | 'thomas'
-  | 'charlie'
-  | 'george'
-  | 'emily'
-  | 'elli';
-
-export const ELEVENLABS_VOICE_LABELS: Record<ElevenLabsVoice, string> = {
+// Keep legacy defaults for backwards compatibility, but allow any runtime voice id/name from Fal list-voices.
+export const DEFAULT_ELEVENLABS_VOICE_LABELS = {
   'alloy': 'Alloy (Neutral)',
   'echo': 'Echo (Male)',
   'fable': 'Fable (British)',
@@ -1261,6 +1240,13 @@ export const ELEVENLABS_VOICE_LABELS: Record<ElevenLabsVoice, string> = {
   'emily': 'Emily (Calm American)',
   'elli': 'Elli (Young Female)',
 } as const;
+
+export type DefaultElevenLabsVoice = keyof typeof DEFAULT_ELEVENLABS_VOICE_LABELS;
+export type ElevenLabsVoice = DefaultElevenLabsVoice | (string & {});
+
+export const ELEVENLABS_VOICE_LABELS: Record<string, string> = {
+  ...DEFAULT_ELEVENLABS_VOICE_LABELS,
+};
 
 // Music Generator Node Data
 export interface MusicGeneratorNodeData extends Record<string, unknown> {
