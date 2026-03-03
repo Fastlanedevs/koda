@@ -22,6 +22,15 @@ const DEFAULT_SNAPSHOT_UPLOAD_ATTEMPTS = 3;
 const DEFAULT_SNAPSHOT_UPLOAD_TIMEOUT_MS = 30_000;
 const DEFAULT_SNAPSHOT_RETRY_BASE_MS = 800;
 
+function sanitizeEnv(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+function trimTrailingSlashes(value: string): string {
+  return value.replace(/\/+$/, '');
+}
+
 function readPositiveInt(envValue: string | undefined, fallback: number): number {
   const parsed = Number(envValue);
   if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
@@ -66,10 +75,10 @@ function isRetryableSnapshotError(error: unknown): boolean {
 }
 
 function getR2Config(): S3Config {
-  const accountId = process.env.R2_ACCOUNT_ID;
-  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
-  const bucket = process.env.R2_BUCKET_NAME;
+  const accountId = sanitizeEnv(process.env.R2_ACCOUNT_ID);
+  const accessKeyId = sanitizeEnv(process.env.R2_ACCESS_KEY_ID);
+  const secretAccessKey = sanitizeEnv(process.env.R2_SECRET_ACCESS_KEY);
+  const bucket = sanitizeEnv(process.env.R2_BUCKET_NAME);
 
   if (!accountId || !accessKeyId || !secretAccessKey || !bucket) {
     throw new Error(
@@ -78,7 +87,7 @@ function getR2Config(): S3Config {
   }
 
   const defaultEndpoint = `https://${accountId}.r2.cloudflarestorage.com`;
-  const endpoint = process.env.R2_ENDPOINT || defaultEndpoint;
+  const endpoint = trimTrailingSlashes(sanitizeEnv(process.env.R2_ENDPOINT) || defaultEndpoint);
 
   return {
     type: 'r2',
@@ -113,7 +122,9 @@ export class R2SnapshotProvider implements SnapshotProvider {
     const retryBaseMs = getSnapshotRetryBaseMs();
 
     let lastError: unknown;
+    let attemptsMade = 0;
     for (let attempt = 1; attempt <= attempts; attempt++) {
+      attemptsMade = attempt;
       try {
         // Re-sign each attempt so auth/date headers remain valid.
         const { url, headers } = await signRequest(this.config, 'PUT', key, data, contentType);
@@ -143,7 +154,7 @@ export class R2SnapshotProvider implements SnapshotProvider {
     }
 
     if (lastError) {
-      throw new Error(`R2 PUT failed for ${key} after ${attempts} attempt(s): ${normalizeErrorMessage(lastError)}`);
+      throw new Error(`R2 PUT failed for ${key} after ${attemptsMade} attempt(s): ${normalizeErrorMessage(lastError)}`);
     }
   }
 

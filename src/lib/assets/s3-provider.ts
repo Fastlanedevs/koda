@@ -18,6 +18,25 @@ const DEFAULT_UPLOAD_ATTEMPTS = 3;
 const DEFAULT_UPLOAD_TIMEOUT_MS = 30_000;
 const DEFAULT_RETRY_BASE_MS = 800;
 
+function sanitizeEnv(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+function trimTrailingSlashes(value: string): string {
+  return value.replace(/\/+$/, '');
+}
+
+function r2EndpointIncludesBucket(endpoint: string, bucket: string): boolean {
+  try {
+    const parsed = new URL(endpoint);
+    const segments = parsed.pathname.split('/').filter(Boolean);
+    return segments[segments.length - 1] === bucket;
+  } catch {
+    return false;
+  }
+}
+
 function readPositiveInt(envValue: string | undefined, fallback: number): number {
   const parsed = Number(envValue);
   if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
@@ -66,10 +85,10 @@ function isRetryableUploadError(error: unknown): boolean {
  */
 function getS3Config(type: AssetStorageType): S3Config | null {
   if (type === 'r2') {
-    const accountId = process.env.R2_ACCOUNT_ID;
-    const accessKeyId = process.env.R2_ACCESS_KEY_ID;
-    const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
-    const bucket = process.env.R2_BUCKET_NAME;
+    const accountId = sanitizeEnv(process.env.R2_ACCOUNT_ID);
+    const accessKeyId = sanitizeEnv(process.env.R2_ACCESS_KEY_ID);
+    const secretAccessKey = sanitizeEnv(process.env.R2_SECRET_ACCESS_KEY);
+    const bucket = sanitizeEnv(process.env.R2_BUCKET_NAME);
 
     if (!accountId || !accessKeyId || !secretAccessKey || !bucket) {
       return null;
@@ -79,7 +98,8 @@ function getS3Config(type: AssetStorageType): S3Config | null {
     // Default: https://{accountId}.r2.cloudflarestorage.com
     // EU example: https://{accountId}.eu.r2.cloudflarestorage.com
     const defaultEndpoint = `https://${accountId}.r2.cloudflarestorage.com`;
-    const endpoint = process.env.R2_ENDPOINT || defaultEndpoint;
+    const endpoint = trimTrailingSlashes(sanitizeEnv(process.env.R2_ENDPOINT) || defaultEndpoint);
+    const publicUrl = sanitizeEnv(process.env.R2_PUBLIC_URL);
 
     return {
       type: 'r2',
@@ -89,15 +109,16 @@ function getS3Config(type: AssetStorageType): S3Config | null {
       bucket,
       region: 'auto',
       endpoint,
-      publicUrl: process.env.R2_PUBLIC_URL,
+      publicUrl: publicUrl ? trimTrailingSlashes(publicUrl) : undefined,
     };
   }
 
   if (type === 's3') {
-    const accessKeyId = process.env.S3_ACCESS_KEY_ID;
-    const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
-    const bucket = process.env.S3_BUCKET_NAME;
-    const region = process.env.S3_REGION || 'us-east-1';
+    const accessKeyId = sanitizeEnv(process.env.S3_ACCESS_KEY_ID);
+    const secretAccessKey = sanitizeEnv(process.env.S3_SECRET_ACCESS_KEY);
+    const bucket = sanitizeEnv(process.env.S3_BUCKET_NAME);
+    const region = sanitizeEnv(process.env.S3_REGION) || 'us-east-1';
+    const publicUrl = sanitizeEnv(process.env.S3_PUBLIC_URL);
 
     if (!accessKeyId || !secretAccessKey || !bucket) {
       return null;
@@ -109,7 +130,7 @@ function getS3Config(type: AssetStorageType): S3Config | null {
       secretAccessKey,
       bucket,
       region,
-      publicUrl: process.env.S3_PUBLIC_URL,
+      publicUrl: publicUrl ? trimTrailingSlashes(publicUrl) : undefined,
     };
   }
 
@@ -145,7 +166,11 @@ export class S3AssetProvider implements AssetStorageProvider {
     // Default public URL format
     if (this.config.type === 'r2') {
       // R2 requires a custom domain or R2.dev URL configured
-      return `${this.config.endpoint}/${this.config.bucket}/${key}`;
+      const endpoint = trimTrailingSlashes(this.config.endpoint || '');
+      if (!endpoint) return `${this.config.bucket}/${key}`;
+      return r2EndpointIncludesBucket(endpoint, this.config.bucket)
+        ? `${endpoint}/${key}`
+        : `${endpoint}/${this.config.bucket}/${key}`;
     }
 
     // S3 default public URL
@@ -175,7 +200,9 @@ export class S3AssetProvider implements AssetStorageProvider {
     const retryBaseMs = getRetryBaseMs();
 
     let lastError: unknown;
+    let attemptsMade = 0;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      attemptsMade = attempt;
       try {
         // Sign each attempt separately so headers/date are always fresh.
         const { url, headers } = await signRequest(
@@ -219,7 +246,7 @@ export class S3AssetProvider implements AssetStorageProvider {
 
     if (lastError) {
       throw new Error(
-        `Failed to upload asset to ${this.storageType.toUpperCase()} after ${maxAttempts} attempt(s): ${normalizeErrorMessage(lastError)}`
+        `Failed to upload asset to ${this.storageType.toUpperCase()} after ${attemptsMade} attempt(s): ${normalizeErrorMessage(lastError)}`
       );
     }
 

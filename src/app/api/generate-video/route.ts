@@ -63,7 +63,9 @@ function isAlreadyPublicAssetUrl(url: string): boolean {
     process.env.R2_PUBLIC_URL,
     process.env.S3_PUBLIC_URL,
     process.env.ASSET_BASE_URL,
-  ].filter((v): v is string => !!v);
+  ]
+    .map((value) => value?.trim().replace(/\/+$/, ''))
+    .filter((v): v is string => !!v);
   return prefixes.some((prefix) => url.startsWith(prefix));
 }
 

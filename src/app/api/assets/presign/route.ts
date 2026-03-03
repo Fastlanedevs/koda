@@ -16,18 +16,40 @@ import { getAssetStorageType } from '@/lib/assets';
 import { generatePresignedPutUrl, type S3Config } from '@/lib/assets/s3-signing';
 import { generateAssetId } from '@/lib/assets/types';
 
+function sanitizeEnv(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+function trimTrailingSlashes(value: string): string {
+  return value.replace(/\/+$/, '');
+}
+
+function r2EndpointIncludesBucket(endpoint: string, bucket: string): boolean {
+  try {
+    const parsed = new URL(endpoint);
+    const segments = parsed.pathname.split('/').filter(Boolean);
+    return segments[segments.length - 1] === bucket;
+  } catch {
+    return false;
+  }
+}
+
 function getS3Config(): S3Config | null {
   const storageType = getAssetStorageType();
 
   if (storageType === 'r2') {
-    const accountId = process.env.R2_ACCOUNT_ID;
-    const accessKeyId = process.env.R2_ACCESS_KEY_ID;
-    const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
-    const bucket = process.env.R2_BUCKET_NAME;
+    const accountId = sanitizeEnv(process.env.R2_ACCOUNT_ID);
+    const accessKeyId = sanitizeEnv(process.env.R2_ACCESS_KEY_ID);
+    const secretAccessKey = sanitizeEnv(process.env.R2_SECRET_ACCESS_KEY);
+    const bucket = sanitizeEnv(process.env.R2_BUCKET_NAME);
 
     if (!accountId || !accessKeyId || !secretAccessKey || !bucket) return null;
 
-    const endpoint = process.env.R2_ENDPOINT || `https://${accountId}.r2.cloudflarestorage.com`;
+    const endpoint = trimTrailingSlashes(
+      sanitizeEnv(process.env.R2_ENDPOINT) || `https://${accountId}.r2.cloudflarestorage.com`
+    );
+    const publicUrl = sanitizeEnv(process.env.R2_PUBLIC_URL);
 
     return {
       type: 'r2',
@@ -37,15 +59,16 @@ function getS3Config(): S3Config | null {
       bucket,
       region: 'auto',
       endpoint,
-      publicUrl: process.env.R2_PUBLIC_URL,
+      publicUrl: publicUrl ? trimTrailingSlashes(publicUrl) : undefined,
     };
   }
 
   if (storageType === 's3') {
-    const accessKeyId = process.env.S3_ACCESS_KEY_ID;
-    const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
-    const bucket = process.env.S3_BUCKET_NAME;
-    const region = process.env.S3_REGION || 'us-east-1';
+    const accessKeyId = sanitizeEnv(process.env.S3_ACCESS_KEY_ID);
+    const secretAccessKey = sanitizeEnv(process.env.S3_SECRET_ACCESS_KEY);
+    const bucket = sanitizeEnv(process.env.S3_BUCKET_NAME);
+    const region = sanitizeEnv(process.env.S3_REGION) || 'us-east-1';
+    const publicUrl = sanitizeEnv(process.env.S3_PUBLIC_URL);
 
     if (!accessKeyId || !secretAccessKey || !bucket) return null;
 
@@ -55,7 +78,7 @@ function getS3Config(): S3Config | null {
       secretAccessKey,
       bucket,
       region,
-      publicUrl: process.env.S3_PUBLIC_URL,
+      publicUrl: publicUrl ? trimTrailingSlashes(publicUrl) : undefined,
     };
   }
 
@@ -105,7 +128,10 @@ export async function POST(request: Request) {
     if (config.publicUrl) {
       publicUrl = `${config.publicUrl}/${key}`;
     } else if (config.type === 'r2') {
-      publicUrl = `${config.endpoint}/${config.bucket}/${key}`;
+      const endpoint = trimTrailingSlashes(config.endpoint || '');
+      publicUrl = r2EndpointIncludesBucket(endpoint, config.bucket)
+        ? `${endpoint}/${key}`
+        : `${endpoint}/${config.bucket}/${key}`;
     } else {
       publicUrl = `https://${config.bucket}.s3.${config.region}.amazonaws.com/${key}`;
     }

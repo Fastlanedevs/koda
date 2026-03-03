@@ -13,10 +13,11 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
-import { useCanvasStore, createStoryboardNode, createProductShotNode, createPluginNode } from '@/stores/canvas-store';
+import { useCanvasStore, createStoryboardNode, createProductShotNode, createPluginNode, createMediaNode } from '@/stores/canvas-store';
 import type { AppNode, ImageGeneratorNodeData, ImageModelType, MediaNodeData, PluginNodeData } from '@/lib/types';
 import { MODEL_CAPABILITIES } from '@/lib/types';
 import { useSettingsStore } from '@/stores/settings-store';
+import { useAppStore } from '@/stores/app-store';
 import { nodeTypes } from './nodes';
 import { edgeTypes } from './edges';
 import { NodeToolbar } from './NodeToolbar';
@@ -32,6 +33,7 @@ import { AgentSandbox } from '@/components/plugins/AgentSandbox';
 import { pluginRegistry } from '@/lib/plugins/registry';
 import { evaluatePluginLaunchById, emitPluginPolicyAuditEvent } from '@/lib/plugins/launch-policy';
 import { toast } from 'sonner';
+import { uploadAsset } from '@/lib/assets/upload';
 import '@/lib/plugins/official/storyboard-generator';
 import '@/lib/plugins/official/product-shot';
 import '@/lib/plugins/official/agents/animation-generator';
@@ -56,6 +58,7 @@ export function Canvas() {
   const selectedEdgeIds = useCanvasStore((state) => state.selectedEdgeIds);
   const isReadOnly = useCanvasStore((state) => state.isReadOnly);
   const setReactFlowInstance = useCanvasStore((state) => state.setReactFlowInstance);
+  const currentCanvasId = useAppStore((state) => state.currentCanvasId);
 
   // Plugin sandbox state
   const { activePlugin, openSandbox, closeSandbox } = useAgentSandbox();
@@ -63,6 +66,72 @@ export function Canvas() {
   // Get addNode and reactFlowInstance for creating nodes
   const addNode = useCanvasStore((state) => state.addNode);
   const reactFlowInstance = useCanvasStore((state) => state.reactFlowInstance);
+
+  const handleCanvasDragOver = useCallback(
+    (event: React.DragEvent) => {
+      if (isReadOnly) return;
+      if (!event.dataTransfer?.types?.includes('Files')) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'copy';
+    },
+    [isReadOnly]
+  );
+
+  const handleCanvasDrop = useCallback(
+    (event: React.DragEvent) => {
+      if (isReadOnly) return;
+      if (!event.dataTransfer?.files?.length) return;
+      const targetElement = event.target as Element | null;
+      if (targetElement?.closest('.react-flow__node')) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const files = Array.from(event.dataTransfer.files);
+      const uploadable = files.filter(
+        (file) =>
+          file.type.startsWith('image/')
+          || file.type.startsWith('video/')
+          || file.type.startsWith('audio/')
+      );
+
+      if (uploadable.length === 0) {
+        toast.error('Drop an image, video, or audio file');
+        return;
+      }
+
+      if (uploadable.length < files.length) {
+        toast.warning('Some dropped files were skipped (unsupported format)');
+      }
+
+      const dropPosition = reactFlowInstance
+        ? reactFlowInstance.screenToFlowPosition({ x: event.clientX, y: event.clientY })
+        : { x: 400, y: 300 };
+
+      uploadable.forEach(async (file, index) => {
+        const isVideo = file.type.startsWith('video/');
+        const isAudio = file.type.startsWith('audio/');
+        const mediaType: 'image' | 'video' | 'audio' = isVideo ? 'video' : isAudio ? 'audio' : 'image';
+        const node = createMediaNode({
+          x: dropPosition.x + index * 40,
+          y: dropPosition.y + index * 40,
+        });
+
+        try {
+          const asset = await uploadAsset(file, {
+            nodeId: node.id,
+            canvasId: currentCanvasId || undefined,
+          });
+          node.data = { ...node.data, url: asset.url, type: mediaType };
+          addNode(node);
+        } catch (err) {
+          console.error('[Canvas] Drop upload failed:', err);
+          toast.error(`Upload failed: ${file.name}`);
+        }
+      });
+    },
+    [addNode, currentCanvasId, isReadOnly, reactFlowInstance]
+  );
 
   // Handle plugin launch - create node for node-based plugins, open sandbox for others
   const handlePluginLaunch = useCallback(
@@ -340,6 +409,8 @@ export function Canvas() {
         onSelectionEnd={isReadOnly ? undefined : onSelectionEnd}
         onPaneClick={handlePaneClick}
         onContextMenu={isReadOnly ? undefined : handleContextMenu}
+        onDragOver={isReadOnly ? undefined : handleCanvasDragOver}
+        onDrop={isReadOnly ? undefined : handleCanvasDrop}
         onInit={setReactFlowInstance}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
