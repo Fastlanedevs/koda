@@ -47,6 +47,73 @@ const PromptStudioRequestSchema = z.object({
   }
 });
 
+function normalizeBaseUrl(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+  if (!trimmed) return undefined;
+  return trimmed.replace(/\/+$/, '');
+}
+
+function getRequestOrigin(request: Request): string | null {
+  const host = request.headers.get('x-forwarded-host') || request.headers.get('host');
+  if (!host) return null;
+  const proto = request.headers.get('x-forwarded-proto') || 'https';
+  return `${proto}://${host}`;
+}
+
+function toAbsoluteUrl(raw: string, request: Request): URL | null {
+  const value = raw.trim();
+  if (!value) return null;
+
+  try {
+    return new URL(value);
+  } catch {
+    if (!value.startsWith('/')) return null;
+    const origin = getRequestOrigin(request);
+    if (!origin) return null;
+    try {
+      return new URL(`${origin}${value}`);
+    } catch {
+      return null;
+    }
+  }
+}
+
+function isPrivateHostname(hostname: string): boolean {
+  const h = hostname.toLowerCase();
+  if (h === 'localhost' || h.endsWith('.localhost')) return true;
+  if (h === '127.0.0.1' || h === '::1') return true;
+  if (/^10\.\d+\.\d+\.\d+$/.test(h)) return true;
+  if (/^192\.168\.\d+\.\d+$/.test(h)) return true;
+  if (/^172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+$/.test(h)) return true;
+  return false;
+}
+
+function isLikelyPublicReferenceUrl(url: URL, request: Request): boolean {
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return false;
+  if (isPrivateHostname(url.hostname)) return false;
+  if (url.pathname.startsWith('/api/')) return false;
+
+  const publicPrefixes = [
+    process.env.R2_PUBLIC_URL,
+    process.env.S3_PUBLIC_URL,
+    process.env.ASSET_BASE_URL,
+  ]
+    .map(normalizeBaseUrl)
+    .filter((v): v is string => !!v);
+
+  const href = url.toString();
+  if (publicPrefixes.some((prefix) => href.startsWith(prefix))) {
+    return true;
+  }
+
+  const host = (request.headers.get('x-forwarded-host') || request.headers.get('host') || '').toLowerCase();
+  if (host && url.hostname.toLowerCase() === host) {
+    return !url.pathname.startsWith('/api/');
+  }
+
+  return true;
+}
+
 export async function POST(request: Request) {
   try {
     const policyDecision = evaluatePluginLaunchById('prompt-studio');
@@ -113,12 +180,21 @@ export async function POST(request: Request) {
 
     // Inject reference images as multimodal parts on the last user message
     if (context?.referenceImages?.length) {
+      const imageParts = context.referenceImages
+        .map((rawUrl) => toAbsoluteUrl(rawUrl, request))
+        .filter((url): url is URL => !!url)
+        .filter((url) => isLikelyPublicReferenceUrl(url, request))
+        .map((url) => ({ type: 'image' as const, image: url }));
+
+      if (imageParts.length < context.referenceImages.length) {
+        console.warn(
+          `[Prompt Studio API] Skipped ${context.referenceImages.length - imageParts.length} non-public/invalid reference image URL(s) to avoid upstream fetch failures`
+        );
+      }
+
       for (let i = agentMessages.length - 1; i >= 0; i--) {
         if (agentMessages[i].role === 'user') {
           const textContent = agentMessages[i].content as string;
-          const imageParts = context.referenceImages
-            .map(url => { try { return { type: 'image' as const, image: new URL(url) }; } catch { return null; } })
-            .filter(Boolean);
           if (imageParts.length > 0) {
             agentMessages[i].content = [
               { type: 'text', text: textContent },
@@ -208,6 +284,8 @@ export async function POST(request: Request) {
           // Gate: when ask_questions is called, suppress everything else
           // and close stream after its tool-result so agent waits for user answers
           let askQuestionsGate = false;
+          let streamErrored = false;
+          let streamErrorMessage: string | null = null;
           const UI_TOOLS = new Set(['ask_questions', 'set_thinking']);
 
           while (!closed) {
@@ -247,6 +325,7 @@ export async function POST(request: Request) {
                   type: 'tool-result',
                   toolCallId: chunk.payload.toolCallId,
                   toolName: chunk.payload.toolName,
+                  args: chunk.payload.args,
                   result: chunk.payload.result,
                   isError: chunk.payload.isError,
                 });
@@ -268,6 +347,7 @@ export async function POST(request: Request) {
                   type: 'tool-result',
                   toolCallId: chunk.payload.toolCallId,
                   toolName: chunk.payload.toolName,
+                  args: chunk.payload.args,
                   result: { error: chunk.payload.error instanceof Error ? chunk.payload.error.message : String(chunk.payload.error) },
                   isError: true,
                 });
@@ -288,11 +368,13 @@ export async function POST(request: Request) {
                 break;
 
               case 'error':
+                streamErrored = true;
+                streamErrorMessage = chunk.payload.error instanceof Error
+                  ? chunk.payload.error.message
+                  : String(chunk.payload.error);
                 sseData = JSON.stringify({
                   type: 'error',
-                  error: chunk.payload.error instanceof Error
-                    ? chunk.payload.error.message
-                    : String(chunk.payload.error),
+                  error: streamErrorMessage,
                 });
                 break;
 
@@ -317,6 +399,19 @@ export async function POST(request: Request) {
 
             if (sseData && !closed) {
               safeEnqueue(encoder.encode(`data: ${sseData}\n\n`));
+            }
+
+            if (streamErrored) {
+              emitLaunchMetric({
+                metric: 'plugin_execution',
+                status: 'error',
+                source: 'api',
+                pluginId: 'prompt-studio',
+                errorCode: 'stream_provider_error',
+                metadata: { message: streamErrorMessage || 'Unknown stream provider error' },
+              });
+              safeClose();
+              return;
             }
           }
 

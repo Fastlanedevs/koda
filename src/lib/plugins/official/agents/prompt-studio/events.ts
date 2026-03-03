@@ -25,6 +25,7 @@ export interface ToolResultEvent {
   type: 'tool-result';
   toolCallId: string;
   toolName: string;
+  args?: Record<string, unknown>;
   result: Record<string, unknown>;
   isError?: boolean;
 }

@@ -688,6 +688,12 @@ function PromptStudioNodeComponent({ id, data, selected }: NodeProps<PromptStudi
 
     let streamingAssistantText = '';
     const toolCallArgs = new Map<string, Record<string, unknown>>();
+    const qnaToolCallIds = new Set<string>();
+    const initialCounts = {
+      prompts: updatedState.generatedPrompts.length,
+      qnaSets: updatedState.qnaSets.length,
+      searchResults: updatedState.searchResults.length,
+    };
 
     // Helper: commit accumulated text as an assistant message
     const commitTextSegment = () => {
@@ -744,6 +750,7 @@ function PromptStudioNodeComponent({ id, data, selected }: NodeProps<PromptStudi
             seq: nextSeq(),
           };
           setLs(prev => ({ ...prev, qnaSets: [...prev.qnaSets, qnaSet] }));
+          qnaToolCallIds.add(event.toolCallId);
           setThinkingMsg('');
           return;
         }
@@ -762,7 +769,28 @@ function PromptStudioNodeComponent({ id, data, selected }: NodeProps<PromptStudi
         setLs(prev => ({ ...prev, toolCalls: [...prev.toolCalls, tcItem] }));
       },
       onToolResult: (event) => {
-        if (event.toolName === 'set_thinking' || event.toolName === 'ask_questions') return;
+        if (event.toolName === 'set_thinking') return;
+
+        const args = event.args || toolCallArgs.get(event.toolCallId) || {};
+
+        // Fallback: if ask_questions call event was missed, recover from tool-result args.
+        if (event.toolName === 'ask_questions') {
+          if (!event.isError && !qnaToolCallIds.has(event.toolCallId)) {
+            const questions = Array.isArray(args.questions) ? args.questions as QnAQuestion[] : [];
+            if (questions.length > 0) {
+              const qnaSet: QnASet = {
+                id: `qna_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+                questions,
+                answered: false,
+                createdAt: new Date().toISOString(),
+                seq: nextSeq(),
+              };
+              setLs(prev => ({ ...prev, qnaSets: [...prev.qnaSets, qnaSet] }));
+              qnaToolCallIds.add(event.toolCallId);
+            }
+          }
+          return;
+        }
 
         // Update tool call status
         setLs(prev => ({
@@ -776,7 +804,6 @@ function PromptStudioNodeComponent({ id, data, selected }: NodeProps<PromptStudi
 
         // generate_prompt → create prompt
         if (event.toolName === 'generate_prompt' && !event.isError) {
-          const args = toolCallArgs.get(event.toolCallId) || {};
           const newPrompt: GeneratedPrompt = {
             id: (event.result.promptId as string) || `prompt_${Date.now()}`,
             prompt: (args.prompt as string) || '',
@@ -812,6 +839,23 @@ function PromptStudioNodeComponent({ id, data, selected }: NodeProps<PromptStudi
         // Commit any remaining text after the last tool call
         const cleanText = streamingAssistantText.replace(/<[^>]*>/g, '').trim();
         setLs(prev => {
+          const noStructuredOutput =
+            prev.generatedPrompts.length === initialCounts.prompts
+            && prev.qnaSets.length === initialCounts.qnaSets
+            && prev.searchResults.length === initialCounts.searchResults;
+          if (!cleanText && noStructuredOutput) {
+            const newState: PromptStudioNodeState = {
+              ...prev,
+              phase: 'error',
+              error: { message: 'No response received from Prompt Studio. Please retry.', canRetry: true },
+              streamingText: undefined,
+              reasoning: undefined,
+              updatedAt: new Date().toISOString(),
+            };
+            persistState(newState);
+            return newState;
+          }
+
           const assistantMsg: PromptStudioMessage | null = cleanText ? {
             id: `msg_${Date.now()}_asst`,
             role: 'assistant',

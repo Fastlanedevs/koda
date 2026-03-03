@@ -41,6 +41,7 @@ interface ToolCallEvent {
 interface ToolResultEvent {
   toolCallId: string;
   toolName: string;
+  args?: Record<string, unknown>;
   result: Record<string, unknown>;
   isError?: boolean;
 }
@@ -172,11 +173,12 @@ export function usePromptStudioStream(): UsePromptStudioStreamReturn {
                 }
 
                 case 'tool-result': {
-                  const args = pendingToolArgs.get(data.toolCallId) || {};
+                  const args = data.args || pendingToolArgs.get(data.toolCallId) || {};
                   pendingToolArgs.delete(data.toolCallId);
                   callbacks?.onToolResult?.({
                     toolCallId: data.toolCallId,
                     toolName: data.toolName,
+                    args,
                     result: data.result,
                     isError: data.isError,
                   });
