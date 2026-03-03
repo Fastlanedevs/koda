@@ -6,15 +6,44 @@ import { emitLaunchMetric } from '@/lib/observability/launch-metrics';
 const PLUGIN_ID = 'image-to-pdf';
 const REQUEST_TIMEOUT_MS = 30_000;
 const MAX_IMAGES = 100;
-const A4_PORTRAIT: [number, number] = [595.28, 841.89];
-const A4_LANDSCAPE: [number, number] = [841.89, 595.28];
 const DEFAULT_PAGE_MARGIN = 24;
+
+type PdfPageMode =
+  | 'image'
+  | 'a4-auto'
+  | 'letter-auto'
+  | 'legal-auto'
+  | 'a3-auto'
+  | 'a5-auto';
+
+const PAGE_MODE_SIZES: Record<Exclude<PdfPageMode, 'image'>, { portrait: [number, number]; landscape: [number, number] }> = {
+  'a4-auto': {
+    portrait: [595.28, 841.89],
+    landscape: [841.89, 595.28],
+  },
+  'letter-auto': {
+    portrait: [612, 792],
+    landscape: [792, 612],
+  },
+  'legal-auto': {
+    portrait: [612, 1008],
+    landscape: [1008, 612],
+  },
+  'a3-auto': {
+    portrait: [841.89, 1190.55],
+    landscape: [1190.55, 841.89],
+  },
+  'a5-auto': {
+    portrait: [419.53, 595.28],
+    landscape: [595.28, 419.53],
+  },
+};
 
 interface ImageToPdfRequestBody {
   imageUrls?: string[];
   fileName?: string;
   fitMode?: 'contain' | 'cover';
-  pageMode?: 'a4-auto' | 'image';
+  pageMode?: PdfPageMode;
   margin?: number;
 }
 
@@ -49,6 +78,22 @@ function detectImageFormat(contentType: string | null, bytes: Uint8Array): 'png'
   }
 
   return null;
+}
+
+function normalizePageMode(mode: unknown): PdfPageMode {
+  if (mode === 'image') return 'image';
+  if (typeof mode === 'string' && mode in PAGE_MODE_SIZES) {
+    return mode as Exclude<PdfPageMode, 'image'>;
+  }
+  return 'a4-auto';
+}
+
+function getPageSize(pageMode: PdfPageMode, imageWidth: number, imageHeight: number): [number, number] {
+  if (pageMode === 'image') {
+    return [imageWidth, imageHeight];
+  }
+  const size = PAGE_MODE_SIZES[pageMode];
+  return imageWidth >= imageHeight ? size.landscape : size.portrait;
 }
 
 export async function POST(request: Request) {
@@ -97,7 +142,7 @@ export async function POST(request: Request) {
     }
 
     const fitMode: 'contain' | 'cover' = body.fitMode === 'cover' ? 'cover' : 'contain';
-    const pageMode: 'a4-auto' | 'image' = body.pageMode === 'image' ? 'image' : 'a4-auto';
+    const pageMode = normalizePageMode(body.pageMode);
     const margin = Number.isFinite(body.margin)
       ? Math.max(0, Math.min(120, Number(body.margin)))
       : DEFAULT_PAGE_MARGIN;
@@ -124,11 +169,7 @@ export async function POST(request: Request) {
         ? await pdf.embedPng(bytes)
         : await pdf.embedJpg(bytes);
 
-      const [pageWidth, pageHeight] = pageMode === 'image'
-        ? [image.width, image.height]
-        : image.width >= image.height
-          ? A4_LANDSCAPE
-          : A4_PORTRAIT;
+      const [pageWidth, pageHeight] = getPageSize(pageMode, image.width, image.height);
       const page = pdf.addPage([pageWidth, pageHeight]);
 
       const maxWidth = Math.max(1, pageWidth - margin * 2);

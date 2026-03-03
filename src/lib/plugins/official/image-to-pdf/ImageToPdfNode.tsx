@@ -27,7 +27,13 @@ import {
 } from 'lucide-react';
 
 type PdfFitMode = 'contain' | 'cover';
-type PdfPageMode = 'a4-auto' | 'image';
+type PdfPageMode =
+  | 'image'
+  | 'a4-auto'
+  | 'letter-auto'
+  | 'legal-auto'
+  | 'a3-auto'
+  | 'a5-auto';
 
 interface OrderedImage {
   id: string;
@@ -47,6 +53,21 @@ interface ImageToPdfNodeState {
 }
 
 const DEFAULT_FILE_NAME = 'canvas-images.pdf';
+const PAGE_MODE_OPTIONS: Array<{ value: PdfPageMode; label: string }> = [
+  { value: 'image', label: 'Page: Match image' },
+  { value: 'a4-auto', label: 'Page: A4 auto' },
+  { value: 'letter-auto', label: 'Page: Letter auto' },
+  { value: 'legal-auto', label: 'Page: Legal auto' },
+  { value: 'a3-auto', label: 'Page: A3 auto' },
+  { value: 'a5-auto', label: 'Page: A5 auto' },
+];
+
+function normalizePageMode(value: unknown): PdfPageMode {
+  const mode = typeof value === 'string' ? value : '';
+  return PAGE_MODE_OPTIONS.some((option) => option.value === mode)
+    ? (mode as PdfPageMode)
+    : 'image';
+}
 
 function createDefaultState(): ImageToPdfNodeState {
   return {
@@ -203,7 +224,7 @@ function ImageToPdfNodeComponent({ id, data, selected }: NodeProps<Node<PluginNo
       images: Array.isArray(persisted.images) ? persisted.images : defaults.images,
       fileName: typeof persisted.fileName === 'string' ? persisted.fileName : defaults.fileName,
       fitMode: persisted.fitMode === 'cover' ? 'cover' : 'contain',
-      pageMode: persisted.pageMode === 'a4-auto' ? 'a4-auto' : 'image',
+      pageMode: normalizePageMode(persisted.pageMode),
       margin: Number.isFinite(persisted.margin) ? Math.max(0, Math.min(120, Number(persisted.margin))) : defaults.margin,
       isGenerating: Boolean(persisted.isGenerating),
       error: typeof persisted.error === 'string' ? persisted.error : undefined,
@@ -431,8 +452,11 @@ function ImageToPdfNodeComponent({ id, data, selected }: NodeProps<Node<PluginNo
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-popover border-border">
-                <SelectItem value="image" className="text-xs">Page: Match image</SelectItem>
-                <SelectItem value="a4-auto" className="text-xs">Page: A4 auto</SelectItem>
+                {PAGE_MODE_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value} className="text-xs">
+                    {option.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
@@ -447,7 +471,7 @@ function ImageToPdfNodeComponent({ id, data, selected }: NodeProps<Node<PluginNo
             </Select>
           </div>
 
-          {state.pageMode === 'a4-auto' && (
+          {state.pageMode !== 'image' && (
             <div className="flex items-center gap-2">
               <span className="text-[11px] text-muted-foreground w-11 shrink-0">Margin</span>
               <input
