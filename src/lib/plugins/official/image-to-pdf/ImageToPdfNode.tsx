@@ -190,6 +190,9 @@ function ImageToPdfNodeComponent({ id, data, selected }: NodeProps<Node<PluginNo
   const isReadOnly = useCanvasStore((state) => state.isReadOnly);
   const [isHovered, setIsHovered] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const stopPointerDown = useCallback((event: React.MouseEvent | React.PointerEvent) => {
+    event.stopPropagation();
+  }, []);
 
   const state = useMemo(() => {
     const defaults = createDefaultState();
@@ -251,13 +254,18 @@ function ImageToPdfNodeComponent({ id, data, selected }: NodeProps<Node<PluginNo
     const extracted = collectImages(selectedNodes, 'selected');
 
     if (extracted.length === 0) {
+      if (connectedImages.length > 0) {
+        updateState({ images: connectedImages, error: undefined });
+        toast.info('No selected image nodes found. Loaded connected inputs instead.');
+        return;
+      }
       toast.info('No image outputs found in selected nodes');
       return;
     }
 
     updateState({ images: extracted, error: undefined });
     toast.success(`Loaded ${extracted.length} selected image${extracted.length === 1 ? '' : 's'}`);
-  }, [id, nodes, selectedNodeIds, updateState]);
+  }, [connectedImages, id, nodes, selectedNodeIds, updateState]);
 
   const loadCanvasImages = useCallback(() => {
     const canvasNodes = nodes.filter((node) => node.id !== id);
@@ -458,6 +466,7 @@ function ImageToPdfNodeComponent({ id, data, selected }: NodeProps<Node<PluginNo
           <div className="flex flex-wrap gap-2">
             <button
               onClick={loadConnectedImages}
+              onMouseDown={stopPointerDown}
               disabled={isReadOnly || state.isGenerating}
               className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/70 px-2.5 py-1 text-[11px] text-foreground hover:bg-muted disabled:opacity-50"
             >
@@ -466,6 +475,7 @@ function ImageToPdfNodeComponent({ id, data, selected }: NodeProps<Node<PluginNo
             </button>
             <button
               onClick={loadSelectedImages}
+              onMouseDown={stopPointerDown}
               disabled={isReadOnly || state.isGenerating}
               className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/70 px-2.5 py-1 text-[11px] text-foreground hover:bg-muted disabled:opacity-50"
             >
@@ -474,6 +484,7 @@ function ImageToPdfNodeComponent({ id, data, selected }: NodeProps<Node<PluginNo
             </button>
             <button
               onClick={loadCanvasImages}
+              onMouseDown={stopPointerDown}
               disabled={isReadOnly || state.isGenerating}
               className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/70 px-2.5 py-1 text-[11px] text-foreground hover:bg-muted disabled:opacity-50"
             >
@@ -482,6 +493,7 @@ function ImageToPdfNodeComponent({ id, data, selected }: NodeProps<Node<PluginNo
             </button>
             <button
               onClick={() => fileInputRef.current?.click()}
+              onMouseDown={stopPointerDown}
               disabled={isReadOnly || state.isGenerating}
               className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/70 px-2.5 py-1 text-[11px] text-foreground hover:bg-muted disabled:opacity-50"
             >
