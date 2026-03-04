@@ -1077,8 +1077,8 @@ export const useCanvasStore = create<CanvasState>()(
           if (url) referenceImageUrls['refImage_1'] = url;
         }
 
-        // Multi-reference handles (ref2-ref8 for ImageGenerator, ref1-ref3 for VideoGenerator)
-        const refEdges = ['ref1', 'ref2', 'ref3', 'ref4', 'ref5', 'ref6', 'ref7', 'ref8']
+        // Multi-reference handles (ref1-ref14 across Image/Video generators)
+        const refEdges = ['ref1', 'ref2', 'ref3', 'ref4', 'ref5', 'ref6', 'ref7', 'ref8', 'ref9', 'ref10', 'ref11', 'ref12', 'ref13', 'ref14']
           .map((handle) => incomingEdges.find((e) => e.targetHandle === handle))
           .filter(Boolean);
 

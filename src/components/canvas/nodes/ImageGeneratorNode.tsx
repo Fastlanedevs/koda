@@ -55,8 +55,8 @@ function ImageGeneratorNodeComponent({ id, data, selected, positionAbsoluteX, po
   const showHandles = selected || isHovered || isConnected;
 
   const modelCapabilities = MODEL_CAPABILITIES[data.model];
-  const maxRefs = modelCapabilities.maxReferences || 1;
-  const refHandleCount = data.refHandleCount || 1;
+  const maxRefs = Math.max(1, modelCapabilities.maxReferences || 1);
+  const refHandleCount = Math.max(1, Math.min(data.refHandleCount || 1, maxRefs));
 
   // Update node internals when ref handle count changes
   useEffect(() => {

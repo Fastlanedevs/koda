@@ -551,7 +551,7 @@ export function VideoSettingsPanel() {
                     {inputMode === 'first-last-frame' && (modelCapabilities.lastFrameOptional
                       ? 'Start frame required, end frame optional'
                       : 'First and last frame images required')}
-                    {inputMode === 'multi-reference' && `Text + up to ${modelCapabilities.maxReferences || 3} reference images`}
+                    {inputMode === 'multi-reference' && `Text + up to ${modelCapabilities.maxReferences ?? 1} reference images`}
                   </p>
                 </TooltipContent>
               </Tooltip>

@@ -95,7 +95,10 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
   // Get model capabilities
   const modelCapabilities = VIDEO_MODEL_CAPABILITIES[data.model];
   const { inputMode, supportsVideoRef, supportsAudioRef } = modelCapabilities;
-  const imageRefHandleCount = Math.min(8, Math.max(0, modelCapabilities.maxReferences ?? (supportsVideoRef ? 3 : 0)));
+  const imageRefHandleCount = Math.min(
+    14,
+    Math.max(0, modelCapabilities.maxReferences ?? (inputMode === 'multi-reference' ? 3 : 0))
+  );
   const hasAdvancedHandles = imageRefHandleCount > 0 || !!supportsVideoRef || !!supportsAudioRef;
 
   // Build mention items from connected handles (for Tiptap @ autocomplete)
@@ -1365,7 +1368,7 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
       )}
 
       {/* Multi-Reference - for multi-reference mode */}
-      {inputMode === 'multi-reference' && (
+      {inputMode === 'multi-reference' && !hasAdvancedHandles && (
         <>
           {[1, 2, 3].map((num, idx) => (
             <div

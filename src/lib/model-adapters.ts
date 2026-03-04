@@ -78,7 +78,7 @@ class NanoBananaAdapter implements ModelAdapter {
   // Get all reference URLs as an array
   private getImageUrls(request: GenerateRequest): string[] {
     if (request.referenceUrls && request.referenceUrls.length > 0) {
-      return request.referenceUrls;
+      return request.referenceUrls.slice(0, 14);
     }
     if (request.referenceUrl) {
       return [request.referenceUrl];
@@ -127,7 +127,7 @@ class NanoBanana2Adapter implements ModelAdapter {
 
   private getImageUrls(request: GenerateRequest): string[] {
     if (request.referenceUrls && request.referenceUrls.length > 0) {
-      return request.referenceUrls;
+      return request.referenceUrls.slice(0, 14);
     }
     if (request.referenceUrl) {
       return [request.referenceUrl];
@@ -175,7 +175,8 @@ class QwenImage2Adapter implements ModelAdapter {
 
   private getImageUrls(request: GenerateRequest): string[] {
     if (request.referenceUrls && request.referenceUrls.length > 0) {
-      return request.referenceUrls;
+      // Fal edit endpoints accept 1-3 image URLs.
+      return request.referenceUrls.slice(0, 3);
     }
     if (request.referenceUrl) {
       return [request.referenceUrl];
@@ -441,7 +442,7 @@ class Veo31RefAdapter implements VideoModelAdapter {
   buildInput(request: VideoGenerateRequest): Record<string, unknown> {
     // Use referenceUrls array if available, otherwise fall back to single referenceUrl
     const imageUrls = request.referenceUrls?.length
-      ? request.referenceUrls
+      ? request.referenceUrls.slice(0, 3)
       : request.referenceUrl
         ? [request.referenceUrl]
         : [];
