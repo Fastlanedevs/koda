@@ -125,7 +125,7 @@ const DEFAULT_ENABLED_VIDEO: VideoModelType[] = [
 
 const defaultGenerationSettings: DefaultGenerationSettings = {
   imageModel: 'auto',
-  videoModel: 'auto',
+  videoModel: 'veo-3.1-fast-i2v',
   aspectRatio: 'auto',
   imageCount: 1,
   magicPrompt: true,

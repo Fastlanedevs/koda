@@ -35,6 +35,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { getApiErrorMessage, normalizeApiErrorMessage } from '@/lib/client/api-error';
 
 const HEYGEN_AVATAR4_VOICE_OPTIONS = HEYGEN_AVATAR4_VOICES.map((voice) => ({
   value: voice,
@@ -254,8 +255,8 @@ export function VideoSettingsPanel() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Video generation failed');
+        const message = await getApiErrorMessage(response, 'Video generation failed');
+        throw new Error(message);
       }
 
       const result = await response.json();
@@ -279,8 +280,9 @@ export function VideoSettingsPanel() {
         progress: 100,
       });
     } catch (error) {
+      const errorMessage = normalizeApiErrorMessage(error, 'Video generation failed');
       updateNodeData(videoSettingsPanelNodeId, {
-        error: error instanceof Error ? error.message : 'Video generation failed',
+        error: errorMessage,
         isGenerating: false,
         progress: 0,
       });
