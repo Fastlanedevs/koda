@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import type { AppNode } from '@/lib/types';
 
 type LocalStorageMock = {
   getItem: (key: string) => string | null;
@@ -40,7 +41,7 @@ test('resetTransientNodeStateForDuplicate clears in-flight image generation stat
     },
   };
 
-  const duplicated = resetTransientNodeStateForDuplicate(loadingNode);
+  const duplicated = resetTransientNodeStateForDuplicate(loadingNode as AppNode);
 
   assert.equal(duplicated.type, 'imageGenerator');
   assert.equal(duplicated.data.isGenerating, false);
