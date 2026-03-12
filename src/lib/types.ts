@@ -48,6 +48,17 @@ export interface ImageReference {
   type: 'style' | 'character' | 'upload';
 }
 
+// Image port roles for structured model routing
+export type ImagePortRole = 'reference' | 'style' | 'ip_adapter' | 'controlnet' | 'base' | 'element' | 'face';
+
+// Structured image input from a connected source
+export interface ImageInput {
+  role: ImagePortRole;
+  label: string;
+  urls: string[];
+  sourceNodeId: string;
+}
+
 export interface ConnectedNodeInputs {
   textContent?: string;
   referenceUrl?: string;
@@ -60,6 +71,8 @@ export interface ConnectedNodeInputs {
   videoUrl?: string;
   videoId?: string;
   audioUrl?: string;
+  // Structured image inputs keyed by label (for named port routing)
+  imageInputs?: Record<string, ImageInput>;
 }
 
 // Resolution options per model type
@@ -285,6 +298,9 @@ export interface ImageGeneratorNodeData extends Record<string, unknown> {
   selectedStyle?: StylePreset | null;
   selectedCameraAngle?: CameraAnglePreset | null;
   selectedCameraLens?: CameraLensPreset | null;
+  // Named image port labels and roles (sourceNodeId → value)
+  imageLabels?: Record<string, string>;
+  imageRoles?: Record<string, ImagePortRole>;
   // Output
   outputUrl?: string;
   outputUrls?: string[]; // Array for multiple outputs
@@ -498,6 +514,10 @@ export interface ModelCapabilities {
   // Special features
   supportsMagicPrompt?: boolean; // Ideogram
   supportsAdvancedParams?: boolean; // SD 3.5 (CFG, steps, strength)
+  // Named image port roles (for structured model routing)
+  supportedRoles?: ImagePortRole[];       // default ['reference']
+  defaultRole?: ImagePortRole;            // default 'reference'
+  roleConstraints?: Record<string, { max: number }>;
   description: string;
 }
 

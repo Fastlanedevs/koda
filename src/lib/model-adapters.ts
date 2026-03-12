@@ -1,5 +1,6 @@
 import type {
   ImageModelType,
+  ImagePortRole,
   VideoModelType,
   FluxImageSize,
   NanoBananaResolution,
@@ -26,6 +27,7 @@ export interface GenerateRequest {
   numImages?: number;
   referenceUrl?: string;
   referenceUrls?: string[]; // For multi-reference models (NanoBanana supports up to 14)
+  imageInputs?: Record<string, { role: ImagePortRole; urls: string[]; label: string }>;
   // Model-specific params
   style?: RecraftStyle | IdeogramStyle;
   magicPrompt?: boolean;
@@ -46,6 +48,22 @@ function getConcreteAspectRatio(aspectRatio: AspectRatio): Exclude<AspectRatio, 
   return aspectRatio === 'auto' ? DEFAULT_IMAGE_ASPECT_RATIO : aspectRatio;
 }
 
+/** Collect all URLs from imageInputs, optionally filtered by role. Falls back to referenceUrls. */
+function getImageInputUrls(request: GenerateRequest, role?: ImagePortRole): string[] {
+  if (request.imageInputs && Object.keys(request.imageInputs).length > 0) {
+    return Object.values(request.imageInputs)
+      .filter((input) => !role || input.role === role)
+      .flatMap((input) => input.urls);
+  }
+  // Fallback to flat referenceUrls
+  return request.referenceUrls || (request.referenceUrl ? [request.referenceUrl] : []);
+}
+
+/** Check if request has any image inputs (from imageInputs or legacy refs). */
+function hasImageInputs(request: GenerateRequest): boolean {
+  return getImageInputUrls(request).length > 0;
+}
+
 // Flux models (Schnell and Pro)
 class FluxAdapter implements ModelAdapter {
   buildInput(request: GenerateRequest): Record<string, unknown> {
@@ -56,7 +74,7 @@ class FluxAdapter implements ModelAdapter {
       prompt: request.prompt,
       image_size: imageSize,
       num_images: request.numImages || 1,
-      ...(request.referenceUrl && { image_url: request.referenceUrl }),
+      ...(getImageInputUrls(request).length > 0 && { image_url: getImageInputUrls(request)[0] }),
     };
   }
 
@@ -68,21 +86,12 @@ class FluxAdapter implements ModelAdapter {
 // FLUX.2 Pro (text-to-image + /edit multi-reference mode)
 class Flux2ProAdapter implements ModelAdapter {
   private hasImageReferences(request: GenerateRequest): boolean {
-    return (
-      (request.referenceUrls && request.referenceUrls.length > 0) ||
-      !!request.referenceUrl
-    );
+    return hasImageInputs(request);
   }
 
   private getImageUrls(request: GenerateRequest): string[] {
-    if (request.referenceUrls && request.referenceUrls.length > 0) {
-      // FLUX.2 Pro edit supports up to 9 references.
-      return request.referenceUrls.slice(0, 9);
-    }
-    if (request.referenceUrl) {
-      return [request.referenceUrl];
-    }
-    return [];
+    // FLUX.2 Pro edit supports up to 9 references.
+    return getImageInputUrls(request).slice(0, 9);
   }
 
   getModelId(request: GenerateRequest): string {
@@ -117,23 +126,12 @@ class Flux2ProAdapter implements ModelAdapter {
 
 // Nano Banana Pro (supports dual endpoints: text-to-image and image editing)
 class NanoBananaAdapter implements ModelAdapter {
-  // Determine if we should use the /edit endpoint
   private hasImageReferences(request: GenerateRequest): boolean {
-    return (
-      (request.referenceUrls && request.referenceUrls.length > 0) ||
-      !!request.referenceUrl
-    );
+    return hasImageInputs(request);
   }
 
-  // Get all reference URLs as an array
   private getImageUrls(request: GenerateRequest): string[] {
-    if (request.referenceUrls && request.referenceUrls.length > 0) {
-      return request.referenceUrls.slice(0, 14);
-    }
-    if (request.referenceUrl) {
-      return [request.referenceUrl];
-    }
-    return [];
+    return getImageInputUrls(request).slice(0, 14);
   }
 
   // Dynamic model ID based on whether images are provided
@@ -169,20 +167,11 @@ class NanoBananaAdapter implements ModelAdapter {
 // Nano Banana 2 (same dual-endpoint pattern as Pro: text-to-image + /edit)
 class NanoBanana2Adapter implements ModelAdapter {
   private hasImageReferences(request: GenerateRequest): boolean {
-    return (
-      (request.referenceUrls && request.referenceUrls.length > 0) ||
-      !!request.referenceUrl
-    );
+    return hasImageInputs(request);
   }
 
   private getImageUrls(request: GenerateRequest): string[] {
-    if (request.referenceUrls && request.referenceUrls.length > 0) {
-      return request.referenceUrls.slice(0, 14);
-    }
-    if (request.referenceUrl) {
-      return [request.referenceUrl];
-    }
-    return [];
+    return getImageInputUrls(request).slice(0, 14);
   }
 
   getModelId(request: GenerateRequest): string {
@@ -217,21 +206,12 @@ class QwenImage2Adapter implements ModelAdapter {
   constructor(private variant: 'regular' | 'pro') {}
 
   private hasImageReferences(request: GenerateRequest): boolean {
-    return (
-      (request.referenceUrls && request.referenceUrls.length > 0) ||
-      !!request.referenceUrl
-    );
+    return hasImageInputs(request);
   }
 
   private getImageUrls(request: GenerateRequest): string[] {
-    if (request.referenceUrls && request.referenceUrls.length > 0) {
-      // Fal edit endpoints accept 1-3 image URLs.
-      return request.referenceUrls.slice(0, 3);
-    }
-    if (request.referenceUrl) {
-      return [request.referenceUrl];
-    }
-    return [];
+    // Fal edit endpoints accept 1-3 image URLs.
+    return getImageInputUrls(request).slice(0, 3);
   }
 
   private getBaseModelPath(): string {
@@ -277,13 +257,7 @@ class GrokImagineImageAdapter implements ModelAdapter {
   constructor(private mode: 'generate' | 'edit') {}
 
   private getImageUrls(request: GenerateRequest): string[] {
-    if (request.referenceUrls && request.referenceUrls.length > 0) {
-      return request.referenceUrls.slice(0, 3);
-    }
-    if (request.referenceUrl) {
-      return [request.referenceUrl];
-    }
-    return [];
+    return getImageInputUrls(request).slice(0, 3);
   }
 
   buildInput(request: GenerateRequest): Record<string, unknown> {
@@ -371,8 +345,9 @@ class SD35Adapter implements ModelAdapter {
     };
 
     // Image-to-image mode if reference provided
-    if (request.referenceUrl) {
-      input.image_url = request.referenceUrl;
+    const urls = getImageInputUrls(request);
+    if (urls.length > 0) {
+      input.image_url = urls[0];
       input.strength = request.strength || 0.75;
     } else {
       // Text-to-image: set size based on aspect ratio
@@ -414,10 +389,11 @@ class Seedream5Adapter implements ModelAdapter {
 // Flux Kontext (text + image context editing)
 class FluxKontextAdapter implements ModelAdapter {
   buildInput(request: GenerateRequest): Record<string, unknown> {
+    const urls = getImageInputUrls(request);
     return {
       prompt: request.prompt,
       num_images: request.numImages || 1,
-      ...(request.referenceUrl && { image_url: request.referenceUrl }),
+      ...(urls.length > 0 && { image_url: urls[0] }),
     };
   }
 

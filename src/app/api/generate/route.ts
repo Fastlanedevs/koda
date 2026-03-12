@@ -450,6 +450,7 @@ export const POST = withCredits(
         imageCount = 1,
         referenceUrl,
         referenceUrls, // Multi-reference support (up to 14 for NanoBanana)
+        imageInputs: rawImageInputs, // Structured named image inputs
         // New model-specific params
         style,
         magicPrompt,
@@ -520,6 +521,26 @@ export const POST = withCredits(
         );
       }
 
+      // Normalize imageInputs URLs (same normalization as referenceUrls)
+      let normalizedImageInputs: GenerateRequest['imageInputs'] | undefined;
+      if (rawImageInputs && typeof rawImageInputs === 'object') {
+        const entries = await Promise.all(
+          Object.entries(rawImageInputs as Record<string, { role: string; urls: string[]; label: string }>).map(
+            async ([label, input]) => {
+              const normalizedUrls = (
+                await Promise.all((input.urls || []).map(normalizeReferenceUrl))
+              ).filter((url): url is string => !!url);
+              if (normalizedUrls.length === 0) return null;
+              return [label, { role: input.role as import('@/lib/types').ImagePortRole, urls: normalizedUrls, label: input.label }] as const;
+            }
+          )
+        );
+        const validEntries = entries.filter(Boolean) as Array<readonly [string, { role: import('@/lib/types').ImagePortRole; urls: string[]; label: string }]>;
+        if (validEntries.length > 0) {
+          normalizedImageInputs = Object.fromEntries(validEntries);
+        }
+      }
+
       const modelType = resolveAutoModel(model as ImageModelType);
       const requestedAspectRatio = normalizeAspectRatio(aspectRatio);
       const aspectRatioFromPrompt =
@@ -541,6 +562,7 @@ export const POST = withCredits(
         numImages,
         referenceUrl: primaryReferenceUrl,
         referenceUrls: normalizedReferences.length > 0 ? normalizedReferences : undefined, // Pass multi-reference array
+        imageInputs: normalizedImageInputs,
         style,
         magicPrompt,
         cfgScale,
