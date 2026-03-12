@@ -16,8 +16,10 @@ import { SearchableSelect } from '@/components/ui/searchable-select';
 import { useCanvasStore, createMediaNode } from '@/stores/canvas-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { getApiErrorMessage, normalizeApiErrorMessage } from '@/lib/client/api-error';
-import type { ImageGeneratorNode as ImageGeneratorNodeType, RecraftStyle, IdeogramStyle } from '@/lib/types';
+import type { ImageGeneratorNode as ImageGeneratorNodeType, ImagePortRole, RecraftStyle, IdeogramStyle } from '@/lib/types';
 import { MODEL_CAPABILITIES, ENABLED_IMAGE_MODELS, getApproxDimensions, FLUX_IMAGE_SIZES, RECRAFT_STYLE_LABELS, IDEOGRAM_STYLE_LABELS, getAspectRatioLabel, type FluxImageSize, type NanoBananaResolution, type ImageModelType } from '@/lib/types';
+import { ImageChipBar, type ConnectedImageChip } from '@/components/canvas/nodes/ImageChipBar';
+import { PromptTokenAutocomplete, type TokenSuggestion } from '@/components/canvas/nodes/PromptTokenAutocomplete';
 import { startImageCompare } from '@/lib/compare/controller';
 import { promoteImageCompareResult } from '@/lib/compare/run';
 import { buildInitialCompareSelection, pruneCompareSelection } from '@/lib/compare/utils';
@@ -53,6 +55,8 @@ function ImageGeneratorNodeComponent({ id, data, selected, positionAbsoluteX, po
   const getConnectedInputs = useCanvasStore((state) => state.getConnectedInputs);
   const addNode = useCanvasStore((state) => state.addNode);
   const isReadOnly = useCanvasStore((state) => state.isReadOnly);
+  const onEdgesChange = useCanvasStore((state) => state.onEdgesChange);
+  const edges = useCanvasStore((state) => state.edges);
   const addToHistory = useSettingsStore((state) => state.addToHistory);
   const updateHistoryItem = useSettingsStore((state) => state.updateHistoryItem);
   const enabledImageModels = useSettingsStore((s) => s.defaultSettings.enabledImageModels) || [...ENABLED_IMAGE_MODELS];
@@ -365,6 +369,51 @@ function ImageGeneratorNodeComponent({ id, data, selected, positionAbsoluteX, po
   const hasValidPrompt = hasValidImagePromptInput(liveData, connectedInputs);
   const connectedReferenceCount = (connectedInputs.referenceUrl ? 1 : 0) + (connectedInputs.referenceUrls?.length || 0);
   const hasCompareResults = (data.compareResults?.length || 0) > 0;
+
+  // Image chip bar data
+  const supportedRoles: ImagePortRole[] = modelCapabilities?.supportedRoles || ['reference'];
+  const imageChips: ConnectedImageChip[] = useMemo(() => {
+    if (!connectedInputs.imageInputs) return [];
+    return Object.values(connectedInputs.imageInputs).map((input) => ({
+      sourceNodeId: input.sourceNodeId,
+      label: input.label,
+      role: input.role,
+      url: input.urls[0] || '',
+    }));
+  }, [connectedInputs.imageInputs]);
+
+  const tokenSuggestions: TokenSuggestion[] = useMemo(
+    () => imageChips.map((chip) => ({ label: chip.label, url: chip.url })),
+    [imageChips]
+  );
+
+  const handleChipLabelChange = useCallback(
+    (sourceNodeId: string, newLabel: string) => {
+      const current = data.imageLabels || {};
+      updateNodeData(id, { imageLabels: { ...current, [sourceNodeId]: newLabel } });
+    },
+    [id, data.imageLabels, updateNodeData]
+  );
+
+  const handleChipRoleChange = useCallback(
+    (sourceNodeId: string, newRole: ImagePortRole) => {
+      const current = data.imageRoles || {};
+      updateNodeData(id, { imageRoles: { ...current, [sourceNodeId]: newRole } });
+    },
+    [id, data.imageRoles, updateNodeData]
+  );
+
+  const handleChipDisconnect = useCallback(
+    (sourceNodeId: string) => {
+      const edgesToRemove = edges
+        .filter((e) => e.target === id && e.source === sourceNodeId)
+        .map((e) => ({ id: e.id, type: 'remove' as const }));
+      if (edgesToRemove.length > 0) {
+        onEdgesChange(edgesToRemove);
+      }
+    },
+    [id, edges, onEdgesChange]
+  );
 
   const activePresets = useMemo((): { key: string; label: string; preview: string }[] => {
     const pills: { key: string; label: string; preview: string }[] = [];
@@ -679,17 +728,31 @@ function ImageGeneratorNodeComponent({ id, data, selected, positionAbsoluteX, po
             appearance: 'none',
           }}
         />
-        {connectedReferenceCount > 0 ? (
-          <div className="flex flex-wrap gap-1.5">
-            <span className="inline-flex items-center rounded-full border border-border/70 bg-muted/50 px-2 py-0.5 text-[10px] text-muted-foreground">
-              {connectedReferenceCount} image{connectedReferenceCount > 1 ? 's' : ''} referenced
-            </span>
+        {tokenSuggestions.length > 0 && (
+          <PromptTokenAutocomplete
+            textareaRef={promptTextareaRef}
+            suggestions={tokenSuggestions}
+            onInsert={() => {}}
+          />
+        )}
+        {imageChips.length > 0 ? (
+          <>
+            <ImageChipBar
+              chips={imageChips}
+              supportedRoles={supportedRoles}
+              prompt={promptDraft}
+              onLabelChange={handleChipLabelChange}
+              onRoleChange={handleChipRoleChange}
+              onDisconnect={handleChipDisconnect}
+            />
             {!data.outputUrl && activePresets.length > 0 ? (
-              <span className="inline-flex items-center rounded-full border border-border/70 bg-muted/50 px-2 py-0.5 text-[10px] text-muted-foreground">
-                {activePresets.length} preset{activePresets.length > 1 ? 's' : ''}
-              </span>
+              <div className="flex flex-wrap gap-1.5 px-2">
+                <span className="inline-flex items-center rounded-full border border-border/70 bg-muted/50 px-2 py-0.5 text-[10px] text-muted-foreground">
+                  {activePresets.length} preset{activePresets.length > 1 ? 's' : ''}
+                </span>
+              </div>
             ) : null}
-          </div>
+          </>
         ) : !data.outputUrl && activePresets.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
             <span className="inline-flex items-center rounded-full border border-border/70 bg-muted/50 px-2 py-0.5 text-[10px] text-muted-foreground">

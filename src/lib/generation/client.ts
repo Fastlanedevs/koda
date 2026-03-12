@@ -6,7 +6,9 @@ import {
   resolveDeprecatedVideoModel,
   type ConnectedNodeInputs,
   type ImageGeneratorNodeData,
+  type ImageInput,
   type ImageModelType,
+  type ImagePortRole,
   type VideoGeneratorNodeData,
   type VideoModelType,
 } from '../types';
@@ -20,6 +22,7 @@ export interface ImageGenerationRequestBody {
   imageCount: number;
   referenceUrl?: string;
   referenceUrls?: string[];
+  imageInputs?: Record<string, { role: ImagePortRole; urls: string[]; label: string }>;
   style?: ImageGeneratorNodeData['style'];
   magicPrompt?: ImageGeneratorNodeData['magicPrompt'];
   cfgScale?: ImageGeneratorNodeData['cfgScale'];
@@ -103,22 +106,110 @@ export function hasValidImagePromptInput(
   return buildImagePrompt(data, connectedInputs).length > 0;
 }
 
+/**
+ * Process @mention references in the prompt for flat-array models.
+ * Replaces @label with plain text and prepends image label declarations.
+ */
+export function processPromptTokens(
+  prompt: string,
+  imageInputs: Record<string, { role: ImagePortRole; urls: string[]; label: string }>,
+  model: ImageModelType
+): { processedPrompt: string; orderedUrls: string[] } {
+  const capabilities = MODEL_CAPABILITIES[model];
+  const supportedRoles = capabilities?.supportedRoles || ['reference'];
+  const isStructured = supportedRoles.length > 1;
+
+  // Find all @label references in prompt (@ followed by word chars, at word boundary or start)
+  const tokenPattern = /(?:^|(?<=\s))@([a-zA-Z0-9_]+)/g;
+  const usedLabels: string[] = [];
+  let match;
+  while ((match = tokenPattern.exec(prompt)) !== null) {
+    const label = match[1];
+    if (imageInputs[label]) {
+      usedLabels.push(label);
+    }
+  }
+
+  // If no tokens used or no imageInputs, return as-is
+  if (usedLabels.length === 0 || Object.keys(imageInputs).length === 0) {
+    const allUrls = Object.values(imageInputs).flatMap(input => input.urls);
+    return { processedPrompt: prompt, orderedUrls: allUrls };
+  }
+
+  // For structured models, strip @tokens (routing is by role)
+  if (isStructured) {
+    const stripped = prompt.replace(tokenPattern, (full, label) =>
+      imageInputs[label] ? label : full
+    );
+    const allUrls = Object.values(imageInputs).flatMap(input => input.urls);
+    return { processedPrompt: stripped, orderedUrls: allUrls };
+  }
+
+  // For flat-array models, order URLs by mention order and build natural prompt
+  const orderedUrls: string[] = [];
+  const ordinals = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth'];
+
+  // First: referenced images in order of appearance
+  for (const label of usedLabels) {
+    const input = imageInputs[label];
+    orderedUrls.push(...input.urls);
+  }
+
+  // Then: unreferenced images
+  for (const [label, input] of Object.entries(imageInputs)) {
+    if (!usedLabels.includes(label)) {
+      orderedUrls.push(...input.urls);
+    }
+  }
+
+  // Build mapping: replace @label with "the Nth image (label)" for model clarity
+  const cleanedPrompt = prompt.replace(tokenPattern, (full, label) => {
+    if (!imageInputs[label]) return full;
+    const idx = usedLabels.indexOf(label);
+    const ordinal = ordinals[idx] || `image ${idx + 1}`;
+    return `the ${ordinal} reference image (${label})`;
+  });
+
+  return { processedPrompt: cleanedPrompt, orderedUrls };
+}
+
 export function buildImageGenerationRequest(
   data: ImageGeneratorNodeData,
   connectedInputs: ConnectedNodeInputs,
   overrides: Partial<Pick<ImageGenerationRequestBody, 'model' | 'imageCount'>> = {}
 ): ImageGenerationRequestBody {
   const allReferenceUrls = getAllReferenceUrls(connectedInputs);
+  const model = overrides.model ?? data.model;
+
+  // Build imageInputs from connectedInputs if available
+  const imageInputs = connectedInputs.imageInputs
+    ? Object.fromEntries(
+        Object.entries(connectedInputs.imageInputs).map(([label, input]) => [
+          label,
+          { role: input.role, urls: input.urls, label: input.label },
+        ])
+      )
+    : undefined;
+
+  // Process prompt tokens if imageInputs exist
+  let prompt = buildImagePrompt(data, connectedInputs);
+  let orderedReferenceUrls = allReferenceUrls;
+  if (imageInputs && Object.keys(imageInputs).length > 0) {
+    const result = processPromptTokens(prompt, imageInputs, model);
+    prompt = result.processedPrompt;
+    orderedReferenceUrls = result.orderedUrls;
+  }
 
   return {
-    prompt: buildImagePrompt(data, connectedInputs),
-    model: overrides.model ?? data.model,
+    prompt,
+    model,
     aspectRatio: data.aspectRatio,
     imageSize: data.imageSize || 'square_hd',
     resolution: data.resolution || '1K',
     imageCount: overrides.imageCount ?? data.imageCount ?? 1,
     referenceUrl: connectedInputs.referenceUrl,
-    referenceUrls: allReferenceUrls.length > 0 ? allReferenceUrls : undefined,
+    referenceUrls: orderedReferenceUrls.length > 0 ? orderedReferenceUrls : undefined,
+    imageInputs,
     style: data.style,
     magicPrompt: data.magicPrompt,
     cfgScale: data.cfgScale,
