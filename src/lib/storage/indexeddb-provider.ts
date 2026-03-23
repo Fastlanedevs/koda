@@ -9,10 +9,18 @@ const META_STORE = 'meta';
 const LEGACY_IMPORT_KEY = 'legacy-import-complete';
 const STORAGE_KEY = 'spaces-canvases';
 const LEGACY_STORAGE_KEY = 'spaces-canvas-storage';
+const LEGACY_SINGLE_CANVAS_ID = 'legacy-single-canvas';
 
 interface MetaRecord {
   key: string;
   value: string;
+}
+
+interface LegacySingleCanvasState {
+  nodes?: StoredCanvas['nodes'];
+  edges?: StoredCanvas['edges'];
+  isReadOnly?: boolean;
+  spaceName?: string;
 }
 
 function requestToPromise<T>(request: IDBRequest<T>): Promise<T> {
@@ -73,12 +81,7 @@ function readLegacyCanvasesFromLocalStorage(): StoredCanvas[] {
     const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
     if (legacy) {
       const parsed = JSON.parse(legacy) as {
-        state?: {
-          nodes?: StoredCanvas['nodes'];
-          edges?: StoredCanvas['edges'];
-          isReadOnly?: boolean;
-          spaceName?: string;
-        };
+        state?: LegacySingleCanvasState;
       };
       const state = parsed?.state;
       if (
@@ -88,7 +91,7 @@ function readLegacyCanvasesFromLocalStorage(): StoredCanvas[] {
       ) {
         const now = Date.now();
         const canvas: StoredCanvas = normalizeStoredCanvas({
-          id: `canvas_${now}_legacy`,
+          id: LEGACY_SINGLE_CANVAS_ID,
           name: state.spaceName || 'Migrated Canvas',
           nodes: state.nodes || [],
           edges: state.edges || [],
@@ -103,6 +106,11 @@ function readLegacyCanvasesFromLocalStorage(): StoredCanvas[] {
   }
 
   return Array.from(canvases.values());
+}
+
+function clearLegacySingleCanvasStorage(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(LEGACY_STORAGE_KEY);
 }
 
 async function getMetaValue(db: IDBDatabase, key: string): Promise<string | null> {
@@ -189,6 +197,7 @@ export class IndexedDbStorageProvider implements StorageProvider {
           await putCanvasRecord(db, canvas);
         }
       }
+      clearLegacySingleCanvasStorage();
     }
 
     await setMetaValue(db, LEGACY_IMPORT_KEY, '1');
@@ -255,6 +264,10 @@ export class IndexedDbStorageProvider implements StorageProvider {
         await putCanvasRecord(db, canvas);
         migratedId ||= canvas.id;
       }
+    }
+
+    if (migratedId) {
+      clearLegacySingleCanvasStorage();
     }
 
     await setMetaValue(db, LEGACY_IMPORT_KEY, '1');
