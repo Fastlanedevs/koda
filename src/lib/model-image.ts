@@ -1,6 +1,8 @@
 import sharp from 'sharp';
 
 export const MAX_MODEL_IMAGE_BYTES = 5 * 1024 * 1024;
+export const MAX_MODEL_IMAGE_BASE64_BYTES = 5 * 1024 * 1024;
+const MAX_MODEL_IMAGE_BUFFER_BYTES = Math.floor((MAX_MODEL_IMAGE_BASE64_BYTES * 3) / 4);
 
 const SUPPORTED_IMAGE_MIME_TYPES = new Set([
   'image/jpeg',
@@ -29,14 +31,16 @@ export async function prepareModelImageBuffer(
   mediaType?: string,
 ): Promise<PreparedModelImage> {
   const normalizedMimeType = normalizeMimeType(mediaType);
+  const inputBase64 = input.toString('base64');
 
   if (
-    input.byteLength <= MAX_MODEL_IMAGE_BYTES
+    input.byteLength <= MAX_MODEL_IMAGE_BUFFER_BYTES
+    && inputBase64.length <= MAX_MODEL_IMAGE_BASE64_BYTES
     && SUPPORTED_IMAGE_MIME_TYPES.has(normalizedMimeType)
   ) {
     return {
       buffer: input,
-      base64: input.toString('base64'),
+      base64: inputBase64,
       mediaType: normalizedMimeType,
     };
   }
@@ -63,15 +67,19 @@ export async function prepareModelImageBuffer(
         .flatten({ background: '#ffffff' })
         .jpeg({ quality, mozjpeg: true })
         .toBuffer();
+      const resultBase64 = result.toString('base64');
 
       if (!smallestResult || result.byteLength < smallestResult.byteLength) {
         smallestResult = result;
       }
 
-      if (result.byteLength <= MAX_MODEL_IMAGE_BYTES) {
+      if (
+        result.byteLength <= MAX_MODEL_IMAGE_BUFFER_BYTES
+        && resultBase64.length <= MAX_MODEL_IMAGE_BASE64_BYTES
+      ) {
         return {
           buffer: result,
-          base64: result.toString('base64'),
+          base64: resultBase64,
           mediaType: 'image/jpeg',
         };
       }
@@ -79,6 +87,6 @@ export async function prepareModelImageBuffer(
   }
 
   throw new Error(
-    `Unable to prepare image under ${MAX_MODEL_IMAGE_BYTES} bytes (smallest result: ${smallestResult?.byteLength ?? input.byteLength} bytes)`
+    `Unable to prepare image under ${MAX_MODEL_IMAGE_BASE64_BYTES} base64 bytes (smallest result: ${smallestResult?.byteLength ?? input.byteLength} raw bytes)`
   );
 }
