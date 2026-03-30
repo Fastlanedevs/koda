@@ -7,8 +7,6 @@
 
 const DEFAULT_GEMINI_31_PRO_PREVIEW = 'google/gemini-3.1-pro-preview';
 const DEFAULT_GEMINI_31_FLASH_LITE_PREVIEW = 'google/gemini-3.1-flash-lite-preview';
-const DEFAULT_GEMINI_3_FLASH_PREVIEW = 'google/gemini-3-flash-preview';
-
 // -- Anthropic Claude Models --
 
 export const CLAUDE_SONNET_4_6 = 'anthropic/claude-sonnet-4-6';
@@ -79,5 +77,5 @@ export const PROMPT_STUDIO_MODEL = readModelOverride(
 /** Storyboard generation */
 export const STORYBOARD_MODEL = readModelOverride(
   'KODA_MODEL_STORYBOARD',
-  DEFAULT_GEMINI_3_FLASH_PREVIEW
+  DEFAULT_GEMINI_31_FLASH_LITE_PREVIEW
 );
