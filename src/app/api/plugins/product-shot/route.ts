@@ -19,8 +19,46 @@ import { prepareModelImageBuffer } from '@/lib/model-image';
 
 const DEFAULT_MODEL = 'google/gemini-3-pro-preview';
 
-async function fetchImageAsBase64(url: string, requestUrl: string): Promise<{ base64: string; mediaType: string } | null> {
+const LOCAL_HOSTNAMES = new Set(['localhost', '127.0.0.1', '::1']);
+
+function isPrivateIpv4Hostname(hostname: string): boolean {
+  if (!/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) return false;
+  const [a, b] = hostname.split('.').map((part) => Number(part));
+  if (a === 10 || a === 127) return true;
+  if (a === 192 && b === 168) return true;
+  if (a === 172 && b >= 16 && b <= 31) return true;
+  return false;
+}
+
+function isExternallyFetchableUrl(url: string): boolean {
   try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false;
+    if (LOCAL_HOSTNAMES.has(parsed.hostname)) return false;
+    if (parsed.hostname.endsWith('.local')) return false;
+    if (isPrivateIpv4Hostname(parsed.hostname)) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function resolveReferenceImagePart(
+  url: string,
+  requestUrl: string,
+): Promise<{ type: 'image'; image: string; mimeType?: string } | null> {
+  try {
+    if (!url.startsWith('data:')) {
+      const resolvedUrl = /^https?:\/\//i.test(url) ? url : new URL(url, requestUrl).toString();
+      if (isExternallyFetchableUrl(resolvedUrl)) {
+        return {
+          type: 'image',
+          image: resolvedUrl,
+        };
+      }
+      url = resolvedUrl;
+    }
+
     let sourceBuffer: Buffer;
     let sourceMediaType: string;
 
@@ -46,8 +84,9 @@ async function fetchImageAsBase64(url: string, requestUrl: string): Promise<{ ba
 
     const prepared = await prepareModelImageBuffer(sourceBuffer, sourceMediaType);
     return {
-      base64: prepared.base64,
-      mediaType: prepared.mediaType,
+      type: 'image',
+      image: prepared.base64,
+      mimeType: prepared.mediaType,
     };
   } catch (err) {
     console.warn('[ProductShot] Reference image fetch error:', err instanceof Error ? err.message : err);
@@ -119,17 +158,13 @@ export async function POST(request: Request) {
     // Build multimodal input if a reference image was supplied
     let agentInput: string | Array<{ role: 'user'; content: Array<Record<string, unknown>> }> = prompt;
     if (input.productImageUrl) {
-      const referenceImage = await fetchImageAsBase64(input.productImageUrl, request.url);
+      const referenceImage = await resolveReferenceImagePart(input.productImageUrl, request.url);
       if (referenceImage) {
         agentInput = [
           {
             role: 'user',
             content: [
-              {
-                type: 'file',
-                data: referenceImage.base64,
-                mediaType: referenceImage.mediaType,
-              },
+              referenceImage,
               {
                 type: 'text',
                 text:

@@ -29,13 +29,51 @@ export const maxDuration = 120;
 /** Default model for storyboard generation */
 const DEFAULT_MODEL = 'anthropic/claude-sonnet-4-6';
 
-/**
- * Fetch an image URL and return base64 data + media type.
- * Handles both HTTP URLs and data: URLs.
- * Returns null on failure (non-blocking — storyboard still works without the image).
- */
-async function fetchImageAsBase64(url: string, requestUrl: string): Promise<{ base64: string; mediaType: string } | null> {
+const LOCAL_HOSTNAMES = new Set(['localhost', '127.0.0.1', '::1']);
+
+function isPrivateIpv4Hostname(hostname: string): boolean {
+  if (!/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) return false;
+  const [a, b] = hostname.split('.').map((part) => Number(part));
+  if (a === 10 || a === 127) return true;
+  if (a === 192 && b === 168) return true;
+  if (a === 172 && b >= 16 && b <= 31) return true;
+  return false;
+}
+
+function isExternallyFetchableUrl(url: string): boolean {
   try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false;
+    if (LOCAL_HOSTNAMES.has(parsed.hostname)) return false;
+    if (parsed.hostname.endsWith('.local')) return false;
+    if (isPrivateIpv4Hostname(parsed.hostname)) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Resolve a reference image into the preferred model input form.
+ * Uses externally fetchable hosted URLs when possible, and falls back to
+ * compressed base64 only for data URLs and local/private URLs.
+ */
+async function resolveReferenceImagePart(
+  url: string,
+  requestUrl: string,
+): Promise<{ type: 'image'; image: string; mimeType?: string } | null> {
+  try {
+    if (!url.startsWith('data:')) {
+      const resolvedUrl = /^https?:\/\//i.test(url) ? url : new URL(url, requestUrl).toString();
+      if (isExternallyFetchableUrl(resolvedUrl)) {
+        return {
+          type: 'image',
+          image: resolvedUrl,
+        };
+      }
+      url = resolvedUrl;
+    }
+
     let sourceBuffer: Buffer;
     let sourceMediaType: string;
 
@@ -68,7 +106,11 @@ async function fetchImageAsBase64(url: string, requestUrl: string): Promise<{ ba
       );
     }
 
-    return { base64: prepared.base64, mediaType: prepared.mediaType };
+    return {
+      type: 'image',
+      image: prepared.base64,
+      mimeType: prepared.mediaType,
+    };
   } catch (err) {
     console.warn('[Storyboard] Image fetch error:', err instanceof Error ? err.message : err);
     return null;
@@ -193,22 +235,19 @@ export async function POST(request: Request) {
     const fetchedImages = await Promise.all(
       refsWithImages.map(async (ref) => ({
         ref,
-        image: await fetchImageAsBase64(ref.imageUrl!, request.url),
+        image: await resolveReferenceImagePart(ref.imageUrl!, request.url),
       }))
     );
 
     // Build multimodal message if we have reference images
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const contentParts: Array<Record<string, any>> = [];
+    const contentParts: Array<
+      { type: 'image'; image: string; mimeType?: string } | { type: 'text'; text: string }
+    > = [];
     const imageLabels: string[] = [];
 
     for (const { ref, image } of fetchedImages) {
       if (image) {
-        contentParts.push({
-          type: 'file',
-          data: image.base64,
-          mediaType: image.mediaType,
-        });
+        contentParts.push(image);
         const roleLabel = ref.role.toUpperCase();
         imageLabels.push(`REFERENCE IMAGE [${roleLabel}]: "${ref.label}"`);
         console.log(`[Storyboard] Attached ${roleLabel} image for "${ref.label}":`, ref.imageUrl);

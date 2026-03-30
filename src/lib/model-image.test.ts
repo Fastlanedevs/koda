@@ -4,7 +4,11 @@ import { randomFillSync } from 'node:crypto';
 
 import sharp from 'sharp';
 
-import { MAX_MODEL_IMAGE_BYTES, prepareModelImageBuffer } from './model-image';
+import {
+  MAX_MODEL_IMAGE_BASE64_BYTES,
+  MAX_MODEL_IMAGE_BYTES,
+  prepareModelImageBuffer,
+} from './model-image';
 
 test('prepareModelImageBuffer preserves small supported images', async () => {
   const buffer = await sharp({
@@ -42,4 +46,5 @@ test('prepareModelImageBuffer compresses oversized images below the model limit'
 
   assert.equal(prepared.mediaType, 'image/jpeg');
   assert.ok(prepared.buffer.byteLength <= MAX_MODEL_IMAGE_BYTES);
+  assert.ok(prepared.base64.length <= MAX_MODEL_IMAGE_BASE64_BYTES);
 });
