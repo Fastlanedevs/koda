@@ -77,5 +77,5 @@ export const PROMPT_STUDIO_MODEL = readModelOverride(
 /** Storyboard generation */
 export const STORYBOARD_MODEL = readModelOverride(
   'KODA_MODEL_STORYBOARD',
-  DEFAULT_GEMINI_31_FLASH_LITE_PREVIEW
+  DEFAULT_GEMINI_31_PRO_PREVIEW
 );
