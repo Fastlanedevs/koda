@@ -220,10 +220,7 @@ export class IndexedDbStorageProvider implements StorageProvider {
   }
 
   async saveCanvas(canvas: StoredCanvas): Promise<void> {
-    const normalized = normalizeStoredCanvas({
-      ...canvas,
-      updatedAt: Date.now(),
-    });
+    const normalized = normalizeStoredCanvas(canvas);
 
     const db = await this.ensureReady();
     if (!db) {

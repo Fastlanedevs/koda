@@ -81,9 +81,6 @@ export class LocalStorageProvider implements StorageProvider {
   async saveCanvas(canvas: StoredCanvas): Promise<void> {
     this.ensureInitialized();
 
-    // Ensure updatedAt is set
-    canvas.updatedAt = Date.now();
-
     this.canvases.set(canvas.id, normalizeStoredCanvas(canvas));
     this.persist();
   }

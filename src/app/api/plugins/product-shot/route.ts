@@ -15,32 +15,39 @@ import {
 } from '@/lib/plugins/official/product-shot/schema';
 import { emitLaunchMetric } from '@/lib/observability/launch-metrics';
 import { evaluatePluginLaunchById, emitPluginPolicyAuditEvent } from '@/lib/plugins/launch-policy';
+import { prepareModelImageBuffer } from '@/lib/model-image';
 
 const DEFAULT_MODEL = 'google/gemini-3-pro-preview';
 
 async function fetchImageAsBase64(url: string, requestUrl: string): Promise<{ base64: string; mediaType: string } | null> {
   try {
+    let sourceBuffer: Buffer;
+    let sourceMediaType: string;
+
     if (url.startsWith('data:')) {
       const match = url.match(/^data:([^;]+);base64,(.+)$/);
       if (match) {
-        return { base64: match[2], mediaType: match[1] };
+        sourceMediaType = match[1];
+        sourceBuffer = Buffer.from(match[2], 'base64');
+      } else {
+        console.warn('[ProductShot] Malformed data URL');
+        return null;
       }
-      console.warn('[ProductShot] Malformed data URL');
-      return null;
+    } else {
+      const resolvedUrl = /^https?:\/\//i.test(url) ? url : new URL(url, requestUrl).toString();
+      const res = await fetch(resolvedUrl, { signal: AbortSignal.timeout(15_000) });
+      if (!res.ok) {
+        console.warn(`[ProductShot] Failed to fetch reference image (${res.status}): ${resolvedUrl}`);
+        return null;
+      }
+      sourceMediaType = res.headers.get('content-type')?.split(';')[0] || 'image/png';
+      sourceBuffer = Buffer.from(await res.arrayBuffer());
     }
 
-    const resolvedUrl = /^https?:\/\//i.test(url) ? url : new URL(url, requestUrl).toString();
-    const res = await fetch(resolvedUrl, { signal: AbortSignal.timeout(15_000) });
-    if (!res.ok) {
-      console.warn(`[ProductShot] Failed to fetch reference image (${res.status}): ${resolvedUrl}`);
-      return null;
-    }
-
-    const contentType = res.headers.get('content-type')?.split(';')[0] || 'image/png';
-    const buffer = await res.arrayBuffer();
+    const prepared = await prepareModelImageBuffer(sourceBuffer, sourceMediaType);
     return {
-      base64: Buffer.from(buffer).toString('base64'),
-      mediaType: contentType,
+      base64: prepared.base64,
+      mediaType: prepared.mediaType,
     };
   } catch (err) {
     console.warn('[ProductShot] Reference image fetch error:', err instanceof Error ? err.message : err);
