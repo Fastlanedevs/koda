@@ -86,6 +86,8 @@ test('sqlite provider persists and hydrates preview lifecycle fields', async (t)
   });
 
   const provider = getSQLiteStorageProvider();
+  const createdAt = Date.now() - 60_000;
+  const updatedAt = Date.now() - 30_000;
 
   await provider.saveCanvas({
     id: 'canvas_roundtrip',
@@ -98,8 +100,8 @@ test('sqlite provider persists and hydrates preview lifecycle fields', async (t)
     thumbnailUpdatedAt: Date.now(),
     thumbnailVersion: 'v-test',
     thumbnailErrorCode: undefined,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
+    createdAt,
+    updatedAt,
   });
 
   const canvas = await provider.getCanvas('canvas_roundtrip');
@@ -107,6 +109,8 @@ test('sqlite provider persists and hydrates preview lifecycle fields', async (t)
   assert.equal(canvas.thumbnailUrl, 'https://cdn.example.com/preview.jpg');
   assert.equal(canvas.thumbnailStatus, 'processing');
   assert.equal(canvas.thumbnailVersion, 'v-test');
+  assert.equal(canvas.updatedAt, updatedAt);
+  assert.equal(canvas.createdAt, createdAt);
 
   const list = await provider.listCanvases();
   const listed = list.find((c) => c.id === 'canvas_roundtrip');
@@ -114,4 +118,6 @@ test('sqlite provider persists and hydrates preview lifecycle fields', async (t)
   assert.equal(listed.thumbnailUrl, 'https://cdn.example.com/preview.jpg');
   assert.equal(listed.thumbnailStatus, 'processing');
   assert.equal(listed.thumbnailVersion, 'v-test');
+  assert.equal(listed.updatedAt, updatedAt);
+  assert.equal(listed.createdAt, createdAt);
 });

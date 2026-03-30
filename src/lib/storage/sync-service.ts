@@ -220,6 +220,10 @@ export function mergeCanvases(
     if (!localCanvas) {
       // Canvas only exists on server - add it
       merged.set(serverCanvas.id, serverCanvas);
+    } else if (haveEquivalentCanvasContents(localCanvas, serverCanvas)) {
+      // Preserve the server timestamp when the payload is otherwise identical.
+      // This repairs local timestamp inflation from previous sync writes.
+      merged.set(serverCanvas.id, serverCanvas);
     } else if (serverCanvas.updatedAt > localCanvas.updatedAt) {
       // Server version is newer - use it
       merged.set(serverCanvas.id, serverCanvas);
@@ -228,6 +232,16 @@ export function mergeCanvases(
   }
 
   return Array.from(merged.values());
+}
+
+function haveEquivalentCanvasContents(localCanvas: StoredCanvas, serverCanvas: StoredCanvas): boolean {
+  return JSON.stringify(stripCanvasTimestamps(localCanvas)) === JSON.stringify(stripCanvasTimestamps(serverCanvas));
+}
+
+function stripCanvasTimestamps(canvas: StoredCanvas) {
+  const copy = { ...canvas };
+  delete copy.updatedAt;
+  return copy;
 }
 
 /**

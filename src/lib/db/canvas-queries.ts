@@ -88,7 +88,6 @@ export async function upsertWorkspaceCanvas(
 ) {
   const db = await getDatabaseAsync();
   const normalized = normalizeStoredCanvas(canvas);
-  const now = new Date();
 
   await db
     .insert(canvases)
@@ -108,7 +107,7 @@ export async function upsertWorkspaceCanvas(
       thumbnailErrorCode: normalized.thumbnailErrorCode || null,
       thumbnailCustom: normalized.thumbnailCustom ? 1 : null,
       createdAt: new Date(normalized.createdAt),
-      updatedAt: now,
+      updatedAt: new Date(normalized.updatedAt),
     })
     .onConflictDoUpdate({
       target: canvases.id,
@@ -126,7 +125,7 @@ export async function upsertWorkspaceCanvas(
         thumbnailVersion: normalized.thumbnailVersion || null,
         thumbnailErrorCode: normalized.thumbnailErrorCode || null,
         thumbnailCustom: normalized.thumbnailCustom ? 1 : null,
-        updatedAt: now,
+        updatedAt: new Date(normalized.updatedAt),
       },
     });
 }

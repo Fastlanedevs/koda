@@ -19,7 +19,8 @@ import {
 } from '@/lib/plugins/official/storyboard-generator/schema';
 import { emitLaunchMetric } from '@/lib/observability/launch-metrics';
 import { evaluatePluginLaunchById, emitPluginPolicyAuditEvent } from '@/lib/plugins/launch-policy';
-import { loadVideoRecipes, VIDEO_RECIPE_PRESETS } from '@/mastra/recipes/video';
+import { loadVideoRecipes } from '@/mastra/recipes/video';
+import { prepareModelImageBuffer } from '@/lib/model-image';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -33,27 +34,41 @@ const DEFAULT_MODEL = 'anthropic/claude-sonnet-4-6';
  * Handles both HTTP URLs and data: URLs.
  * Returns null on failure (non-blocking — storyboard still works without the image).
  */
-async function fetchImageAsBase64(url: string): Promise<{ base64: string; mediaType: string } | null> {
+async function fetchImageAsBase64(url: string, requestUrl: string): Promise<{ base64: string; mediaType: string } | null> {
   try {
-    // Handle data: URLs directly (already base64-encoded)
+    let sourceBuffer: Buffer;
+    let sourceMediaType: string;
+
+    // Handle data: URLs directly
     if (url.startsWith('data:')) {
       const match = url.match(/^data:([^;]+);base64,(.+)$/);
       if (match) {
-        return { base64: match[2], mediaType: match[1] };
+        sourceMediaType = match[1];
+        sourceBuffer = Buffer.from(match[2], 'base64');
+      } else {
+        console.warn('[Storyboard] Malformed data URL');
+        return null;
       }
-      console.warn('[Storyboard] Malformed data URL');
-      return null;
+    } else {
+      const resolvedUrl = /^https?:\/\//i.test(url) ? url : new URL(url, requestUrl).toString();
+      const res = await fetch(resolvedUrl, { signal: AbortSignal.timeout(15_000) });
+      if (!res.ok) {
+        console.warn(`[Storyboard] Failed to fetch image (${res.status}): ${resolvedUrl}`);
+        return null;
+      }
+      sourceMediaType = res.headers.get('content-type')?.split(';')[0] || 'image/png';
+      sourceBuffer = Buffer.from(await res.arrayBuffer());
     }
 
-    const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
-    if (!res.ok) {
-      console.warn(`[Storyboard] Failed to fetch image (${res.status}): ${url}`);
-      return null;
+    const prepared = await prepareModelImageBuffer(sourceBuffer, sourceMediaType);
+
+    if (prepared.buffer.byteLength !== sourceBuffer.byteLength || prepared.mediaType !== sourceMediaType) {
+      console.log(
+        `[Storyboard] Prepared reference image ${Math.round(sourceBuffer.byteLength / 1024)}KB -> ${Math.round(prepared.buffer.byteLength / 1024)}KB (${sourceMediaType} -> ${prepared.mediaType})`
+      );
     }
-    const contentType = res.headers.get('content-type')?.split(';')[0] || 'image/png';
-    const buffer = await res.arrayBuffer();
-    const base64 = Buffer.from(buffer).toString('base64');
-    return { base64, mediaType: contentType };
+
+    return { base64: prepared.base64, mediaType: prepared.mediaType };
   } catch (err) {
     console.warn('[Storyboard] Image fetch error:', err instanceof Error ? err.message : err);
     return null;
@@ -178,7 +193,7 @@ export async function POST(request: Request) {
     const fetchedImages = await Promise.all(
       refsWithImages.map(async (ref) => ({
         ref,
-        image: await fetchImageAsBase64(ref.imageUrl!),
+        image: await fetchImageAsBase64(ref.imageUrl!, request.url),
       }))
     );
 

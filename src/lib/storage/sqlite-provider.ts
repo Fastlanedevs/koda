@@ -117,7 +117,6 @@ export class SQLiteStorageProvider implements StorageProvider {
   async saveCanvas(canvas: StoredCanvas): Promise<void> {
     const db = await getDb() as any;
     const canvases = await getCanvasesTable();
-    const now = new Date();
 
     const normalized = normalizeStoredCanvas(canvas);
 
@@ -140,7 +139,7 @@ export class SQLiteStorageProvider implements StorageProvider {
         thumbnailVersion: normalized.thumbnailVersion || null,
         thumbnailErrorCode: normalized.thumbnailErrorCode || null,
         createdAt: new Date(normalized.createdAt),
-        updatedAt: now,
+        updatedAt: new Date(normalized.updatedAt),
       })
       .onConflictDoUpdate({
         target: canvases.id,
@@ -154,7 +153,7 @@ export class SQLiteStorageProvider implements StorageProvider {
           thumbnailUpdatedAt: normalized.thumbnailUpdatedAt ? new Date(normalized.thumbnailUpdatedAt) : null,
           thumbnailVersion: normalized.thumbnailVersion || null,
           thumbnailErrorCode: normalized.thumbnailErrorCode || null,
-          updatedAt: now,
+          updatedAt: new Date(normalized.updatedAt),
         },
       });
   }
