@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
   // Increase middleware/proxy request body cap for large multipart uploads.
   // Default is 10MB, which truncates /api/assets/upload form bodies.
   experimental: {
-    middlewareClientMaxBodySize: '100mb',
+    proxyClientMaxBodySize: '100mb',
   },
 };
 
