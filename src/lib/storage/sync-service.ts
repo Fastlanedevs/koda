@@ -239,9 +239,9 @@ function haveEquivalentCanvasContents(localCanvas: StoredCanvas, serverCanvas: S
 }
 
 function stripCanvasTimestamps(canvas: StoredCanvas) {
-  const copy = { ...canvas };
-  delete copy.updatedAt;
-  return copy;
+  return JSON.parse(
+    JSON.stringify(canvas, (key, value) => (key === 'updatedAt' ? undefined : value))
+  );
 }
 
 /**
