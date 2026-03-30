@@ -7,6 +7,7 @@
 
 const DEFAULT_GEMINI_31_PRO_PREVIEW = 'google/gemini-3.1-pro-preview';
 const DEFAULT_GEMINI_31_FLASH_LITE_PREVIEW = 'google/gemini-3.1-flash-lite-preview';
+const DEFAULT_GEMINI_3_FLASH_PREVIEW = 'google/gemini-3-flash-preview';
 
 // -- Anthropic Claude Models --
 
@@ -67,10 +68,16 @@ export const ANIMATION_PROMPT_ENHANCER_MODEL = 'google/gemini-3.1-flash-lite-pre
 // -- General Agents --
 
 /** Image generation prompt enhancer */
-export const PROMPT_ENHANCER_MODEL = 'google/gemini-3.1-pro-preview';
+export const PROMPT_ENHANCER_MODEL = DEFAULT_GEMINI_31_PRO_PREVIEW;
 
 /** Prompt Studio creative director */
 export const PROMPT_STUDIO_MODEL = readModelOverride(
   'KODA_MODEL_PROMPT_STUDIO',
   DEFAULT_GEMINI_31_FLASH_LITE_PREVIEW
+);
+
+/** Storyboard generation */
+export const STORYBOARD_MODEL = readModelOverride(
+  'KODA_MODEL_STORYBOARD',
+  DEFAULT_GEMINI_3_FLASH_PREVIEW
 );

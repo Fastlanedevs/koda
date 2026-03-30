@@ -20,14 +20,12 @@ import {
 import { emitLaunchMetric } from '@/lib/observability/launch-metrics';
 import { evaluatePluginLaunchById, emitPluginPolicyAuditEvent } from '@/lib/plugins/launch-policy';
 import { loadVideoRecipes } from '@/mastra/recipes/video';
+import { STORYBOARD_MODEL } from '@/mastra/models';
 import { resolveModelImagePart } from '@/lib/model-image-input';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
-
-/** Default model for storyboard generation */
-const DEFAULT_MODEL = 'anthropic/claude-sonnet-4-6';
 
 export async function POST(request: Request) {
   try {
@@ -189,7 +187,7 @@ Study the attached image(s) carefully. Your referenceIdentities descriptions mus
       id: `storyboard-ai-${Date.now()}`,
       name: 'storyboard-ai',
       instructions: systemPrompt,
-      model: DEFAULT_MODEL,
+      model: STORYBOARD_MODEL,
     });
 
     // Server-side timing
