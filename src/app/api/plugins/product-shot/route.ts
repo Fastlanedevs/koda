@@ -15,84 +15,9 @@ import {
 } from '@/lib/plugins/official/product-shot/schema';
 import { emitLaunchMetric } from '@/lib/observability/launch-metrics';
 import { evaluatePluginLaunchById, emitPluginPolicyAuditEvent } from '@/lib/plugins/launch-policy';
-import { prepareModelImageBuffer } from '@/lib/model-image';
+import { resolveModelImagePart } from '@/lib/model-image-input';
 
 const DEFAULT_MODEL = 'google/gemini-3-pro-preview';
-
-const LOCAL_HOSTNAMES = new Set(['localhost', '127.0.0.1', '::1']);
-
-function isPrivateIpv4Hostname(hostname: string): boolean {
-  if (!/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) return false;
-  const [a, b] = hostname.split('.').map((part) => Number(part));
-  if (a === 10 || a === 127) return true;
-  if (a === 192 && b === 168) return true;
-  if (a === 172 && b >= 16 && b <= 31) return true;
-  return false;
-}
-
-function isExternallyFetchableUrl(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false;
-    if (LOCAL_HOSTNAMES.has(parsed.hostname)) return false;
-    if (parsed.hostname.endsWith('.local')) return false;
-    if (isPrivateIpv4Hostname(parsed.hostname)) return false;
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function resolveReferenceImagePart(
-  url: string,
-  requestUrl: string,
-): Promise<{ type: 'image'; image: string; mimeType?: string } | null> {
-  try {
-    if (!url.startsWith('data:')) {
-      const resolvedUrl = /^https?:\/\//i.test(url) ? url : new URL(url, requestUrl).toString();
-      if (isExternallyFetchableUrl(resolvedUrl)) {
-        return {
-          type: 'image',
-          image: resolvedUrl,
-        };
-      }
-      url = resolvedUrl;
-    }
-
-    let sourceBuffer: Buffer;
-    let sourceMediaType: string;
-
-    if (url.startsWith('data:')) {
-      const match = url.match(/^data:([^;]+);base64,(.+)$/);
-      if (match) {
-        sourceMediaType = match[1];
-        sourceBuffer = Buffer.from(match[2], 'base64');
-      } else {
-        console.warn('[ProductShot] Malformed data URL');
-        return null;
-      }
-    } else {
-      const resolvedUrl = /^https?:\/\//i.test(url) ? url : new URL(url, requestUrl).toString();
-      const res = await fetch(resolvedUrl, { signal: AbortSignal.timeout(15_000) });
-      if (!res.ok) {
-        console.warn(`[ProductShot] Failed to fetch reference image (${res.status}): ${resolvedUrl}`);
-        return null;
-      }
-      sourceMediaType = res.headers.get('content-type')?.split(';')[0] || 'image/png';
-      sourceBuffer = Buffer.from(await res.arrayBuffer());
-    }
-
-    const prepared = await prepareModelImageBuffer(sourceBuffer, sourceMediaType);
-    return {
-      type: 'image',
-      image: prepared.base64,
-      mimeType: prepared.mediaType,
-    };
-  } catch (err) {
-    console.warn('[ProductShot] Reference image fetch error:', err instanceof Error ? err.message : err);
-    return null;
-  }
-}
 
 export async function POST(request: Request) {
   try {
@@ -156,9 +81,12 @@ export async function POST(request: Request) {
     console.log('[ProductShot] Built prompt:\n', prompt);
 
     // Build multimodal input if a reference image was supplied
-    let agentInput: string | Array<{ role: 'user'; content: Array<Record<string, unknown>> }> = prompt;
+    let agentInput: string | Array<{
+      role: 'user';
+      content: Array<{ type: 'image'; image: string; mimeType?: string } | { type: 'text'; text: string }>;
+    }> = prompt;
     if (input.productImageUrl) {
-      const referenceImage = await resolveReferenceImagePart(input.productImageUrl, request.url);
+      const referenceImage = await resolveModelImagePart(input.productImageUrl, request.url);
       if (referenceImage) {
         agentInput = [
           {

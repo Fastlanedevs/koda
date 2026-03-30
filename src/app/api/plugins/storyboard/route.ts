@@ -20,7 +20,7 @@ import {
 import { emitLaunchMetric } from '@/lib/observability/launch-metrics';
 import { evaluatePluginLaunchById, emitPluginPolicyAuditEvent } from '@/lib/plugins/launch-policy';
 import { loadVideoRecipes } from '@/mastra/recipes/video';
-import { prepareModelImageBuffer } from '@/lib/model-image';
+import { resolveModelImagePart } from '@/lib/model-image-input';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -28,94 +28,6 @@ export const maxDuration = 120;
 
 /** Default model for storyboard generation */
 const DEFAULT_MODEL = 'anthropic/claude-sonnet-4-6';
-
-const LOCAL_HOSTNAMES = new Set(['localhost', '127.0.0.1', '::1']);
-
-function isPrivateIpv4Hostname(hostname: string): boolean {
-  if (!/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) return false;
-  const [a, b] = hostname.split('.').map((part) => Number(part));
-  if (a === 10 || a === 127) return true;
-  if (a === 192 && b === 168) return true;
-  if (a === 172 && b >= 16 && b <= 31) return true;
-  return false;
-}
-
-function isExternallyFetchableUrl(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false;
-    if (LOCAL_HOSTNAMES.has(parsed.hostname)) return false;
-    if (parsed.hostname.endsWith('.local')) return false;
-    if (isPrivateIpv4Hostname(parsed.hostname)) return false;
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Resolve a reference image into the preferred model input form.
- * Uses externally fetchable hosted URLs when possible, and falls back to
- * compressed base64 only for data URLs and local/private URLs.
- */
-async function resolveReferenceImagePart(
-  url: string,
-  requestUrl: string,
-): Promise<{ type: 'image'; image: string; mimeType?: string } | null> {
-  try {
-    if (!url.startsWith('data:')) {
-      const resolvedUrl = /^https?:\/\//i.test(url) ? url : new URL(url, requestUrl).toString();
-      if (isExternallyFetchableUrl(resolvedUrl)) {
-        return {
-          type: 'image',
-          image: resolvedUrl,
-        };
-      }
-      url = resolvedUrl;
-    }
-
-    let sourceBuffer: Buffer;
-    let sourceMediaType: string;
-
-    // Handle data: URLs directly
-    if (url.startsWith('data:')) {
-      const match = url.match(/^data:([^;]+);base64,(.+)$/);
-      if (match) {
-        sourceMediaType = match[1];
-        sourceBuffer = Buffer.from(match[2], 'base64');
-      } else {
-        console.warn('[Storyboard] Malformed data URL');
-        return null;
-      }
-    } else {
-      const resolvedUrl = /^https?:\/\//i.test(url) ? url : new URL(url, requestUrl).toString();
-      const res = await fetch(resolvedUrl, { signal: AbortSignal.timeout(15_000) });
-      if (!res.ok) {
-        console.warn(`[Storyboard] Failed to fetch image (${res.status}): ${resolvedUrl}`);
-        return null;
-      }
-      sourceMediaType = res.headers.get('content-type')?.split(';')[0] || 'image/png';
-      sourceBuffer = Buffer.from(await res.arrayBuffer());
-    }
-
-    const prepared = await prepareModelImageBuffer(sourceBuffer, sourceMediaType);
-
-    if (prepared.buffer.byteLength !== sourceBuffer.byteLength || prepared.mediaType !== sourceMediaType) {
-      console.log(
-        `[Storyboard] Prepared reference image ${Math.round(sourceBuffer.byteLength / 1024)}KB -> ${Math.round(prepared.buffer.byteLength / 1024)}KB (${sourceMediaType} -> ${prepared.mediaType})`
-      );
-    }
-
-    return {
-      type: 'image',
-      image: prepared.base64,
-      mimeType: prepared.mediaType,
-    };
-  } catch (err) {
-    console.warn('[Storyboard] Image fetch error:', err instanceof Error ? err.message : err);
-    return null;
-  }
-}
 
 export async function POST(request: Request) {
   try {
@@ -235,7 +147,7 @@ export async function POST(request: Request) {
     const fetchedImages = await Promise.all(
       refsWithImages.map(async (ref) => ({
         ref,
-        image: await resolveReferenceImagePart(ref.imageUrl!, request.url),
+        image: await resolveModelImagePart(ref.imageUrl!, request.url),
       }))
     );
 
