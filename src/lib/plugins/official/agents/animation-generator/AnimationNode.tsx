@@ -2398,12 +2398,12 @@ function AnimationNodeComponent({ id, data, selected }: AnimationNodeProps) {
 
   // ─── Node styling ──────────────────────────────────────────────────
   const nodeClasses = useMemo(() => {
-    const base = 'node-drag-handle node-drag-surface animation-node w-[400px] min-h-[520px] max-h-[720px] rounded-xl overflow-hidden flex flex-col';
+    const base = 'node-drag-handle node-drag-surface animation-node w-[420px] rounded-2xl overflow-hidden flex flex-col shadow-[var(--node-card-shadow)]';
     if (selected) return `${base} ring-1 ring-[var(--an-accent)]/70`;
     return base;
   }, [selected]);
   const summaryContainerClass = useMemo(() => {
-    const base = 'node-drag-handle node-drag-surface animation-node w-[400px] rounded-xl overflow-hidden flex flex-col';
+    const base = 'node-drag-handle node-drag-surface animation-node w-[420px] rounded-2xl overflow-hidden flex flex-col shadow-[var(--node-card-shadow)]';
     return selected ? `${base} ring-1 ring-[var(--an-accent)]/70` : base;
   }, [selected]);
   const latestVersion = state.versions?.[state.versions.length - 1];
@@ -2428,9 +2428,17 @@ function AnimationNodeComponent({ id, data, selected }: AnimationNodeProps) {
   // minHeight must accommodate: all handles + padding
   const lastVideoHandleBottom = svgCodeHandleTop + HANDLE_SPACING;
   const minHeight = Math.max(200, lastVideoHandleBottom);
+  const nodeHeight = Math.max(620, minHeight);
+  const shouldForceFullDisplay = state.phase !== 'idle'
+    || state.messages.length > 0
+    || media.length > 0
+    || !!state.plan
+    || !!latestVersion?.videoUrl
+    || !!state.output?.videoUrl;
+  const resolvedDisplayMode = shouldForceFullDisplay ? 'full' : displayMode;
 
   // ─── Render ─────────────────────────────────────────────────────────
-  if (displayMode !== 'full') {
+  if (resolvedDisplayMode !== 'full') {
     return (
       <div className="relative" {...focusProps}>
         <div className="mb-2 rounded-xl px-3 py-2 text-sm font-medium" style={{ color: 'var(--node-title-animation)' }}>
@@ -2439,7 +2447,7 @@ function AnimationNodeComponent({ id, data, selected }: AnimationNodeProps) {
         </div>
 
         <div className={summaryContainerClass} style={{ minHeight }}>
-          <div className={`node-body flex-1 ${displayMode === 'compact' ? 'node-compact' : 'node-summary'}`}>
+          <div className={`node-body flex-1 ${resolvedDisplayMode === 'compact' ? 'node-compact' : 'node-summary'}`}>
             <div className="node-content-area rounded-xl p-3">
               <p className="text-xs font-medium text-[var(--an-text-muted)]">
                 {headerConfig.statusText}
@@ -2556,7 +2564,7 @@ function AnimationNodeComponent({ id, data, selected }: AnimationNodeProps) {
     <div
       ref={nodeContainerRef}
       className={`${nodeClasses}${isDragOver ? ' ring-1 ring-blue-500/50' : ''}`}
-      style={{ minHeight }}
+      style={{ minHeight, height: nodeHeight }}
       onDragOver={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -2574,11 +2582,27 @@ function AnimationNodeComponent({ id, data, selected }: AnimationNodeProps) {
       }}
     >
       {/* ── Header ───────────────────────────────────────────────────── */}
-      <div className="flex-shrink-0 flex items-center gap-2 px-3.5 py-2 border-b border-[var(--an-border)]">
-        <div className="flex-1 min-w-0">
-          <p className="text-[10px] leading-tight" style={{ color: headerConfig.statusColor }}>
-            {headerConfig.statusText}
-          </p>
+      <div className="flex-shrink-0 border-b border-[var(--an-border)] bg-[var(--an-bg-card)] px-4 py-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[10px] uppercase tracking-[0.14em] text-[var(--an-text-dim)]">
+              Animation Workspace
+            </p>
+            <p className="mt-1 text-[12px] font-medium leading-tight" style={{ color: headerConfig.statusColor }}>
+              {headerConfig.statusText}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center justify-end gap-1.5 text-[10px] text-[var(--an-text-dim)]">
+            <span className="rounded-full border border-[var(--an-border-input)] bg-[var(--an-bg)] px-2 py-1">
+              {engine === 'remotion' ? 'Remotion' : 'Theatre'}
+            </span>
+            <span className="rounded-full border border-[var(--an-border-input)] bg-[var(--an-bg)] px-2 py-1">
+              {aspectRatio}
+            </span>
+            <span className="rounded-full border border-[var(--an-border-input)] bg-[var(--an-bg)] px-2 py-1">
+              {duration}s
+            </span>
+          </div>
         </div>
       </div>
 
@@ -2586,11 +2610,11 @@ function AnimationNodeComponent({ id, data, selected }: AnimationNodeProps) {
       {hasTimelineContent && (
         <div
           ref={chatScrollRef}
-          className="nowheel nopan nodrag cursor-text select-text flex-1 overflow-y-auto overflow-x-hidden min-h-0 scrollbar-hidden"
+          className="nowheel nopan nodrag cursor-text select-text flex-1 overflow-y-auto overflow-x-hidden min-h-0 scrollbar-hidden bg-[linear-gradient(180deg,var(--an-bg)_0%,var(--an-bg-card)_100%)]"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' } as React.CSSProperties}
           onWheel={(e) => { if (!e.ctrlKey) e.stopPropagation(); }}
         >
-          <div className="px-3.5 py-2.5 space-y-2.5">
+          <div className="px-4 py-3 space-y-3">
             {/* Timeline items - messages, plan, and videos in chronological order */}
             {timeline.map((item, idx) => {
               if (item.kind === 'user') {
@@ -2806,18 +2830,22 @@ function AnimationNodeComponent({ id, data, selected }: AnimationNodeProps) {
 
       {/* ── Sticky todo section ──────────────────────────────────────── */}
       {state.execution?.todos && state.execution.todos.length > 0 && (
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0 border-t border-[var(--an-border)] bg-[var(--an-bg-card)] px-1.5 py-1.5">
           <TodoSection todos={state.execution.todos} />
         </div>
       )}
 
       {/* ── Media strip (thumbnails of attached media) */}
       {media.length > 0 && (
-        <div className="flex-shrink-0 px-3 py-1 border-t border-[var(--an-border)]">
-          <div className="flex gap-1 overflow-x-auto scrollbar-hidden items-center">
+        <div className="flex-shrink-0 border-t border-[var(--an-border)] bg-[var(--an-bg-card)] px-3.5 py-2">
+          <div className="mb-1.5 flex items-center justify-between text-[10px] text-[var(--an-text-dim)]">
+            <span>Attached media</span>
+            <span>{media.length} item{media.length === 1 ? '' : 's'}</span>
+          </div>
+          <div className="flex gap-1.5 overflow-x-auto scrollbar-hidden items-center">
             {media.map((m) => (
               <div key={m.id} className="relative group flex-shrink-0">
-                <div className="w-8 h-8 rounded bg-[var(--an-bg-card)] overflow-hidden border border-[var(--an-border-input)]">
+                <div className="w-10 h-10 rounded-md bg-[var(--an-bg)] overflow-hidden border border-[var(--an-border-input)]">
                   {m.type === 'image' ? (
                     <img src={m.dataUrl} alt={m.name} className="w-full h-full object-cover" />
                   ) : (
@@ -2852,7 +2880,7 @@ function AnimationNodeComponent({ id, data, selected }: AnimationNodeProps) {
       {!hasTimelineContent && <div className="flex-1" />}
 
       {/* ── Chat input (always visible) ──────────────────────────────── */}
-      <div className="shrink-0 nopan nodrag nowheel">
+      <div className="shrink-0 border-t border-[var(--an-border)] bg-[linear-gradient(180deg,var(--an-bg-card)_0%,var(--an-bg)_100%)] nopan nodrag nowheel">
         <ChatInput
           onSubmit={handleInputSubmit}
           isGenerating={isStreaming}
