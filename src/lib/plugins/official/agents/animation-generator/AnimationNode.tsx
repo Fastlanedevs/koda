@@ -2582,7 +2582,7 @@ function AnimationNodeComponent({ id, data, selected }: AnimationNodeProps) {
       }}
     >
       {/* ── Header ───────────────────────────────────────────────────── */}
-      <div className="flex-shrink-0 border-b border-[var(--an-border)] bg-[var(--an-bg-card)] px-4 py-3">
+      <div className="w-full flex-shrink-0 border-b border-[var(--an-border)] bg-[var(--an-bg-card)] px-4 py-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[10px] uppercase tracking-[0.14em] text-[var(--an-text-dim)]">
@@ -2609,7 +2609,7 @@ function AnimationNodeComponent({ id, data, selected }: AnimationNodeProps) {
       {/* ── Scrollable content area ──────────────────────────────────── */}
       <div
         ref={chatScrollRef}
-        className="nowheel nopan nodrag cursor-text select-text flex-1 overflow-y-auto overflow-x-hidden min-h-0 scrollbar-hidden bg-[linear-gradient(180deg,var(--an-bg)_0%,var(--an-bg-card)_100%)]"
+        className="nowheel nopan nodrag cursor-text select-text w-full flex-1 overflow-y-auto overflow-x-hidden min-h-0 scrollbar-hidden bg-[linear-gradient(180deg,var(--an-bg)_0%,var(--an-bg-card)_100%)]"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' } as React.CSSProperties}
         onWheel={(e) => { if (!e.ctrlKey) e.stopPropagation(); }}
       >
@@ -2891,7 +2891,7 @@ function AnimationNodeComponent({ id, data, selected }: AnimationNodeProps) {
       </div>
 
       {/* ── Chat input (always visible) ──────────────────────────────── */}
-      <div className="shrink-0 border-t border-[var(--an-border)] bg-[linear-gradient(180deg,var(--an-bg-card)_0%,var(--an-bg)_100%)] nopan nodrag nowheel">
+      <div className="w-full shrink-0 border-t border-[var(--an-border)] bg-[linear-gradient(180deg,var(--an-bg-card)_0%,var(--an-bg)_100%)] nopan nodrag nowheel">
         <ChatInput
           onSubmit={handleInputSubmit}
           isGenerating={isStreaming}

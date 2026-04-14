@@ -203,7 +203,7 @@ export function ChatInput({
   const canSend = !disabled && message.trim().length > 0;
 
   return (
-    <div className="px-3.5 pt-3 pb-3.5">
+    <div className="w-full px-3.5 pt-3 pb-3.5">
       {/* Queued messages section */}
       {queue.length > 0 && (
         <div className="mb-2.5 rounded-xl bg-[var(--an-bg-elevated)] border border-[var(--an-border-input)] overflow-hidden shadow-[0_10px_24px_-20px_rgba(15,23,42,0.5)]">
@@ -286,7 +286,7 @@ export function ChatInput({
 
       {/* Input box */}
       <div
-        className="rounded-[16px] border border-[var(--an-border-input)] overflow-hidden shadow-[0_18px_44px_-28px_rgba(15,23,42,0.45)]"
+        className="w-full rounded-[16px] border border-[var(--an-border-input)] overflow-hidden shadow-[0_18px_44px_-28px_rgba(15,23,42,0.45)]"
         style={{ backgroundColor: 'var(--an-bg-input)' }}
       >
         {/* Textarea area */}
