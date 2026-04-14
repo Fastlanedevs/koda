@@ -9,7 +9,7 @@
 
 import React, { useState, useCallback, useRef, useEffect, KeyboardEvent } from 'react';
 import {
-  ArrowUp, Square, Paperclip, ChevronDown, ChevronUp, Image, Video, Link2, Pencil, Trash2,
+  ArrowUp, Square, Paperclip, ChevronDown, ChevronUp, Image as ImageIcon, Video, Link2, Pencil, Trash2,
   Settings,
 } from 'lucide-react';
 import {
@@ -203,10 +203,10 @@ export function ChatInput({
   const canSend = !disabled && message.trim().length > 0;
 
   return (
-    <div className="px-3 pt-2 pb-2.5 border-t border-[var(--an-border)]">
+    <div className="px-3.5 pt-3 pb-3.5">
       {/* Queued messages section */}
       {queue.length > 0 && (
-        <div className="mb-2 rounded-lg bg-[var(--an-bg-elevated)] border border-[var(--an-border-input)] overflow-hidden">
+        <div className="mb-2.5 rounded-xl bg-[var(--an-bg-elevated)] border border-[var(--an-border-input)] overflow-hidden shadow-[0_10px_24px_-20px_rgba(15,23,42,0.5)]">
           {/* Collapsible header */}
           <button
             onClick={() => setQueueExpanded(!queueExpanded)}
@@ -285,9 +285,12 @@ export function ChatInput({
       )}
 
       {/* Input box */}
-      <div className="rounded-[10px] border border-[var(--an-border-input)] overflow-hidden" style={{ backgroundColor: 'var(--an-bg-card)' }}>
+      <div
+        className="rounded-[16px] border border-[var(--an-border-input)] overflow-hidden shadow-[0_18px_44px_-28px_rgba(15,23,42,0.45)]"
+        style={{ backgroundColor: 'var(--an-bg-input)' }}
+      >
         {/* Textarea area */}
-        <div className="px-3 pt-2.5 pb-1.5">
+        <div className="px-3.5 pt-3 pb-2">
           <textarea
             ref={textareaRef}
             value={message}
@@ -296,28 +299,28 @@ export function ChatInput({
             placeholder={inputPlaceholder}
             disabled={disabled}
             rows={1}
-            className="w-full resize-none text-[13px] text-[var(--an-text)] outline-none leading-[1.4]"
-            style={{ minHeight: '20px', maxHeight: '100px', backgroundColor: 'transparent' }}
+            className="w-full resize-none text-[13px] text-[var(--an-text)] outline-none leading-[1.5] placeholder:text-[var(--an-text-placeholder)]"
+            style={{ minHeight: '48px', maxHeight: '120px', backgroundColor: 'transparent' }}
           />
         </div>
 
         {/* Bottom bar */}
-        <div className="flex items-center justify-between px-2 py-1 pb-2">
+        <div className="flex items-center justify-between gap-2 border-t border-[var(--an-border)] px-2.5 py-2.5 bg-[var(--an-bg-card)]">
           {/* Settings summary — click to open panel (hidden when no callback) */}
           {onOpenSettings ? (
             <button
               onClick={onOpenSettings}
-              className="flex items-center gap-1 px-1.5 py-1 rounded text-[10px] text-[var(--an-text-placeholder)] hover:text-[var(--an-text-muted)] transition-colors"
+              className="flex min-w-0 items-center gap-1 rounded-full border border-[var(--an-border-input)] bg-[var(--an-bg)] px-2.5 py-1.5 text-[10px] text-[var(--an-text-dim)] hover:border-[var(--an-border-hover)] hover:text-[var(--an-text-muted)] transition-colors"
               disabled={disabled}
             >
               <Settings className="w-3 h-3" />
-              <span>
+              <span className="truncate">
                 {engine === 'remotion' ? 'Remotion' : 'Theatre'} · {aspectRatio} · {duration}s
                 {techniques.length > 0 ? ` · ${techniques.length} preset${techniques.length > 1 ? 's' : ''}` : ''}
               </span>
             </button>
           ) : (
-            <div />
+            <div className="text-[10px] text-[var(--an-text-placeholder)] px-1">Enter to send</div>
           )}
 
           {/* Action buttons */}
@@ -327,7 +330,7 @@ export function ChatInput({
             <DropdownMenu open={showAttachMenu} onOpenChange={setShowAttachMenu}>
               <DropdownMenuTrigger asChild>
                 <button
-                  className="flex items-center justify-center w-7 h-7 rounded-md text-[var(--an-text-placeholder)] hover:text-[var(--an-text-dim)] transition-colors"
+                  className="flex items-center justify-center w-8 h-8 rounded-full border border-transparent text-[var(--an-text-placeholder)] hover:border-[var(--an-border-input)] hover:bg-[var(--an-bg)] hover:text-[var(--an-text-dim)] transition-colors"
                   disabled={disabled}
                 >
                   <Paperclip className="w-4 h-4" />
@@ -337,7 +340,7 @@ export function ChatInput({
                 <DropdownMenuLabel className="text-xs text-zinc-500">Add Reference</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => handleFileSelect('image')}>
-                  <Image className="h-4 w-4 mr-2 text-teal-400" />
+                  <ImageIcon className="h-4 w-4 mr-2 text-teal-400" />
                   Upload Image
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleFileSelect('video')}>
@@ -351,7 +354,7 @@ export function ChatInput({
                     {availableNodeOutputs.map((node) => (
                       <DropdownMenuItem key={node.nodeId} onClick={() => handleNodeRef(node)}>
                         {node.type === 'image' ? (
-                          <Image className="h-4 w-4 mr-2 text-teal-400" />
+                          <ImageIcon className="h-4 w-4 mr-2 text-teal-400" />
                         ) : (
                           <Video className="h-4 w-4 mr-2 text-purple-400" />
                         )}
@@ -369,10 +372,10 @@ export function ChatInput({
             {isBusy && (
               <button
                 onClick={handleStop}
-                className="flex items-center justify-center w-7 h-7 rounded-full bg-[var(--an-bg-hover)] hover:bg-[var(--an-border-hover)] transition-colors"
+                className="flex items-center justify-center w-8 h-8 rounded-full border border-[var(--an-border-input)] bg-[var(--an-bg)] hover:border-[var(--an-border-hover)] hover:bg-[var(--an-bg-hover)] transition-colors"
                 title="Stop generation"
               >
-                <Square className="w-3 h-3 text-white" />
+                <Square className="w-3 h-3 text-[var(--an-text-muted)]" />
               </button>
             )}
 
@@ -380,7 +383,7 @@ export function ChatInput({
             <button
               onClick={handleSubmit}
               disabled={!canSend}
-              className={`flex items-center justify-center w-7 h-7 rounded-full transition-colors ${
+              className={`flex items-center justify-center w-8 h-8 rounded-full transition-colors shadow-sm ${
                 canSend
                   ? 'bg-[var(--an-accent)] hover:bg-[var(--an-accent-hover)]'
                   : 'bg-[var(--an-accent)] opacity-40 cursor-not-allowed'
