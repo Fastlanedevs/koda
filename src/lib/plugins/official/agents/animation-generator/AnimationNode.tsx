@@ -2398,12 +2398,12 @@ function AnimationNodeComponent({ id, data, selected }: AnimationNodeProps) {
 
   // ─── Node styling ──────────────────────────────────────────────────
   const nodeClasses = useMemo(() => {
-    const base = 'node-drag-handle node-drag-surface animation-node w-[420px] rounded-2xl overflow-hidden !flex !flex-col shadow-[var(--node-card-shadow)]';
+    const base = 'node-drag-handle node-drag-surface animation-node w-[420px] rounded-2xl overflow-hidden !flex !flex-col !items-stretch shadow-[var(--node-card-shadow)]';
     if (selected) return `${base} ring-1 ring-[var(--an-accent)]/70`;
     return base;
   }, [selected]);
   const summaryContainerClass = useMemo(() => {
-    const base = 'node-drag-handle node-drag-surface animation-node w-[420px] rounded-2xl overflow-hidden !flex !flex-col shadow-[var(--node-card-shadow)]';
+    const base = 'node-drag-handle node-drag-surface animation-node w-[420px] rounded-2xl overflow-hidden !flex !flex-col !items-stretch shadow-[var(--node-card-shadow)]';
     return selected ? `${base} ring-1 ring-[var(--an-accent)]/70` : base;
   }, [selected]);
   const latestVersion = state.versions?.[state.versions.length - 1];
