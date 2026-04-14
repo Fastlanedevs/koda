@@ -18,6 +18,8 @@ import { evaluatePluginLaunchById, emitPluginPolicyAuditEvent } from '@/lib/plug
 import { requireActor } from '@/lib/auth/actor';
 import { getOrCreateBalance, deductCredits, refundCredits } from '@/lib/db/credit-queries';
 import { getCreditCost, PLAN_KEYS } from '@/lib/credits/costs';
+import { getAssetStorageType } from '@/lib/assets';
+import { signRequest, type S3Config } from '@/lib/assets/s3-signing';
 import {
   isUpstreamTransportError,
   MAX_CODEGEN_TRANSPORT_FAILURES_PER_STREAM,
@@ -40,6 +42,125 @@ const debugLog = (...args: unknown[]) => {
     console.log(...args);
   }
 };
+
+function sanitizeEnv(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+function trimTrailingSlashes(value: string): string {
+  return value.replace(/\/+$/, '');
+}
+
+function normalizeAppAssetPath(value: string): string | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+
+  if (trimmed.startsWith('/api/assets/')) {
+    return trimmed.split('?')[0] || undefined;
+  }
+
+  try {
+    const absolute = new URL(trimmed);
+    return absolute.pathname.startsWith('/api/assets/') ? absolute.pathname : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function extractAssetKeyFromProxyPath(pathname: string): string | undefined {
+  if (!pathname.startsWith('/api/assets/key/')) return undefined;
+  const encodedKey = pathname.slice('/api/assets/key/'.length);
+  if (!encodedKey) return undefined;
+
+  try {
+    const key = encodedKey
+      .split('/')
+      .map((segment) => decodeURIComponent(segment))
+      .join('/')
+      .replace(/^\/+|\/+$/g, '');
+    return key || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function getS3ConfigForAssetReads(): S3Config | null {
+  const storageType = getAssetStorageType();
+
+  if (storageType === 'r2') {
+    const accountId = sanitizeEnv(process.env.R2_ACCOUNT_ID);
+    const accessKeyId = sanitizeEnv(process.env.R2_ACCESS_KEY_ID);
+    const secretAccessKey = sanitizeEnv(process.env.R2_SECRET_ACCESS_KEY);
+    const bucket = sanitizeEnv(process.env.R2_BUCKET_NAME);
+
+    if (!accountId || !accessKeyId || !secretAccessKey || !bucket) return null;
+
+    const endpoint = trimTrailingSlashes(
+      sanitizeEnv(process.env.R2_ENDPOINT) || `https://${accountId}.r2.cloudflarestorage.com`
+    );
+
+    return {
+      type: 'r2',
+      accountId,
+      accessKeyId,
+      secretAccessKey,
+      bucket,
+      region: 'auto',
+      endpoint,
+    };
+  }
+
+  if (storageType === 's3') {
+    const accessKeyId = sanitizeEnv(process.env.S3_ACCESS_KEY_ID);
+    const secretAccessKey = sanitizeEnv(process.env.S3_SECRET_ACCESS_KEY);
+    const bucket = sanitizeEnv(process.env.S3_BUCKET_NAME);
+    const region = sanitizeEnv(process.env.S3_REGION) || 'us-east-1';
+
+    if (!accessKeyId || !secretAccessKey || !bucket) return null;
+
+    return {
+      type: 's3',
+      accessKeyId,
+      secretAccessKey,
+      bucket,
+      region,
+    };
+  }
+
+  return null;
+}
+
+async function readAppAssetBuffer(
+  assetPath: string,
+): Promise<{ buffer: Buffer; mimeType: string } | null> {
+  if (assetPath.startsWith('/api/assets/key/')) {
+    const key = extractAssetKeyFromProxyPath(assetPath);
+    const config = getS3ConfigForAssetReads();
+    if (!key || !config) return null;
+
+    const signed = await signRequest(config, 'GET', key);
+    const upstream = await fetch(signed.url, {
+      method: 'GET',
+      headers: signed.headers,
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!upstream.ok) return null;
+
+    return {
+      buffer: Buffer.from(await upstream.arrayBuffer()),
+      mimeType: upstream.headers.get('content-type') || 'application/octet-stream',
+    };
+  }
+
+  if (!assetPath.startsWith('/api/assets/')) return null;
+
+  const assetId = assetPath.slice('/api/assets/'.length);
+  if (!assetId || assetId.includes('/')) return null;
+
+  const { getLocalAssetProvider } = await import('@/lib/assets/local-provider');
+  return getLocalAssetProvider().getBuffer(assetId);
+}
 
 interface StreamRequestBody {
   prompt?: string;
@@ -363,28 +484,34 @@ export async function POST(request: Request) {
             const buffer = Buffer.from(base64Part, 'base64');
             debugLog(`[Animation API] Phase 1: Decoded ${m.name} → ${destPath} (${Math.round(buffer.length / 1024)}KB)`);
             mediaBuffersLocal.push({ m, buffer, destPath });
-          } else if (m.dataUrl.startsWith('/api/assets/')) {
-            // Local asset URL — read directly from asset storage (same server, no HTTP needed)
+          } else {
+            const appAssetPath = normalizeAppAssetPath(m.dataUrl);
+            if (!appAssetPath) {
+              if (!m.dataUrl.startsWith('http')) {
+                console.warn(`[Animation API] Phase 1: Unrecognized URL scheme for ${m.name}: ${m.dataUrl.slice(0, 40)}...`);
+              }
+              continue;
+            }
+
+            // Koda asset URL — resolve server-side and turn into a sandbox upload buffer.
             try {
-              const { getLocalAssetProvider } = await import('@/lib/assets/local-provider');
-              const assetId = m.dataUrl.split('/api/assets/')[1];
-              const result = await getLocalAssetProvider().getBuffer(assetId);
+              const result = await readAppAssetBuffer(appAssetPath);
               if (result) {
-                debugLog(`[Animation API] Phase 1: Read local asset ${m.name} → ${destPath} (${Math.round(result.buffer.length / 1024)}KB)`);
+                debugLog(`[Animation API] Phase 1: Read app asset ${m.name} → ${destPath} (${Math.round(result.buffer.length / 1024)}KB)`);
                 mediaBuffersLocal.push({ m, buffer: result.buffer, destPath });
               } else {
                 console.warn(`[Animation API] Phase 1: Asset not found for ${m.name}: ${m.dataUrl}`);
               }
             } catch (err) {
-              console.error(`[Animation API] Phase 1: Failed to read local asset ${m.name}:`, err);
+              console.error(`[Animation API] Phase 1: Failed to read app asset ${m.name}:`, err);
             }
-          } else if (!m.dataUrl.startsWith('http')) {
-            console.warn(`[Animation API] Phase 1: Unrecognized URL scheme for ${m.name}: ${m.dataUrl.slice(0, 40)}...`);
           }
         }
 
         // ── Phase 2: Download HTTP URL media to buffers (parallel, 30s timeout) ──
-        const httpMedia = context.media.filter(m => m.dataUrl.startsWith('http'));
+        const httpMedia = context.media.filter(
+          (m) => m.dataUrl.startsWith('http') && !normalizeAppAssetPath(m.dataUrl)
+        );
         debugLog(`[Animation API] Phase 2: ${httpMedia.length} HTTP URLs to download`);
         if (httpMedia.length > 0) {
           const downloads = await Promise.allSettled(
