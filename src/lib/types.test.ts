@@ -56,5 +56,18 @@ test('normalizeVideoModelOptions constrains LTX 2.3 Fast and Grok to the priced 
   assert.deepEqual(seedance, {
     aspectRatio: '1:1',
     duration: 6,
+    resolution: '480p',
+  });
+
+  const seedanceFastFallback = normalizeVideoModelOptions('seedance-2.0-fast-t2v', {
+    aspectRatio: '1:1',
+    duration: 6,
+    resolution: '1080p',
+  });
+
+  assert.deepEqual(seedanceFastFallback, {
+    aspectRatio: '1:1',
+    duration: 6,
+    resolution: '720p',
   });
 });
