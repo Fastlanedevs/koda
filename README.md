@@ -229,7 +229,7 @@ Koda supports **mix-and-match deployment** — use local storage with cloud sand
 | `GOOGLE_GENERATIVE_AI_API_KEY` | Recommended | — | Google AI key (Gemini models) |
 | `LTX_API_KEY` | Optional | — | LTX 2.3 direct video API key |
 | `BYTEPLUS_ARK_API_KEY` | Optional | — | BytePlus Ark key for Seedance 2.0 video |
-| `FAL_KEY` | Optional | — | Legacy/non-image-video features that still call Fal-backed audio or glyph endpoints |
+| `FAL_KEY` | Optional | — | Legacy hidden audio/glyph endpoints; not shown in the canvas creation UI |
 | `OPENROUTER_API_KEY` | Alt | — | OpenRouter key (multi-model access) |
 | `NEXT_PUBLIC_STORAGE_BACKEND` | No | `sqlite` | `sqlite` or `turso` |
 | `ASSET_STORAGE` | No | `local` | `local`, `r2`, or `s3` |
@@ -358,7 +358,6 @@ See [`docs/PLUGIN_ARCHITECTURE.md`](docs/PLUGIN_ARCHITECTURE.md) for the full pl
 | **Sticky Note** | Canvas annotations | User text | — |
 | **Group** | Organize nodes | Drag to group | — |
 | **Rich Text** | Formatted text editing | User input | — |
-| **Music Generator** | AI music | Text prompt | Audio file |
 
 ---
 

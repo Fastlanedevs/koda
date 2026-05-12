@@ -11,9 +11,6 @@ import {
   createStickyNoteNode,
   createStickerNode,
   createGroupNode,
-  createMusicGeneratorNode,
-  createSpeechNode,
-  createVideoAudioNode,
   createPluginNode,
 } from '@/stores/canvas-store';
 import {
@@ -32,9 +29,6 @@ import {
   Smile,
   Group,
   Sparkle,
-  Music,
-  Mic,
-  Film,
   Clapperboard,
   PenTool,
   Search,
@@ -52,7 +46,6 @@ import '@/lib/plugins/official/product-shot';
 import '@/lib/plugins/official/agents/animation-generator';
 import '@/lib/plugins/official/agents/motion-analyzer';
 import '@/lib/plugins/official/agents/svg-studio';
-import '@/lib/plugins/official/agents/glyph';
 import '@/lib/plugins/official/agents/prompt-studio';
 import '@/lib/plugins/official/image-to-pdf';
 import {
@@ -240,19 +233,6 @@ export function NodeToolbar({ onPluginLaunch }: NodeToolbarProps) {
           keywords: ['svg', 'vector', 'icon', 'logo'],
         },
         {
-          id: 'glyph',
-          icon: <Type className="h-4 w-4 text-violet-400" />,
-          label: 'Glyph',
-          action: () => {
-            if (!guardPluginLaunch('glyph')) return;
-            handleAddNode(
-              (pos, name) => createPluginNode(pos, 'glyph', name),
-              'Glyph'
-            );
-          },
-          keywords: ['glyph', 'text', 'typography', 'font', 'letter'],
-        },
-        {
           id: 'promptStudio',
           icon: <Sparkle className="h-4 w-4 text-amber-400" />,
           label: 'Prompt Studio',
@@ -264,32 +244,6 @@ export function NodeToolbar({ onPluginLaunch }: NodeToolbarProps) {
             );
           },
           keywords: ['prompt', 'creative', 'director', 'enhance', 'image prompt', 'video prompt'],
-        },
-      ],
-    },
-    {
-      title: 'AUDIO',
-      items: [
-        {
-          id: 'musicGenerator',
-          icon: <Music className="h-4 w-4 text-orange-400" />,
-          label: 'Music Generator',
-          action: () => handleAddNode(createMusicGeneratorNode, 'Music Generator'),
-          keywords: ['music', 'audio', 'sound', 'song', 'generate'],
-        },
-        {
-          id: 'speech',
-          icon: <Mic className="h-4 w-4 text-cyan-400" />,
-          label: 'Speech',
-          action: () => handleAddNode(createSpeechNode, 'Speech'),
-          keywords: ['speech', 'voice', 'tts', 'text-to-speech', 'narration'],
-        },
-        {
-          id: 'videoAudio',
-          icon: <Film className="h-4 w-4 text-pink-400" />,
-          label: 'Video Audio',
-          action: () => handleAddNode(createVideoAudioNode, 'Video Audio'),
-          keywords: ['video', 'audio', 'sync', 'sound', 'foley'],
         },
       ],
     },

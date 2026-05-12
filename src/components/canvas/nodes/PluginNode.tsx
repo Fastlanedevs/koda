@@ -18,7 +18,7 @@ import { CanvasNodeShell } from '@/components/canvas/nodes/chrome/CanvasNodeShel
 import { AnimationNode } from '@/lib/plugins/official/agents/animation-generator';
 import { MotionAnalyzerNode } from '@/lib/plugins/official/agents/motion-analyzer';
 import { SvgStudioNode } from '@/lib/plugins/official/agents/svg-studio';
-import { GlyphNode } from '@/lib/plugins/official/agents/glyph';
+import { GlyphNode } from '@/lib/plugins/official/agents/glyph/GlyphNode';
 import { PromptStudioNode } from '@/lib/plugins/official/agents/prompt-studio';
 import { ImageToPdfNode } from '@/lib/plugins/official/image-to-pdf';
 
