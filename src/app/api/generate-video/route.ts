@@ -548,10 +548,14 @@ async function createBytePlusSeedanceTask(options: {
   const content: Array<Record<string, unknown>> = [];
   if (options.prompt) content.push({ type: 'text', text: options.prompt });
   for (const url of imageUrls.slice(0, 8)) {
-    content.push({ type: 'image_url', image_url: { url } });
+    content.push({ type: 'image_url', image_url: { url }, role: 'reference_image' });
   }
-  if (options.videoUrl) content.push({ type: 'video_url', video_url: { url: options.videoUrl } });
-  if (options.audioUrl) content.push({ type: 'audio_url', audio_url: { url: options.audioUrl } });
+  if (options.videoUrl) {
+    content.push({ type: 'video_url', video_url: { url: options.videoUrl }, role: 'reference_video' });
+  }
+  if (options.audioUrl) {
+    content.push({ type: 'audio_url', audio_url: { url: options.audioUrl }, role: 'reference_audio' });
+  }
 
   const response = await fetch(`${bytePlusBaseUrl()}/contents/generations/tasks`, {
     method: 'POST',
@@ -564,7 +568,6 @@ async function createBytePlusSeedanceTask(options: {
       content,
       ratio: options.aspectRatio,
       duration: options.duration,
-      resolution: options.resolution || '1080p',
       generate_audio: options.generateAudio !== false,
       watermark: false,
     }),
@@ -665,7 +668,6 @@ export const POST = withCredits(
           model: modelType,
           aspectRatio: normalizedOptions.aspectRatio,
           duration: normalizedOptions.duration,
-          resolution: normalizedOptions.resolution,
           referenceUrl: media.referenceUrl,
           firstFrameUrl: media.firstFrameUrl,
           lastFrameUrl: media.lastFrameUrl,
