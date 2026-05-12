@@ -11,33 +11,33 @@ import {
 test('getCompatibleImageCompareModels excludes auto and reference-required models without references', () => {
   const data = {
     prompt: 'A futuristic portrait',
-    model: 'flux-pro',
+    model: 'gpt-image-2',
     aspectRatio: '1:1',
   } as ImageGeneratorNodeData;
 
   const models = getCompatibleImageCompareModels(
-    ['auto', 'flux-pro', 'grok-imagine-image-edit', 'physic-edit'],
+    ['auto', 'gpt-image-2', 'gemini-3.1-flash-image-preview'],
     data,
     { textContent: 'Studio lighting' }
   );
 
-  assert.deepEqual(models, ['flux-pro']);
+  assert.deepEqual(models, ['gpt-image-2', 'gemini-3.1-flash-image-preview']);
 });
 
-test('getCompatibleImageCompareModels includes edit models once references are connected', () => {
+test('getCompatibleImageCompareModels keeps direct reference-capable models once references are connected', () => {
   const data = {
     prompt: 'Re-style this image',
-    model: 'flux-pro',
+    model: 'gpt-image-2',
     aspectRatio: '1:1',
   } as ImageGeneratorNodeData;
 
   const models = getCompatibleImageCompareModels(
-    ['flux-pro', 'grok-imagine-image-edit', 'physic-edit'],
+    ['gpt-image-2', 'gemini-3.1-flash-image-preview'],
     data,
     { referenceUrl: 'https://cdn.example.com/ref.png' }
   );
 
-  assert.deepEqual(models, ['flux-pro', 'grok-imagine-image-edit', 'physic-edit']);
+  assert.deepEqual(models, ['gpt-image-2', 'gemini-3.1-flash-image-preview']);
 });
 
 test('getCompatibleVideoCompareModels enforces input and setting compatibility', () => {
@@ -51,12 +51,12 @@ test('getCompatibleVideoCompareModels enforces input and setting compatibility',
   } as VideoGeneratorNodeData;
 
   const models = getCompatibleVideoCompareModels(
-    ['auto', 'veo-3.1-i2v', 'ltx-2.3-i2v', 'sora-2-remix-v2v'],
+    ['auto', 'veo-3.1-i2v', 'ltx-2.3-i2v', 'seedance-2.0-i2v'],
     data,
     { firstFrameUrl: 'https://cdn.example.com/frame.png' }
   );
 
-  assert.deepEqual(models, ['veo-3.1-i2v', 'ltx-2.3-i2v']);
+  assert.deepEqual(models, ['veo-3.1-i2v', 'ltx-2.3-i2v', 'seedance-2.0-i2v']);
 });
 
 test('buildVideoGenerationRequest normalizes settings per target compare model', () => {

@@ -222,7 +222,7 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
     }
   }, [data.compareResults, data.outputUrl]);
 
-  // Poll xskill task status
+  // Poll async video task status
   const pollXskillTask = useCallback((taskId: string, taskModel: string) => {
     // Clear any existing poll
     if (pollIntervalRef.current) {
@@ -318,7 +318,7 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
     }, 5000);
   }, [id, data, resolvedModel, updateNodeData, getConnectedInputs, addToHistory]);
 
-  // Resume/start polling whenever an async xskill task is active.
+  // Resume/start polling whenever an async video task is active.
   useEffect(() => {
     if (data.xskillTaskId && data.xskillTaskModel && data.isGenerating) {
       pollXskillTask(data.xskillTaskId, data.xskillTaskModel);
@@ -504,7 +504,7 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
       const result = await response.json();
 
       if (result.async && result.taskId) {
-        // xskill async path — store taskId and start client-side polling
+        // Async provider path — store taskId and start client-side polling
         updateNodeData(id, {
           xskillTaskId: result.taskId,
           xskillTaskModel: result.model,

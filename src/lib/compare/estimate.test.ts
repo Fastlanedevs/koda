@@ -10,15 +10,22 @@ import {
 
 test('normalizeImageCompareModels dedupes and caps the compare set', () => {
   const models = normalizeImageCompareModels([
-    'flux-pro',
-    'flux-pro',
-    'recraft-v4',
-    'nanobanana-2',
-    'grok-imagine-image',
-    'ideogram-v3',
+    'gpt-image-2',
+    'gpt-image-2',
+    'gemini-3.1-flash-image-preview',
+    'gpt-image-2',
+    'gemini-3.1-flash-image-preview',
+    'gpt-image-2',
   ]);
 
-  assert.deepEqual(models, ['flux-pro', 'recraft-v4', 'nanobanana-2', 'grok-imagine-image']);
+  assert.deepEqual(models, ['gpt-image-2', 'gemini-3.1-flash-image-preview']);
+});
+
+test('normalizeImageCompareModels rejects removed image models', () => {
+  assert.throws(
+    () => normalizeImageCompareModels(['flux-pro']),
+    /Unsupported image compare model: flux-pro/
+  );
 });
 
 test('normalizeVideoCompareModels rejects auto', () => {
@@ -29,21 +36,21 @@ test('normalizeVideoCompareModels rejects auto', () => {
 });
 
 test('estimateImageCompareModels sums per-model credits', () => {
-  const estimate = estimateImageCompareModels(['grok-imagine-image', 'recraft-v4']);
+  const estimate = estimateImageCompareModels(['gpt-image-2', 'gemini-3.1-flash-image-preview']);
 
   assert.deepEqual(estimate.items, [
-    { model: 'grok-imagine-image', estimatedCredits: 1 },
-    { model: 'recraft-v4', estimatedCredits: 2 },
+    { model: 'gpt-image-2', estimatedCredits: 3 },
+    { model: 'gemini-3.1-flash-image-preview', estimatedCredits: 3 },
   ]);
-  assert.equal(estimate.totalCredits, 3);
+  assert.equal(estimate.totalCredits, 6);
 });
 
 test('estimateVideoCompareModels respects duration and audio pricing', () => {
-  const estimate = estimateVideoCompareModels(['veo-3.1-fast-i2v', 'kling-3.0-t2v'], 10, true);
+  const estimate = estimateVideoCompareModels(['veo-3.1-fast-i2v', 'seedance-2.0-fast-t2v'], 10, true);
 
   assert.deepEqual(estimate.items, [
     { model: 'veo-3.1-fast-i2v', estimatedCredits: 46 },
-    { model: 'kling-3.0-t2v', estimatedCredits: 76 },
+    { model: 'seedance-2.0-fast-t2v', estimatedCredits: 3 },
   ]);
-  assert.equal(estimate.totalCredits, 122);
+  assert.equal(estimate.totalCredits, 49);
 });

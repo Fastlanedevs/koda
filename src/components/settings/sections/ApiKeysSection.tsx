@@ -94,14 +94,6 @@ export function ApiKeysSection() {
 
       <div className="space-y-6">
         <ApiKeyInput
-          label="Fal.ai API Key"
-          description="Required for image and video generation"
-          value={apiKeys.falAi}
-          onChange={(v) => setApiKey('falAi', v)}
-          placeholder="fal_..."
-        />
-
-        <ApiKeyInput
           label="Anthropic API Key"
           description="Used for AI agents and prompt enhancement"
           value={apiKeys.anthropic}
@@ -111,10 +103,34 @@ export function ApiKeysSection() {
 
         <ApiKeyInput
           label="OpenAI API Key"
-          description="Optional fallback for AI features"
+          description="Used for GPT Image 2 generation and editing"
           value={apiKeys.openAi}
           onChange={(v) => setApiKey('openAi', v)}
           placeholder="sk-..."
+        />
+
+        <ApiKeyInput
+          label="Gemini API Key"
+          description="Used for Gemini image generation and Veo video models"
+          value={apiKeys.gemini}
+          onChange={(v) => setApiKey('gemini', v)}
+          placeholder="AIza..."
+        />
+
+        <ApiKeyInput
+          label="LTX API Key"
+          description="Used for direct LTX 2.3 video generation"
+          value={apiKeys.ltx}
+          onChange={(v) => setApiKey('ltx', v)}
+          placeholder="ltx_..."
+        />
+
+        <ApiKeyInput
+          label="BytePlus Ark API Key"
+          description="Used for direct Seedance 2.0 video tasks"
+          value={apiKeys.byteplus}
+          onChange={(v) => setApiKey('byteplus', v)}
+          placeholder="ark_..."
         />
       </div>
 

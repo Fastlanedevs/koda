@@ -1,35 +1,62 @@
 import { NextResponse } from 'next/server';
-import { fal } from '@fal-ai/client';
 import {
-  FAL_MODELS,
-  resolveAutoModel,
-  normalizeAspectRatio,
   extractExplicitAspectRatioFromPrompt,
+  normalizeAspectRatio,
+  resolveAutoModel,
+  type AspectRatio,
   type ImageModelType,
+  type ImagePortRole,
+  type NanoBananaResolution,
 } from '@/lib/types';
-import { getModelAdapter, type GenerateRequest } from '@/lib/model-adapters';
 import { getAssetStorageType, getExtensionFromMime, getExtensionFromUrl, type AssetStorageProvider } from '@/lib/assets';
 import { generatePresignedGetUrl, type S3Config } from '@/lib/assets/s3-signing';
 import { withCredits } from '@/lib/credits/with-credits';
 
 export const maxDuration = 300;
 
-// Configure Fal client
-fal.config({
-  credentials: process.env.FAL_KEY,
-});
+type DirectImageModelType = 'gpt-image-2' | 'gemini-3.1-flash-image-preview';
 
-/**
- * Get the asset storage provider (server-side only)
- */
+interface InlineImagePart {
+  mimeType: string;
+  base64Data: string;
+}
+
+interface GeneratedImageBuffer {
+  buffer: Buffer;
+  mimeType: string;
+  extension: string;
+}
+
+interface GeminiGenerateContentResponse {
+  candidates?: Array<{
+    content?: {
+      parts?: Array<{
+        inlineData?: { mimeType?: string; data?: string };
+        inline_data?: { mime_type?: string; data?: string };
+      }>;
+    };
+  }>;
+  error?: { message?: string };
+}
+
+interface OpenAIImageResponse {
+  data?: Array<{
+    b64_json?: string;
+    url?: string;
+  }>;
+  error?: {
+    message?: string;
+  };
+}
+
 async function getProvider(): Promise<AssetStorageProvider> {
   const storageType = getAssetStorageType();
-  
+
   if (storageType === 'r2' || storageType === 's3') {
     const { getS3AssetProvider } = await import('@/lib/assets/s3-provider');
     return getS3AssetProvider(storageType);
   }
-  
+
   const { getLocalAssetProvider } = await import('@/lib/assets/local-provider');
   return getLocalAssetProvider();
 }
@@ -41,6 +68,22 @@ function sanitizeEnv(value: string | undefined): string | undefined {
 
 function trimTrailingSlashes(value: string): string {
   return value.replace(/\/+$/, '');
+}
+
+function getGeminiApiKey(): string {
+  const apiKey = sanitizeEnv(process.env.GOOGLE_GENERATIVE_AI_API_KEY) || sanitizeEnv(process.env.GEMINI_API_KEY);
+  if (!apiKey) {
+    throw new Error('GOOGLE_GENERATIVE_AI_API_KEY or GEMINI_API_KEY is not configured');
+  }
+  return apiKey;
+}
+
+function getOpenAIApiKey(): string {
+  const apiKey = sanitizeEnv(process.env.OPENAI_API_KEY);
+  if (!apiKey) {
+    throw new Error('OPENAI_API_KEY is not configured');
+  }
+  return apiKey;
 }
 
 function isPrivateOrLocalHost(hostname: string): boolean {
@@ -92,7 +135,6 @@ function getS3ConfigForAssetReads(): S3Config | undefined {
     const endpoint = trimTrailingSlashes(
       sanitizeEnv(process.env.R2_ENDPOINT) || `https://${accountId}.r2.cloudflarestorage.com`
     );
-
     const publicUrl = sanitizeEnv(process.env.R2_PUBLIC_URL);
 
     return {
@@ -115,7 +157,6 @@ function getS3ConfigForAssetReads(): S3Config | undefined {
     if (!accessKeyId || !secretAccessKey || !bucket) return undefined;
 
     const publicUrl = sanitizeEnv(process.env.S3_PUBLIC_URL);
-
     return {
       type: 's3',
       accessKeyId,
@@ -129,7 +170,7 @@ function getS3ConfigForAssetReads(): S3Config | undefined {
   return undefined;
 }
 
-async function getFalReachableAssetUrl(key: string): Promise<string | undefined> {
+async function getProviderReachableAssetUrl(key: string): Promise<string | undefined> {
   const config = getS3ConfigForAssetReads();
   if (!config) return undefined;
 
@@ -137,110 +178,19 @@ async function getFalReachableAssetUrl(key: string): Promise<string | undefined>
     return `${config.publicUrl}/${key}`;
   }
 
-  // Private bucket fallback: generate temporary signed GET URL Fal can fetch.
   return generatePresignedGetUrl(config, key, 3600);
 }
 
-const GEMINI_IMAGE_FALLBACK_MODELS: Partial<Record<ImageModelType, string>> = {
-  'nanobanana-pro': 'gemini-3.1-flash-image-preview',
-  'nanobanana-2': 'gemini-3.1-flash-image-preview',
-};
-
-interface GeminiInlineImagePart {
-  mimeType: string;
-  base64Data: string;
-}
-
-interface GeneratedImageBuffer {
-  buffer: Buffer;
-  mimeType: string;
-  extension: string;
-}
-
-interface GeminiGenerateContentResponse {
-  candidates?: Array<{
-    content?: {
-      parts?: Array<{
-        inlineData?: { mimeType?: string; data?: string };
-        inline_data?: { mime_type?: string; data?: string };
-      }>;
-    };
-  }>;
-  error?: { message?: string };
-}
-
-function toNumber(value: unknown): number | undefined {
-  if (typeof value === 'number' && Number.isFinite(value)) return value;
-  if (typeof value === 'string') {
-    const parsed = Number.parseInt(value, 10);
-    if (Number.isFinite(parsed)) return parsed;
-  }
-  return undefined;
-}
-
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  return String(error);
-}
-
-function getErrorStatus(error: unknown): number | undefined {
-  if (!error || typeof error !== 'object') return undefined;
-
-  const value = error as {
-    status?: unknown;
-    response?: { status?: unknown };
-    body?: { status?: unknown; status_code?: unknown };
-    cause?: { status?: unknown };
-    message?: string;
-  };
-
-  const fromObject =
-    toNumber(value.status)
-    ?? toNumber(value.response?.status)
-    ?? toNumber(value.body?.status)
-    ?? toNumber(value.body?.status_code)
-    ?? toNumber(value.cause?.status);
-
-  if (fromObject) return fromObject;
-
-  const message = value.message || '';
-  const match = message.match(/\b([45]\d{2})\b/);
-  if (!match) return undefined;
-  return toNumber(match[1]);
-}
-
-function isFalServiceFailure(error: unknown): boolean {
-  const status = getErrorStatus(error);
-  if (typeof status === 'number' && status >= 500) {
-    return true;
-  }
-
-  const message = getErrorMessage(error).toLowerCase();
-  return (
-    message.includes('internal server error') ||
-    message.includes('service unavailable') ||
-    message.includes('bad gateway') ||
-    message.includes('gateway timeout') ||
-    message.includes('upstream') ||
-    message.includes('fetch failed') ||
-    message.includes('network') ||
-    message.includes('timed out') ||
-    message.includes('timeout')
-  );
-}
-
-function parseDataImageUrl(value: string): GeminiInlineImagePart | undefined {
+function parseDataImageUrl(value: string): InlineImagePart | undefined {
   const match = value.match(/^data:(image\/[a-z0-9.+-]+);base64,(.+)$/i);
   if (!match) return undefined;
   const mimeType = match[1].toLowerCase();
   const base64Data = match[2];
-  if (!mimeType.startsWith('image/') || !base64Data) {
-    return undefined;
-  }
+  if (!mimeType.startsWith('image/') || !base64Data) return undefined;
   return { mimeType, base64Data };
 }
 
-async function fetchReferenceAsGeminiInlineImage(referenceUrl: string): Promise<GeminiInlineImagePart | undefined> {
+async function fetchReferenceAsInlineImage(referenceUrl: string): Promise<InlineImagePart | undefined> {
   const inline = parseDataImageUrl(referenceUrl);
   if (inline) return inline;
 
@@ -261,6 +211,35 @@ async function fetchReferenceAsGeminiInlineImage(referenceUrl: string): Promise<
   }
 }
 
+async function fetchReferenceAsOpenAIFile(referenceUrl: string, index: number): Promise<File | undefined> {
+  const inline = parseDataImageUrl(referenceUrl);
+  if (inline) {
+    const extension = getExtensionFromMime(inline.mimeType);
+    return new File(
+      [Buffer.from(inline.base64Data, 'base64')],
+      `reference-${index}.${extension === 'bin' ? 'png' : extension}`,
+      { type: inline.mimeType }
+    );
+  }
+
+  try {
+    const response = await fetch(referenceUrl, { signal: AbortSignal.timeout(20_000) });
+    if (!response.ok) return undefined;
+
+    const mimeType = (response.headers.get('content-type') || 'image/png').split(';')[0].trim().toLowerCase();
+    if (!mimeType.startsWith('image/')) return undefined;
+
+    const extension = getExtensionFromMime(mimeType);
+    return new File(
+      [Buffer.from(await response.arrayBuffer())],
+      `reference-${index}.${extension === 'bin' ? 'png' : extension}`,
+      { type: mimeType }
+    );
+  } catch {
+    return undefined;
+  }
+}
+
 function extractGeminiImages(payload: GeminiGenerateContentResponse): GeneratedImageBuffer[] {
   const result: GeneratedImageBuffer[] = [];
 
@@ -269,7 +248,6 @@ function extractGeminiImages(payload: GeminiGenerateContentResponse): GeneratedI
     for (const part of parts) {
       const camel = part.inlineData;
       const snake = part.inline_data;
-
       const mimeType = (camel?.mimeType || snake?.mime_type || '').toLowerCase();
       const data = camel?.data || snake?.data || '';
       if (!mimeType.startsWith('image/') || !data) continue;
@@ -285,7 +263,7 @@ function extractGeminiImages(payload: GeminiGenerateContentResponse): GeneratedI
           extension: extension === 'bin' ? 'png' : extension,
         });
       } catch {
-        // Skip invalid image payloads.
+        // Skip invalid inline payloads.
       }
     }
   }
@@ -293,84 +271,191 @@ function extractGeminiImages(payload: GeminiGenerateContentResponse): GeneratedI
   return result;
 }
 
-async function generateWithGeminiFallback(options: {
-  modelType: ImageModelType;
-  prompt: string;
-  referenceUrls: string[];
-}): Promise<{ modelId: string; images: GeneratedImageBuffer[] }> {
-  const modelId = GEMINI_IMAGE_FALLBACK_MODELS[options.modelType];
-  if (!modelId) {
-    throw new Error(`No Gemini fallback configured for model "${options.modelType}"`);
+function openAIImageSize(aspectRatio: AspectRatio): string {
+  switch (aspectRatio) {
+    case '16:9':
+    case '4:3':
+    case '3:2':
+      return '1536x1024';
+    case '9:16':
+    case '3:4':
+    case '2:3':
+      return '1024x1536';
+    case '1:1':
+      return '1024x1024';
+    default:
+      return 'auto';
   }
-
-  const apiKey = sanitizeEnv(process.env.GOOGLE_GENERATIVE_AI_API_KEY);
-  if (!apiKey) {
-    throw new Error('GOOGLE_GENERATIVE_AI_API_KEY is not configured');
-  }
-
-  const inlineReferences = await Promise.all(
-    options.referenceUrls.slice(0, 14).map(fetchReferenceAsGeminiInlineImage)
-  );
-  const validReferences = inlineReferences.filter((item): item is GeminiInlineImagePart => !!item);
-
-  if (options.referenceUrls.length > 0 && validReferences.length === 0) {
-    throw new Error('Gemini fallback could not read any reference images');
-  }
-
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelId)}:generateContent?key=${encodeURIComponent(apiKey)}`;
-  const requestBody = {
-    contents: [
-      {
-        role: 'user',
-        parts: [
-          { text: options.prompt },
-          ...validReferences.map((image) => ({
-            inlineData: {
-              mimeType: image.mimeType,
-              data: image.base64Data,
-            },
-          })),
-        ],
-      },
-    ],
-    generationConfig: {
-      responseModalities: ['IMAGE'],
-    },
-  };
-
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(requestBody),
-    signal: AbortSignal.timeout(120_000),
-  });
-
-  const payload = (await response.json().catch(() => ({}))) as GeminiGenerateContentResponse;
-  if (!response.ok) {
-    throw new Error(`Gemini API ${response.status}: ${payload.error?.message || response.statusText}`);
-  }
-
-  const images = extractGeminiImages(payload);
-  if (images.length === 0) {
-    throw new Error('Gemini fallback returned no images');
-  }
-
-  return { modelId, images };
 }
 
-/**
- * Save generated images to configured asset storage
- * Returns local URLs if storage is configured, otherwise returns original URLs
- */
+function withImageInstructions(prompt: string, aspectRatio: AspectRatio, resolution?: NanoBananaResolution): string {
+  const instructions: string[] = [prompt];
+  if (aspectRatio !== 'auto') {
+    instructions.push(`Use aspect ratio ${aspectRatio}.`);
+  }
+  if (resolution) {
+    instructions.push(`Target ${resolution} output quality where supported.`);
+  }
+  return instructions.join('\n');
+}
+
+async function generateWithGemini(options: {
+  modelId: string;
+  prompt: string;
+  aspectRatio: AspectRatio;
+  resolution?: NanoBananaResolution;
+  referenceUrls: string[];
+  numImages: number;
+}): Promise<GeneratedImageBuffer[]> {
+  const apiKey = getGeminiApiKey();
+  const inlineReferences = await Promise.all(
+    options.referenceUrls.slice(0, 14).map(fetchReferenceAsInlineImage)
+  );
+  const validReferences = inlineReferences.filter((item): item is InlineImagePart => !!item);
+
+  if (options.referenceUrls.length > 0 && validReferences.length === 0) {
+    throw new Error('Gemini could not read any reference images');
+  }
+
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(options.modelId)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const prompt = withImageInstructions(options.prompt, options.aspectRatio, options.resolution);
+  const images: GeneratedImageBuffer[] = [];
+
+  for (let i = 0; i < options.numImages; i += 1) {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              { text: prompt },
+              ...validReferences.map((image) => ({
+                inlineData: {
+                  mimeType: image.mimeType,
+                  data: image.base64Data,
+                },
+              })),
+            ],
+          },
+        ],
+        generationConfig: {
+          responseModalities: ['IMAGE'],
+        },
+      }),
+      signal: AbortSignal.timeout(120_000),
+    });
+
+    const payload = (await response.json().catch(() => ({}))) as GeminiGenerateContentResponse;
+    if (!response.ok) {
+      throw new Error(`Gemini API ${response.status}: ${payload.error?.message || response.statusText}`);
+    }
+
+    images.push(...extractGeminiImages(payload));
+  }
+
+  if (images.length === 0) {
+    throw new Error('Gemini returned no images');
+  }
+
+  return images.slice(0, options.numImages);
+}
+
+async function generateWithOpenAI(options: {
+  modelId: string;
+  prompt: string;
+  aspectRatio: AspectRatio;
+  resolution?: NanoBananaResolution;
+  referenceUrls: string[];
+  numImages: number;
+}): Promise<{ buffers: GeneratedImageBuffer[]; urls: string[] }> {
+  const apiKey = getOpenAIApiKey();
+  const modelId = sanitizeEnv(process.env.OPENAI_IMAGE_MODEL) || options.modelId;
+  const prompt = withImageInstructions(options.prompt, options.aspectRatio, options.resolution);
+  const size = openAIImageSize(options.aspectRatio);
+  const endpoint = options.referenceUrls.length > 0
+    ? 'https://api.openai.com/v1/images/edits'
+    : 'https://api.openai.com/v1/images/generations';
+
+  let response: Response;
+  if (options.referenceUrls.length > 0) {
+    const files = (
+      await Promise.all(options.referenceUrls.slice(0, 4).map(fetchReferenceAsOpenAIFile))
+    ).filter((item): item is File => !!item);
+
+    if (files.length === 0) {
+      throw new Error('OpenAI could not read any reference images');
+    }
+
+    const form = new FormData();
+    form.append('model', modelId);
+    form.append('prompt', prompt);
+    form.append('n', String(options.numImages));
+    form.append('size', size);
+    form.append('quality', 'auto');
+    form.append('background', 'auto');
+    for (const file of files) {
+      form.append('image[]', file, file.name);
+    }
+
+    response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}` },
+      body: form,
+      signal: AbortSignal.timeout(180_000),
+    });
+  } else {
+    response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: modelId,
+        prompt,
+        n: options.numImages,
+        size,
+        quality: 'auto',
+        output_format: 'png',
+      }),
+      signal: AbortSignal.timeout(180_000),
+    });
+  }
+
+  const payload = (await response.json().catch(() => ({}))) as OpenAIImageResponse;
+  if (!response.ok) {
+    throw new Error(`OpenAI Images API ${response.status}: ${payload.error?.message || response.statusText}`);
+  }
+
+  const buffers: GeneratedImageBuffer[] = [];
+  const urls: string[] = [];
+  for (const item of payload.data || []) {
+    if (item.b64_json) {
+      buffers.push({
+        buffer: Buffer.from(item.b64_json, 'base64'),
+        mimeType: 'image/png',
+        extension: 'png',
+      });
+    } else if (item.url) {
+      urls.push(item.url);
+    }
+  }
+
+  if (buffers.length === 0 && urls.length === 0) {
+    throw new Error('OpenAI returned no images');
+  }
+
+  return { buffers, urls };
+}
+
 async function saveGeneratedImages(
   urls: string[],
   options: { prompt: string; model: string; canvasId?: string; nodeId?: string }
 ): Promise<string[]> {
   const storageType = getAssetStorageType();
-  
-  // If using default (no storage configured), return original URLs
+
   if (storageType === 'local' && !process.env.ASSET_STORAGE) {
     return urls;
   }
@@ -395,7 +480,6 @@ async function saveGeneratedImages(
       savedUrls.push(asset.url);
     } catch (error) {
       console.error('Failed to save image asset:', error);
-      // Fall back to original URL if save fails
       savedUrls.push(url);
     }
   }
@@ -403,10 +487,6 @@ async function saveGeneratedImages(
   return savedUrls;
 }
 
-/**
- * Save generated image buffers to configured asset storage.
- * Used for providers that return inline image bytes (Gemini fallback).
- */
 async function saveGeneratedImageBuffers(
   images: GeneratedImageBuffer[],
   options: { prompt: string; model: string; canvasId?: string; nodeId?: string }
@@ -445,19 +525,16 @@ export const POST = withCredits(
         prompt,
         model,
         aspectRatio,
-        imageSize,
         resolution,
         imageCount = 1,
         referenceUrl,
-        referenceUrls, // Multi-reference support (up to 14 for NanoBanana)
-        imageInputs: rawImageInputs, // Structured named image inputs
-        // New model-specific params
-        style,
-        magicPrompt,
-        cfgScale,
-        steps,
-        strength,
+        referenceUrls,
+        imageInputs: rawImageInputs,
       } = body;
+
+      if (!prompt) {
+        return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
+      }
 
       const normalizeAbsoluteReferenceUrl = async (absolute: URL): Promise<string | undefined> => {
         if (absolute.protocol !== 'http:' && absolute.protocol !== 'https:') {
@@ -469,11 +546,8 @@ export const POST = withCredits(
         }
 
         const key = extractAssetKeyFromProxyPath(absolute.pathname);
-        if (!key) {
-          return undefined;
-        }
-
-        return getFalReachableAssetUrl(key);
+        if (!key) return undefined;
+        return getProviderReachableAssetUrl(key);
       };
 
       const normalizeReferenceUrl = async (value: unknown): Promise<string | undefined> => {
@@ -485,7 +559,6 @@ export const POST = withCredits(
           const absolute = new URL(trimmed);
           return await normalizeAbsoluteReferenceUrl(absolute);
         } catch {
-          // Convert relative app URLs (e.g. /api/assets/...) to absolute URLs.
           if (trimmed.startsWith('/')) {
             const absolute = new URL(trimmed, request.url);
             return await normalizeAbsoluteReferenceUrl(absolute);
@@ -494,17 +567,6 @@ export const POST = withCredits(
         }
       };
 
-      if (!prompt) {
-        return NextResponse.json(
-          { error: 'Prompt is required' },
-          { status: 400 }
-        );
-      }
-
-      const requestedReferenceCount =
-        (typeof referenceUrl === 'string' && referenceUrl.trim() ? 1 : 0)
-        + (Array.isArray(referenceUrls) ? referenceUrls.filter((url) => typeof url === 'string' && url.trim()).length : 0);
-
       const normalizedRefCandidates = await Promise.all([
         normalizeReferenceUrl(referenceUrl),
         ...(Array.isArray(referenceUrls) ? referenceUrls.map(normalizeReferenceUrl) : []),
@@ -512,151 +574,110 @@ export const POST = withCredits(
       const normalizedReferences = Array.from(new Set(
         normalizedRefCandidates.filter((url): url is string => !!url)
       ));
-      const primaryReferenceUrl = normalizedReferences[0];
+
+      const imageInputLines: string[] = [];
+      if (rawImageInputs && typeof rawImageInputs === 'object') {
+        const entries = Object.entries(rawImageInputs as Record<string, { role: ImagePortRole; urls: string[]; label: string }>);
+        for (const [label, input] of entries) {
+          const normalizedUrls = (
+            await Promise.all((input.urls || []).map(normalizeReferenceUrl))
+          ).filter((url): url is string => !!url);
+          normalizedReferences.push(...normalizedUrls);
+          if (normalizedUrls.length > 0) {
+            imageInputLines.push(`Reference "${input.label || label}" (${input.role || 'reference'}) is attached.`);
+          }
+        }
+      }
+
+      const requestedReferenceCount =
+        (typeof referenceUrl === 'string' && referenceUrl.trim() ? 1 : 0) +
+        (Array.isArray(referenceUrls) ? referenceUrls.filter((url) => typeof url === 'string' && url.trim()).length : 0);
 
       if (requestedReferenceCount > 0 && normalizedReferences.length === 0) {
         return NextResponse.json(
-          { error: 'Reference images must use publicly reachable URLs. Localhost/private URLs are not supported unless cloud-public storage URLs are available.' },
+          { error: 'Reference images must use publicly reachable URLs, data URLs, or cloud-backed Koda asset URLs.' },
           { status: 400 }
         );
       }
 
-      // Normalize imageInputs URLs (same normalization as referenceUrls)
-      let normalizedImageInputs: GenerateRequest['imageInputs'] | undefined;
-      if (rawImageInputs && typeof rawImageInputs === 'object') {
-        const entries = await Promise.all(
-          Object.entries(rawImageInputs as Record<string, { role: string; urls: string[]; label: string }>).map(
-            async ([label, input]) => {
-              const normalizedUrls = (
-                await Promise.all((input.urls || []).map(normalizeReferenceUrl))
-              ).filter((url): url is string => !!url);
-              if (normalizedUrls.length === 0) return null;
-              return [label, { role: input.role as import('@/lib/types').ImagePortRole, urls: normalizedUrls, label: input.label }] as const;
-            }
-          )
+      const modelType = resolveAutoModel(model as ImageModelType) as DirectImageModelType;
+      if (modelType !== 'gpt-image-2' && modelType !== 'gemini-3.1-flash-image-preview') {
+        return NextResponse.json(
+          { error: `Unsupported image model "${modelType}". Use GPT Image 2 or Gemini 3.1 Flash Image Preview.` },
+          { status: 400 }
         );
-        const validEntries = entries.filter(Boolean) as Array<readonly [string, { role: import('@/lib/types').ImagePortRole; urls: string[]; label: string }]>;
-        if (validEntries.length > 0) {
-          normalizedImageInputs = Object.fromEntries(validEntries);
-        }
       }
 
-      const modelType = resolveAutoModel(model as ImageModelType);
       const requestedAspectRatio = normalizeAspectRatio(aspectRatio);
       const aspectRatioFromPrompt =
         requestedAspectRatio === 'auto'
           ? extractExplicitAspectRatioFromPrompt(prompt)
           : null;
       const resolvedAspectRatio = aspectRatioFromPrompt || requestedAspectRatio;
-
-      // Clamp imageCount to 1-4
-      const numImages = Math.max(1, Math.min(4, imageCount));
-
-      // Build request for adapter
-      const generateRequest: GenerateRequest = {
-        prompt,
-        model: modelType,
-        aspectRatio: resolvedAspectRatio,
-        imageSize,
-        resolution,
-        numImages,
-        referenceUrl: primaryReferenceUrl,
-        referenceUrls: normalizedReferences.length > 0 ? normalizedReferences : undefined, // Pass multi-reference array
-        imageInputs: normalizedImageInputs,
-        style,
-        magicPrompt,
-        cfgScale,
-        steps,
-        strength,
-      };
-
-      // Get adapter and build input
-      const adapter = getModelAdapter(modelType);
-      const input = adapter.buildInput(generateRequest);
-
-      // Get model ID - use adapter's dynamic ID if available (for dual-endpoint models like NanoBanana)
-      const modelId = adapter.getModelId
-        ? adapter.getModelId(generateRequest)
-        : FAL_MODELS[modelType] || FAL_MODELS['flux-schnell'];
-
+      const numImages = Math.max(1, Math.min(4, Number(imageCount) || 1));
       const { canvasId, nodeId } = body;
-      let responseModelId = modelId;
+      const promptWithInputLabels = imageInputLines.length > 0
+        ? `${imageInputLines.join('\n')}\n${prompt}`
+        : prompt;
+
       let originalUrls: string[] = [];
       let savedUrls: string[] = [];
+      let responseModelId: string = modelType;
 
-      try {
-        // Primary path: Fal generation
-        const result = await fal.subscribe(modelId, {
-          input,
-          logs: true,
-          onQueueUpdate: (update) => {
-            console.log('Queue update:', update.status);
-          },
+      if (modelType === 'gemini-3.1-flash-image-preview') {
+        const modelId = sanitizeEnv(process.env.GEMINI_IMAGE_MODEL) || modelType;
+        responseModelId = `google/${modelId}`;
+        const images = await generateWithGemini({
+          modelId,
+          prompt: promptWithInputLabels,
+          aspectRatio: resolvedAspectRatio,
+          resolution,
+          referenceUrls: Array.from(new Set(normalizedReferences)).slice(0, 14),
+          numImages,
         });
-
-        // Extract image URLs using adapter
-        const imageUrls = adapter.extractImageUrls(result as { data?: { images?: Array<{ url: string }> } });
-        if (imageUrls.length === 0) {
-          throw new Error('No images generated');
-        }
-
-        originalUrls = imageUrls;
-
-        // Save images to configured asset storage (local filesystem, R2, or S3)
-        savedUrls = await saveGeneratedImages(imageUrls, {
+        savedUrls = await saveGeneratedImageBuffers(images, {
           prompt,
-          model: modelId,
+          model: responseModelId,
           canvasId,
           nodeId,
         });
-      } catch (falError) {
-        const fallbackModelId = GEMINI_IMAGE_FALLBACK_MODELS[modelType];
-        const hasGeminiKey = !!sanitizeEnv(process.env.GOOGLE_GENERATIVE_AI_API_KEY);
-        const shouldFallback =
-          !!fallbackModelId &&
-          hasGeminiKey &&
-          isFalServiceFailure(falError);
-
-        if (!shouldFallback) {
-          throw falError;
-        }
-
-        console.warn(
-          `Fal image generation failed for ${modelId}. Falling back to Gemini ${fallbackModelId}.`,
-          falError
-        );
-
-        try {
-          const fallback = await generateWithGeminiFallback({
-            modelType,
-            prompt,
-            referenceUrls: normalizedReferences,
-          });
-
-          responseModelId = `google/${fallback.modelId}`;
-          originalUrls = [];
-          savedUrls = await saveGeneratedImageBuffers(fallback.images, {
+      } else {
+        const modelId = sanitizeEnv(process.env.OPENAI_IMAGE_MODEL) || modelType;
+        responseModelId = `openai/${modelId}`;
+        const result = await generateWithOpenAI({
+          modelId,
+          prompt: promptWithInputLabels,
+          aspectRatio: resolvedAspectRatio,
+          resolution,
+          referenceUrls: Array.from(new Set(normalizedReferences)).slice(0, 4),
+          numImages,
+        });
+        originalUrls = result.urls;
+        savedUrls = [
+          ...(await saveGeneratedImageBuffers(result.buffers, {
             prompt,
             model: responseModelId,
             canvasId,
             nodeId,
-          });
+          })),
+          ...(await saveGeneratedImages(result.urls, {
+            prompt,
+            model: responseModelId,
+            canvasId,
+            nodeId,
+          })),
+        ];
+      }
 
-          if (savedUrls.length === 0) {
-            throw new Error('Gemini fallback generated images but none could be saved');
-          }
-        } catch (fallbackError) {
-          throw new Error(
-            `Fal generation failed (${getErrorMessage(falError)}). Gemini fallback failed (${getErrorMessage(fallbackError)}).`
-          );
-        }
+      if (savedUrls.length === 0) {
+        throw new Error('Images were generated but could not be saved');
       }
 
       return NextResponse.json({
         success: true,
-        imageUrl: savedUrls[0], // For backwards compatibility
-        imageUrls: savedUrls, // Array of all generated images (now local URLs if storage configured)
-        originalUrls, // Keep original fal.ai URLs as backup when available
+        imageUrl: savedUrls[0],
+        imageUrls: savedUrls,
+        originalUrls,
         model: responseModelId,
       });
     } catch (error) {
