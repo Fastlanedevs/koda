@@ -106,6 +106,8 @@ function getVideoTargetHandle(modelId: string): string {
 
 // Scene count options
 const SCENE_COUNTS = [4, 5, 6, 8] as const;
+const STORYBOARD_CHAT_MIN_HEIGHT_PX = 520;
+const STORYBOARD_CHAT_MAX_HEIGHT_PX = 860;
 
 // Timeline item union for sorted rendering
 type TimelineItem =
@@ -1586,11 +1588,11 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
 
   // Render chat timeline view
   const renderChat = () => (
-    <div className="flex flex-col h-full">
+    <div className="flex h-full min-h-0 flex-col">
       {/* Scrollable timeline */}
       <div
         ref={chatScrollRef}
-        className="flex-1 overflow-y-auto nowheel scrollbar-thin p-3 space-y-3"
+        className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain nowheel scrollbar-thin p-3 pr-2 space-y-3"
         onWheel={(e) => !e.ctrlKey && e.stopPropagation()}
       >
         {timelineItems.map((item) => {
@@ -1738,9 +1740,8 @@ function StoryboardNodeComponent({ id, data, selected }: NodeProps<StoryboardNod
           backgroundColor: 'var(--node-card-bg)',
           border: 'none',
           '--tw-ring-color': selected ? undefined : 'var(--node-ring)',
-          minHeight: data.viewState === 'chat' ? '450px' : undefined,
-          maxHeight: data.viewState === 'chat' ? '620px' : undefined,
-          height: data.viewState === 'chat' ? '580px' : undefined,
+          minHeight: data.viewState === 'chat' ? `${STORYBOARD_CHAT_MIN_HEIGHT_PX}px` : undefined,
+          maxHeight: data.viewState === 'chat' ? `${STORYBOARD_CHAT_MAX_HEIGHT_PX}px` : undefined,
         } as React.CSSProperties}
       >
         {/* Header */}

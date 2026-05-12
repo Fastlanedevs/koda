@@ -206,6 +206,8 @@ export const IDEOGRAM_STYLE_LABELS: Record<IdeogramStyle, string> = {
 // All supported model types
 export type ImageModelType =
   | 'auto'
+  | 'gpt-image-2'
+  | 'gemini-3.1-flash-image-preview'
   | 'flux-schnell'
   | 'flux-pro'
   | 'flux-2-pro'
@@ -267,23 +269,8 @@ export interface VideoCompareResult {
 // Enabled models - comment/uncomment to toggle visibility in UI
 // 'auto' is always available and not in this array
 export const ENABLED_IMAGE_MODELS: ImageModelType[] = [
-  'flux-schnell',
-  'flux-pro',
-  'flux-2-pro',
-  'flux-2-max',
-  'flux-kontext',
-  'nanobanana-pro',
-  'nanobanana-2',
-  'qwen-image-2',
-  'qwen-image-2-pro',
-  'grok-imagine-image',
-  'grok-imagine-image-edit',
-  'recraft-v3',
-  'recraft-v4',
-  'seedream-5',
-  'ideogram-v3',
-  'physic-edit',
-  'firered-edit',
+  'gpt-image-2',
+  'gemini-3.1-flash-image-preview',
 ];
 
 // Image Generator Node
@@ -408,24 +395,6 @@ export type PluginNode = Node<PluginNodeData, 'pluginNode'>;
 export type AppNode = ImageGeneratorNode | VideoGeneratorNode | TextNode | MediaNode | StickyNoteNode | StickerNode | GroupNode | StoryboardNode | ProductShotNode |  MusicGeneratorNode | SpeechNode | VideoAudioNode | PluginNode;
 export type AppEdge = Edge;
 
-// Fal API types
-export interface FalGenerateRequest {
-  prompt: string;
-  model: string;
-  image_size: {
-    width: number;
-    height: number;
-  };
-}
-
-export interface FalGenerateResponse {
-  images: Array<{
-    url: string;
-    width: number;
-    height: number;
-  }>;
-}
-
 // Flux image size configurations (actual dimensions)
 export const FLUX_IMAGE_SIZES: Record<FluxImageSize, { label: string; width: number; height: number }> = {
   'square_hd': { label: 'Square HD', width: 1024, height: 1024 },
@@ -456,7 +425,12 @@ export const ASPECT_TO_FLUX_SIZE: Record<string, FluxImageSize> = {
 export const getApproxDimensions = (aspectRatio: AspectRatio, model: string, resolution?: NanoBananaResolution) => {
   const effectiveAspectRatio = aspectRatio === 'auto' ? DEFAULT_IMAGE_ASPECT_RATIO : aspectRatio;
 
-  if (model === 'nanobanana-pro' || model === 'nanobanana-2') {
+  if (
+    model === 'gemini-3.1-flash-image-preview' ||
+    model === 'gpt-image-2' ||
+    model === 'nanobanana-pro' ||
+    model === 'nanobanana-2'
+  ) {
     const baseSize = resolution === '4K' ? 4096 : resolution === '2K' ? 2048 : 1024;
     const [w, h] = effectiveAspectRatio.split(':').map(Number);
     const ratio = w / h;
@@ -477,29 +451,6 @@ export const ASPECT_RATIO_DIMENSIONS = {
   '16:9': { width: 1024, height: 576 },
   '9:16': { width: 576, height: 1024 },
   '4:3': { width: 1024, height: 768 },
-} as const;
-
-// Model IDs for Fal
-export const FAL_MODELS: Record<ImageModelType, string> = {
-  'auto': '', // resolved at runtime
-  'flux-schnell': 'fal-ai/flux/schnell',
-  'flux-pro': 'fal-ai/flux-pro',
-  'flux-2-pro': 'fal-ai/flux-2-pro',
-  'flux-2-max': 'fal-ai/flux-2-max',
-  'flux-kontext': 'fal-ai/flux-pro/kontext',
-  'nanobanana-pro': 'fal-ai/nano-banana-pro',
-  'nanobanana-2': 'fal-ai/nano-banana-2',
-  'qwen-image-2': 'fal-ai/qwen-image-2/text-to-image',
-  'qwen-image-2-pro': 'fal-ai/qwen-image-2/pro/text-to-image',
-  'grok-imagine-image': 'xai/grok-imagine-image',
-  'grok-imagine-image-edit': 'xai/grok-imagine-image/edit',
-  'recraft-v3': 'fal-ai/recraft-v3',
-  'recraft-v4': 'fal-ai/recraft/v4/text-to-image',
-  'seedream-5': 'fal-ai/bytedance/seedream/v5/lite/text-to-image',
-  'ideogram-v3': 'fal-ai/ideogram/v3',
-  'physic-edit': 'fal-ai/physic-edit',
-  'firered-edit': 'fal-ai/firered-image-edit-v1.1',
-  'sd-3.5': 'fal-ai/stable-diffusion-v35-large',
 } as const;
 
 // Aspect ratio mapping for NanoBanana Pro (uses string ratios)
@@ -547,6 +498,28 @@ export const MODEL_CAPABILITIES: Record<ImageModelType, ModelCapabilities> = {
     aspectRatios: ['auto', '1:1', '4:3', '3:4', '16:9', '9:16', '3:2', '2:3', '21:9', '5:4', '4:5'],
     resolutions: ['1K', '2K', '4K'],
     description: 'Automatically picks the best model for quality, speed, and cost.',
+  },
+  'gpt-image-2': {
+    label: 'GPT Image 2',
+    group: 'OpenAI',
+    maxImages: 4,
+    inputType: 'text-and-image',
+    supportsReferences: true,
+    maxReferences: 4,
+    aspectRatios: ['auto', '1:1', '4:3', '3:4', '16:9', '9:16', '3:2', '2:3'],
+    resolutions: ['1K', '2K', '4K'],
+    description: 'OpenAI image generation and editing through the direct OpenAI Images API.',
+  },
+  'gemini-3.1-flash-image-preview': {
+    label: 'Gemini 3.1 Flash Image Preview',
+    group: 'Google Gemini',
+    maxImages: 4,
+    inputType: 'text-and-image',
+    supportsReferences: true,
+    maxReferences: 14,
+    aspectRatios: ['auto', '1:1', '4:3', '3:4', '16:9', '9:16', '3:2', '2:3', '21:9', '5:4', '4:5'],
+    resolutions: ['1K', '2K', '4K'],
+    description: 'Google Gemini direct image generation and editing with multi-reference support.',
   },
   'flux-schnell': {
     label: 'Flux Schnell',
@@ -809,9 +782,9 @@ export type VideoModelType =
   | 'runway-gen3';
 
 // Auto model constants — resolved at runtime
-export const AUTO_IMAGE_MODEL: ImageModelType = 'nanobanana-2';
-export const AUTO_VIDEO_TEXT_MODEL: VideoModelType = 'kling-3.0-t2v';
-export const AUTO_VIDEO_IMAGE_MODEL: VideoModelType = 'kling-3.0-i2v';
+export const AUTO_IMAGE_MODEL: ImageModelType = 'gemini-3.1-flash-image-preview';
+export const AUTO_VIDEO_TEXT_MODEL: VideoModelType = 'veo-3';
+export const AUTO_VIDEO_IMAGE_MODEL: VideoModelType = 'veo-3.1-fast-i2v';
 export const AUTO_VIDEO_MODEL: VideoModelType = AUTO_VIDEO_TEXT_MODEL;
 
 export interface VideoModelResolutionContext {
@@ -821,19 +794,9 @@ export interface VideoModelResolutionContext {
   referenceUrls?: string[];
 }
 
-export const TEMPORARILY_UNAVAILABLE_VIDEO_MODELS: VideoModelType[] = [
-  'seedance-2.0-t2v',
-  'seedance-2.0-i2v',
-  'seedance-2.0-fast-t2v',
-  'seedance-2.0-fast-i2v',
-];
+export const TEMPORARILY_UNAVAILABLE_VIDEO_MODELS: VideoModelType[] = [];
 
-export const TEMPORARILY_UNAVAILABLE_VIDEO_MODEL_FALLBACKS: Partial<Record<VideoModelType, VideoModelType>> = {
-  'seedance-2.0-t2v': 'kling-3.0-pro-t2v',
-  'seedance-2.0-i2v': 'kling-3.0-pro-i2v',
-  'seedance-2.0-fast-t2v': 'kling-3.0-t2v',
-  'seedance-2.0-fast-i2v': 'kling-3.0-i2v',
-};
+export const TEMPORARILY_UNAVAILABLE_VIDEO_MODEL_FALLBACKS: Partial<Record<VideoModelType, VideoModelType>> = {};
 
 function hasVideoImageContext(context?: VideoModelResolutionContext): boolean {
   return !!(
@@ -1019,7 +982,7 @@ export interface VideoGeneratorNodeData extends Record<string, unknown> {
   isGenerating?: boolean;
   progress?: number; // 0-100
   error?: string;
-  // xskill async polling (Seedance 2.0 models)
+  // Async provider polling (Seedance 2.0 direct BytePlus tasks)
   xskillTaskId?: string; // Active task being polled
   xskillTaskModel?: string; // Model label for saving
   xskillStatus?: 'pending' | 'processing'; // Current poll status for UI display
@@ -1066,53 +1029,16 @@ export const ENABLED_VIDEO_MODELS: VideoModelType[] = [
   'veo-3.1-ref',
   'veo-3.1-flf',
   'veo-3.1-fast-flf',
-  'vidu-q3-t2v',
-  'vidu-q3-i2v',
-  'vidu-q3-t2v-turbo',
-  'vidu-q3-i2v-turbo',
-  'sora-2-t2v',
-  'sora-2-i2v',
-  'sora-2-pro-i2v',
-  'sora-2-remix-v2v',
-  'grok-imagine-t2v',
-  'grok-imagine-i2v',
-  'grok-imagine-edit-v2v',
   'ltx-2.3-i2v',
   'ltx-2.3-fast-t2v',
   'ltx-2.3-fast-i2v',
   'ltx-2.3-retake-v2v',
   'ltx-2.3-a2v',
   'ltx-2.3-extend',
-  'ltx-2-19b-t2v',
-  'ltx-2-19b-i2v',
-  'ltx-2-19b-v2v',
-  'ltx-2-19b-extend',
-  'ltx-2-19b-a2v',
-  'veed-fabric-1.0',
-  'heygen-avatar4-i2v',
-  'kling-2.6-t2v',
-  'kling-2.6-i2v',
-  'kling-o3-t2v',
-  'kling-o3-i2v',
-  'kling-o3-pro-i2v',
-  'kling-3.0-t2v',
-  'kling-3.0-i2v',
-  'kling-3.0-pro-t2v',
-  'kling-3.0-pro-i2v',
-  'kling-3.0-mc',
-  'kling-3.0-pro-mc',
-  'seedance-1.5-t2v',
-  'seedance-1.5-i2v',
-  'seedance-1.0-pro-t2v',
-  'seedance-1.0-pro-i2v',
-  'wan-2.6-t2v',
-  'wan-2.6-i2v',
-  'hailuo-02-t2v',
-  'hailuo-02-i2v',
-  'hailuo-2.3-t2v',
-  'hailuo-2.3-i2v',
-  'luma-ray2',
-  'minimax-video',
+  'seedance-2.0-t2v',
+  'seedance-2.0-i2v',
+  'seedance-2.0-fast-t2v',
+  'seedance-2.0-fast-i2v',
 ];
 
 export const VIDEO_MODEL_CAPABILITIES: Record<VideoModelType, VideoModelCapabilities> = {
@@ -1125,7 +1051,7 @@ export const VIDEO_MODEL_CAPABILITIES: Record<VideoModelType, VideoModelCapabili
     defaultDuration: 5,
     aspectRatios: ['16:9', '9:16', '1:1'],
     supportsAudio: true,
-    description: 'Automatically picks Kling 3.0 Text-to-Video or Kling 3.0 Image-to-Video based on your inputs.',
+    description: 'Automatically picks Veo text-to-video or Veo image-to-video based on your inputs.',
   },
   'veo-3': {
     label: 'Veo 3',
@@ -1716,6 +1642,7 @@ export const VIDEO_MODEL_CAPABILITIES: Record<VideoModelType, VideoModelCapabili
     durations: [4, 5, 6, 7, 8, 9, 10, 11, 12, 15],
     defaultDuration: 5,
     aspectRatios: ['16:9', '9:16', '1:1'],
+    resolutions: ['720p', '480p', '1080p'],
     supportsAudio: true,
     promptTools: ['improve', 'translate'],
     description: 'Seedance 2.0 multimodal text-to-video with director-level control and audio-video sync.',
@@ -1728,6 +1655,7 @@ export const VIDEO_MODEL_CAPABILITIES: Record<VideoModelType, VideoModelCapabili
     durations: [4, 5, 6, 7, 8, 9, 10, 11, 12, 15],
     defaultDuration: 5,
     aspectRatios: ['16:9', '9:16', '1:1'],
+    resolutions: ['720p', '480p', '1080p'],
     supportsAudio: true,
     maxReferences: 3,
     supportsVideoRef: true,
@@ -1743,6 +1671,7 @@ export const VIDEO_MODEL_CAPABILITIES: Record<VideoModelType, VideoModelCapabili
     durations: [4, 5, 6, 7, 8, 9, 10, 11, 12, 15],
     defaultDuration: 5,
     aspectRatios: ['16:9', '9:16', '1:1'],
+    resolutions: ['720p', '480p'],
     supportsAudio: true,
     promptTools: ['improve', 'translate'],
     description: 'Faster Seedance 2.0 text-to-video variant for lower latency multimodal workflows.',
@@ -1755,6 +1684,7 @@ export const VIDEO_MODEL_CAPABILITIES: Record<VideoModelType, VideoModelCapabili
     durations: [4, 5, 6, 7, 8, 9, 10, 11, 12, 15],
     defaultDuration: 5,
     aspectRatios: ['16:9', '9:16', '1:1'],
+    resolutions: ['720p', '480p'],
     supportsAudio: true,
     maxReferences: 3,
     supportsVideoRef: true,
@@ -1906,138 +1836,6 @@ export function normalizeVideoModelOptions(
     resolution,
   };
 }
-
-// Video model API provider
-export type VideoModelProvider = 'fal' | 'xskill';
-
-/** Which API provider each model uses */
-export const VIDEO_MODEL_PROVIDERS: Record<VideoModelType, VideoModelProvider> = {
-  'auto': 'fal', // resolved at runtime
-  'veo-3': 'fal',
-  'veo-3.1-i2v': 'fal',
-  'veo-3.1-fast-i2v': 'fal',
-  'veo-3.1-ref': 'fal',
-  'veo-3.1-flf': 'fal',
-  'veo-3.1-fast-flf': 'fal',
-  'vidu-q3-t2v': 'fal',
-  'vidu-q3-i2v': 'fal',
-  'vidu-q3-t2v-turbo': 'fal',
-  'vidu-q3-i2v-turbo': 'fal',
-  'sora-2-t2v': 'fal',
-  'sora-2-i2v': 'fal',
-  'sora-2-pro-i2v': 'fal',
-  'sora-2-remix-v2v': 'fal',
-  'grok-imagine-t2v': 'fal',
-  'grok-imagine-i2v': 'fal',
-  'grok-imagine-edit-v2v': 'fal',
-  'ltx-2.3-i2v': 'fal',
-  'ltx-2.3-fast-t2v': 'fal',
-  'ltx-2.3-fast-i2v': 'fal',
-  'ltx-2.3-retake-v2v': 'fal',
-  'ltx-2.3-a2v': 'fal',
-  'ltx-2.3-extend': 'fal',
-  'ltx-2-19b-t2v': 'fal',
-  'ltx-2-19b-i2v': 'fal',
-  'ltx-2-19b-v2v': 'fal',
-  'ltx-2-19b-extend': 'fal',
-  'ltx-2-19b-a2v': 'fal',
-  'veed-fabric-1.0': 'fal',
-  'heygen-avatar4-i2v': 'fal',
-  'kling-2.6-t2v': 'fal',
-  'kling-2.6-i2v': 'fal',
-  'kling-o3-t2v': 'fal',
-  'kling-o3-i2v': 'fal',
-  'kling-o3-pro-i2v': 'fal',
-  'kling-3.0-t2v': 'fal',
-  'kling-3.0-i2v': 'fal',
-  'kling-3.0-pro-t2v': 'fal',
-  'kling-3.0-pro-i2v': 'fal',
-  'kling-3.0-mc': 'fal',
-  'kling-3.0-pro-mc': 'fal',
-  'seedance-1.5-t2v': 'fal',
-  'seedance-1.5-i2v': 'fal',
-  'seedance-1.0-pro-t2v': 'fal',
-  'seedance-1.0-pro-i2v': 'fal',
-  'seedance-2.0-t2v': 'xskill',
-  'seedance-2.0-i2v': 'xskill',
-  'seedance-2.0-fast-t2v': 'xskill',
-  'seedance-2.0-fast-i2v': 'xskill',
-  'luma-ray2': 'fal',
-  'wan-2.6-t2v': 'fal',
-  'wan-2.6-i2v': 'fal',
-  'hailuo-02-t2v': 'fal',
-  'hailuo-02-i2v': 'fal',
-  'hailuo-2.3-t2v': 'fal',
-  'hailuo-2.3-i2v': 'fal',
-  'minimax-video': 'fal',
-  'runway-gen3': 'fal',
-} as const;
-
-// Fal model IDs for video (only for provider === 'fal')
-export const FAL_VIDEO_MODELS: Partial<Record<VideoModelType, string>> = {
-  'veo-3': 'fal-ai/veo3',
-  'veo-3.1-i2v': 'fal-ai/veo3.1/image-to-video',
-  'veo-3.1-fast-i2v': 'fal-ai/veo3.1/fast/image-to-video',
-  'veo-3.1-ref': 'fal-ai/veo3.1/reference-to-video',
-  'veo-3.1-flf': 'fal-ai/veo3.1/first-last-frame-to-video',
-  'veo-3.1-fast-flf': 'fal-ai/veo3.1/fast/first-last-frame-to-video',
-  'vidu-q3-t2v': 'fal-ai/vidu/q3/text-to-video',
-  'vidu-q3-i2v': 'fal-ai/vidu/q3/image-to-video',
-  'vidu-q3-t2v-turbo': 'fal-ai/vidu/q3/text-to-video/turbo',
-  'vidu-q3-i2v-turbo': 'fal-ai/vidu/q3/image-to-video/turbo',
-  'sora-2-t2v': 'fal-ai/sora-2/text-to-video',
-  'sora-2-i2v': 'fal-ai/sora-2/image-to-video',
-  'sora-2-pro-i2v': 'fal-ai/sora-2/image-to-video/pro',
-  'sora-2-remix-v2v': 'fal-ai/sora-2/video-to-video/remix',
-  'grok-imagine-t2v': 'xai/grok-imagine-video/text-to-video',
-  'grok-imagine-i2v': 'xai/grok-imagine-video/image-to-video',
-  'grok-imagine-edit-v2v': 'xai/grok-imagine-video/edit-video',
-  'ltx-2.3-i2v': 'fal-ai/ltx-2.3/image-to-video',
-  'ltx-2.3-fast-t2v': 'fal-ai/ltx-2.3/text-to-video/fast',
-  'ltx-2.3-fast-i2v': 'fal-ai/ltx-2.3/image-to-video/fast',
-  'ltx-2.3-retake-v2v': 'fal-ai/ltx-2.3/retake-video',
-  'ltx-2.3-a2v': 'fal-ai/ltx-2.3/audio-to-video',
-  'ltx-2.3-extend': 'fal-ai/ltx-2.3/extend-video',
-  'ltx-2-19b-t2v': 'fal-ai/ltx-2-19b/text-to-video',
-  'ltx-2-19b-i2v': 'fal-ai/ltx-2-19b/image-to-video',
-  'ltx-2-19b-v2v': 'fal-ai/ltx-2-19b/video-to-video',
-  'ltx-2-19b-extend': 'fal-ai/ltx-2-19b/extend-video',
-  'ltx-2-19b-a2v': 'fal-ai/ltx-2-19b/audio-to-video',
-  'veed-fabric-1.0': 'veed/fabric-1.0',
-  'heygen-avatar4-i2v': 'fal-ai/heygen/avatar4/image-to-video',
-  'kling-2.6-t2v': 'fal-ai/kling-video/v2.6/pro/text-to-video',
-  'kling-2.6-i2v': 'fal-ai/kling-video/v2.6/pro/image-to-video',
-  'kling-o3-t2v': 'fal-ai/kling-video/o3/pro/text-to-video',
-  'kling-o3-i2v': 'fal-ai/kling-video/o3/standard/image-to-video',
-  'kling-o3-pro-i2v': 'fal-ai/kling-video/o3/pro/image-to-video',
-  'kling-3.0-t2v': 'fal-ai/kling-video/v3/standard/text-to-video',
-  'kling-3.0-i2v': 'fal-ai/kling-video/v3/standard/image-to-video',
-  'kling-3.0-pro-t2v': 'fal-ai/kling-video/v3/pro/text-to-video',
-  'kling-3.0-pro-i2v': 'fal-ai/kling-video/v3/pro/image-to-video',
-  'kling-3.0-mc': 'fal-ai/kling-video/v3/standard/motion-control',
-  'kling-3.0-pro-mc': 'fal-ai/kling-video/v3/pro/motion-control',
-  'seedance-1.5-t2v': 'fal-ai/bytedance/seedance/v1.5/pro/text-to-video',
-  'seedance-1.5-i2v': 'fal-ai/bytedance/seedance/v1.5/pro/image-to-video',
-  'seedance-1.0-pro-t2v': 'fal-ai/bytedance/seedance/v1/pro/text-to-video',
-  'seedance-1.0-pro-i2v': 'fal-ai/bytedance/seedance/v1/pro/image-to-video',
-  'luma-ray2': 'fal-ai/luma-dream-machine',
-  'wan-2.6-t2v': 'fal-ai/wan/v2.6/text-to-video',
-  'wan-2.6-i2v': 'fal-ai/wan/v2.6/image-to-video',
-  'hailuo-02-t2v': 'fal-ai/minimax/hailuo-02/pro/text-to-video',
-  'hailuo-02-i2v': 'fal-ai/minimax/hailuo-02/pro/image-to-video',
-  'hailuo-2.3-t2v': 'fal-ai/minimax/hailuo-2.3-fast/pro/text-to-video',
-  'hailuo-2.3-i2v': 'fal-ai/minimax/hailuo-2.3-fast/pro/image-to-video',
-  'minimax-video': 'fal-ai/minimax-video/image-to-video',
-  'runway-gen3': 'fal-ai/runway-gen3/turbo/image-to-video',
-} as const;
-
-// xskill.ai outer model IDs (only for provider === 'xskill')
-export const XSKILL_VIDEO_MODELS: Partial<Record<VideoModelType, string>> = {
-  'seedance-2.0-t2v': 'st-ai/super-seed2',
-  'seedance-2.0-i2v': 'st-ai/super-seed2',
-  'seedance-2.0-fast-t2v': 'st-ai/super-seed2',
-  'seedance-2.0-fast-i2v': 'st-ai/super-seed2',
-} as const;
 
 // ============================================
 // STORYBOARD NODE TYPES

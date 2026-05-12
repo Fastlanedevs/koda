@@ -13,6 +13,8 @@ import { pluginRegistry } from '@/lib/plugins/registry';
 import { evaluatePluginLaunchPolicy, emitPluginPolicyAuditEvent } from '@/lib/plugins/launch-policy';
 import type { AgentPlugin } from '@/lib/plugins/types';
 
+const HIDDEN_FAL_PLUGIN_IDS = new Set(['glyph']);
+
 interface PluginLauncherProps {
   onLaunch: (pluginId: string) => void;
   isOpen: boolean;
@@ -62,7 +64,10 @@ export function PluginLauncher({
   const [position, setPosition] = React.useState({ top: -9999, left: -9999 });
 
   const plugins = React.useMemo(
-    () => pluginRegistry.getAll().map((plugin) => ({ plugin, decision: evaluatePluginLaunchPolicy(plugin) })),
+    () => pluginRegistry
+      .getAll()
+      .filter((plugin) => !HIDDEN_FAL_PLUGIN_IDS.has(plugin.id))
+      .map((plugin) => ({ plugin, decision: evaluatePluginLaunchPolicy(plugin) })),
     []
   );
 

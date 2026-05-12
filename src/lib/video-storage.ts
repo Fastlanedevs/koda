@@ -52,3 +52,28 @@ export async function saveGeneratedVideo(
     return url;
   }
 }
+
+/**
+ * Save a generated video buffer to configured asset storage.
+ * Used by direct providers that return binary MP4 data.
+ */
+export async function saveGeneratedVideoBuffer(
+  buffer: Buffer,
+  options: { prompt: string; model: string; canvasId?: string; nodeId?: string; mimeType?: string; extension?: string }
+): Promise<string> {
+  const provider = await getProvider();
+  const extension = options.extension || 'mp4';
+  const asset = await provider.saveFromBuffer(buffer, {
+    type: 'video',
+    extension,
+    metadata: {
+      mimeType: options.mimeType || `video/${extension}`,
+      prompt: options.prompt,
+      model: options.model,
+      canvasId: options.canvasId,
+      nodeId: options.nodeId,
+    },
+  });
+
+  return asset.url;
+}

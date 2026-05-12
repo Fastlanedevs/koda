@@ -29,7 +29,7 @@ import {
   type VideoResolution,
 } from '@/lib/types';
 import { useSettingsStore } from '@/stores/settings-store';
-import { getApiErrorMessage, normalizeApiErrorMessage } from '@/lib/client/api-error';
+import { getApiErrorMessage, normalizeApiErrorMessage, summarizeErrorMessage } from '@/lib/client/api-error';
 import { startVideoCompare } from '@/lib/compare/controller';
 import { promoteVideoCompareResult } from '@/lib/compare/run';
 import { buildInitialCompareSelection, pruneCompareSelection } from '@/lib/compare/utils';
@@ -60,7 +60,9 @@ import {
   RefreshCw,
   Music,
   ChevronRight,
+  AlertCircle,
 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 /** Small elapsed-time display that ticks every second */
 function ElapsedTimer({ startedAt }: { startedAt: number }) {
@@ -77,9 +79,9 @@ function ElapsedTimer({ startedAt }: { startedAt: number }) {
   const secs = elapsed % 60;
 
   return (
-    <p className="text-muted-foreground text-xs tabular-nums">
+    <span className="text-muted-foreground text-xs tabular-nums">
       {mins}:{secs.toString().padStart(2, '0')} elapsed
-    </p>
+    </span>
   );
 }
 
@@ -222,7 +224,7 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
     }
   }, [data.compareResults, data.outputUrl]);
 
-  // Poll xskill task status
+  // Poll async video task status
   const pollXskillTask = useCallback((taskId: string, taskModel: string) => {
     // Clear any existing poll
     if (pollIntervalRef.current) {
@@ -305,7 +307,7 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
               generateAudio: data.generateAudio,
             },
           });
-          toast.error(`Generation failed: ${result.error || 'Unknown error'}`);
+          toast.error(`Generation failed: ${summarizeErrorMessage(result.error, 'Unknown error')}`);
         }
         // pending/processing — update status for UI
         if (result.status === 'pending' || result.status === 'processing') {
@@ -318,7 +320,7 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
     }, 5000);
   }, [id, data, resolvedModel, updateNodeData, getConnectedInputs, addToHistory]);
 
-  // Resume/start polling whenever an async xskill task is active.
+  // Resume/start polling whenever an async video task is active.
   useEffect(() => {
     if (data.xskillTaskId && data.xskillTaskModel && data.isGenerating) {
       pollXskillTask(data.xskillTaskId, data.xskillTaskModel);
@@ -504,7 +506,7 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
       const result = await response.json();
 
       if (result.async && result.taskId) {
-        // xskill async path — store taskId and start client-side polling
+        // Async provider path — store taskId and start client-side polling
         updateNodeData(id, {
           xskillTaskId: result.taskId,
           xskillTaskModel: result.model,
@@ -546,7 +548,7 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
         isGenerating: false,
         progress: 0,
       });
-      toast.error(`Generation failed: ${errorMessage}`);
+      toast.error(`Generation failed: ${summarizeErrorMessage(errorMessage, 'Video generation failed')}`);
       addToHistory({
         type: 'video',
         mode: 'single',
@@ -608,7 +610,7 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
     } catch (error) {
       const errorMessage = normalizeApiErrorMessage(error, 'Compare failed');
       updateNodeData(id, { error: errorMessage, compareRunStatus: 'failed' }, true);
-      toast.error(`Compare failed: ${errorMessage}`);
+      toast.error(`Compare failed: ${summarizeErrorMessage(errorMessage, 'Compare failed')}`);
     }
   }, [id, data, connectedInputs, compatibleCompareModels, resolvedModel, updateNodeData, openSettingsFromElement, addToHistory, updateHistoryItem]);
 
@@ -1025,9 +1027,29 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
     </>
   );
 
+  const errorBadge = data.error ? (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          aria-label="Show last error"
+          onClick={(event) => {
+            event.stopPropagation();
+            toast.error(summarizeErrorMessage(data.error, 'Generation failed'));
+          }}
+          className="node-interactive flex h-6 w-6 items-center justify-center rounded-full border border-red-500/30 bg-red-500/10 text-red-400 transition-colors hover:bg-red-500/20"
+        >
+          <AlertCircle className="h-3.5 w-3.5" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" className="max-w-[320px] whitespace-pre-wrap break-words bg-red-600 text-white">
+        {data.error}
+      </TooltipContent>
+    </Tooltip>
+  ) : null;
+
   const secondaryContent = (
     <>
-      {data.error ? <p className="px-1 text-xs text-red-400">{data.error}</p> : null}
       {hasCompareResults && chromeState.showSecondaryContent ? (
         <CompareResultsSection
           type="video"
@@ -1076,6 +1098,7 @@ function VideoGeneratorNodeComponent({ id, data, selected }: NodeProps<VideoGene
             <Video className="h-4 w-4" />
           </div>
         }
+        titleTrailing={errorBadge}
         selected={selected}
         hovered={isHovered}
         displayMode={displayMode}

@@ -41,10 +41,11 @@ export interface GenerationHistoryItem {
 
 // API Keys (stored encrypted in production)
 export interface ApiKeys {
-  falAi: string;
   anthropic: string;
   openAi: string;
- 
+  gemini: string;
+  ltx: string;
+  byteplus: string;
 }
 
 // Default generation settings
@@ -109,9 +110,11 @@ interface SettingsState {
 }
 
 const defaultApiKeys: ApiKeys = {
-  falAi: '',
   anthropic: '',
   openAi: '',
+  gemini: '',
+  ltx: '',
+  byteplus: '',
 };
 
 const LEGACY_DEFAULT_ENABLED_IMAGE: ImageModelType[] = [
