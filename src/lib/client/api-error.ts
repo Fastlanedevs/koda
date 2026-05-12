@@ -83,3 +83,35 @@ export function normalizeApiErrorMessage(error: unknown, fallback: string): stri
     ? 'You are out of credits. Please upgrade your plan to continue generating.'
     : message;
 }
+
+/**
+ * Produce a short, user-facing summary of a (possibly verbose) error message.
+ * Strips embedded JSON payloads and known privacy/safety codes so toasts don't
+ * dump raw API output. The full message is still preserved for tooltips.
+ */
+export function summarizeErrorMessage(message: string | null | undefined, fallback = 'Something went wrong'): string {
+  if (!message || typeof message !== 'string') return fallback;
+  const trimmed = message.trim();
+  if (!trimmed) return fallback;
+
+  const jsonStart = trimmed.indexOf('{');
+  if (jsonStart !== -1) {
+    const tail = trimmed.slice(jsonStart);
+    try {
+      const parsed = JSON.parse(tail);
+      const inner = parsed?.error?.message ?? parsed?.message ?? parsed?.error;
+      if (typeof inner === 'string' && inner.trim()) {
+        return inner.trim();
+      }
+      const code = parsed?.error?.code;
+      if (typeof code === 'string' && /Sensitive|Privacy|Moderation/i.test(code)) {
+        return 'Input was rejected by the safety filter. Try a different prompt or image.';
+      }
+    } catch {
+      // fall through to plain truncation
+    }
+  }
+
+  const firstLine = trimmed.split('\n')[0];
+  return firstLine.length > 160 ? `${firstLine.slice(0, 157)}…` : firstLine;
+}

@@ -121,8 +121,8 @@ Koda is a canvas-based creative studio where AI nodes connect into workflows. In
 ┌───────────────────────┴─────────────────────────────┐
 │                  Next.js Server                     │
 │                                                     │
-│  /api/generate          → Fal.ai (images)           │
-│  /api/generate-video    → Fal.ai (videos)           │
+│  /api/generate          → OpenAI / Gemini images    │
+│  /api/generate-video    → Gemini / LTX / Seedance   │
 │  /api/agents/*          → Mastra AI agents          │
 │  /api/plugins/animation → Animation streaming       │
 │                                                     │
@@ -175,11 +175,12 @@ Open `.env` and add your API keys:
 ```env
 # Required — pick at least one
 ANTHROPIC_API_KEY=sk-ant-...       # For Mastra agents (fallback)
-FAL_KEY=...                        # For image/video generation
+OPENAI_API_KEY=sk-...              # For GPT Image 2
+GOOGLE_GENERATIVE_AI_API_KEY=...   # For Gemini image + Veo video
+LTX_API_KEY=...                    # For LTX 2.3 video
+BYTEPLUS_ARK_API_KEY=...           # For Seedance 2.0 video
 
-# Recommended — primary AI model
-GOOGLE_GENERATIVE_AI_API_KEY=...   # For Gemini (animation agents)
-# OR
+# Optional
 OPENROUTER_API_KEY=...             # Alternative: access Gemini via OpenRouter
 ```
 
@@ -224,15 +225,18 @@ Koda supports **mix-and-match deployment** — use local storage with cloud sand
 | `DEV_AUTH_BYPASS` | Dev-only | `false` | Local auth bypass switch (only active when `NODE_ENV=development`) |
 | `DEV_AUTH_BYPASS_TOKEN` | Optional | — | Optional token required in header `x-dev-auth-bypass-token` for protected API calls when bypass is on |
 | `ANTHROPIC_API_KEY` | Yes* | — | Anthropic API key (agent fallback) |
-| `FAL_KEY` | Yes* | — | Fal.ai key (image/video generation) |
+| `OPENAI_API_KEY` | Yes* | — | OpenAI image generation key |
 | `GOOGLE_GENERATIVE_AI_API_KEY` | Recommended | — | Google AI key (Gemini models) |
+| `LTX_API_KEY` | Optional | — | LTX 2.3 direct video API key |
+| `BYTEPLUS_ARK_API_KEY` | Optional | — | BytePlus Ark key for Seedance 2.0 video |
+| `FAL_KEY` | Optional | — | Legacy hidden audio/glyph endpoints; not shown in the canvas creation UI |
 | `OPENROUTER_API_KEY` | Alt | — | OpenRouter key (multi-model access) |
 | `NEXT_PUBLIC_STORAGE_BACKEND` | No | `sqlite` | `sqlite` or `turso` |
 | `ASSET_STORAGE` | No | `local` | `local`, `r2`, or `s3` |
 | `SANDBOX_PROVIDER` | No | `docker` | `docker` or `e2b` |
 | `SNAPSHOT_STORAGE` | No | `local` | `local` or `r2` |
 
-*At minimum you need one AI provider key and `FAL_KEY` for image/video gen.
+*At minimum you need the provider key for the image/video models you enable.
 
 ⚠️ **Dev bypass safety:** `DEV_AUTH_BYPASS` is fail-closed outside development. In production/hosted (`NODE_ENV` not `development`) the bypass is ignored and normal Clerk auth remains required.
 
@@ -354,7 +358,6 @@ See [`docs/PLUGIN_ARCHITECTURE.md`](docs/PLUGIN_ARCHITECTURE.md) for the full pl
 | **Sticky Note** | Canvas annotations | User text | — |
 | **Group** | Organize nodes | Drag to group | — |
 | **Rich Text** | Formatted text editing | User input | — |
-| **Music Generator** | AI music | Text prompt | Audio file |
 
 ---
 
@@ -440,7 +443,7 @@ docs/                             # 12 detailed documentation files
 | **UI** | [Tailwind CSS 4](https://tailwindcss.com) + [shadcn/ui](https://ui.shadcn.com) |
 | **AI Agents** | [Mastra 1.2](https://mastra.ai) + [Vercel AI SDK 6](https://sdk.vercel.ai) |
 | **AI Models** | [Google Gemini 3](https://ai.google.dev) (primary), Claude (fallback) |
-| **Image/Video** | [Fal.ai](https://fal.ai) (Flux, Veo, Kling, Luma, Runway, etc.) |
+| **Image/Video** | Direct [OpenAI](https://platform.openai.com), [Google Gemini/Veo](https://ai.google.dev), LTX, and BytePlus Seedance APIs |
 | **Animation** | [Remotion](https://remotion.dev) (2D) + [Theatre.js](https://theatrejs.com) (3D) |
 | **Sandboxes** | Docker (local) or [E2B](https://e2b.dev) (cloud) |
 | **Database** | SQLite / [Turso](https://turso.tech) via [Drizzle ORM](https://orm.drizzle.team) |
@@ -563,6 +566,6 @@ MIT
 
 <div align="center">
 
-Built with [Next.js](https://nextjs.org), [React Flow](https://reactflow.dev), [Mastra](https://mastra.ai), [Google Gemini](https://ai.google.dev), and [Fal.ai](https://fal.ai)
+Built with [Next.js](https://nextjs.org), [React Flow](https://reactflow.dev), [Mastra](https://mastra.ai), [Google Gemini](https://ai.google.dev), and direct image/video provider APIs
 
 </div>

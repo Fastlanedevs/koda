@@ -1,6 +1,8 @@
 import { getCreditCost } from '../credits/costs';
 import {
   MAX_COMPARE_MODELS,
+  ENABLED_IMAGE_MODELS,
+  ENABLED_VIDEO_MODELS,
   MODEL_CAPABILITIES,
   VIDEO_MODEL_CAPABILITIES,
   type ImageModelType,
@@ -28,7 +30,7 @@ export function normalizeImageCompareModels(rawModels: string[]): ImageModelType
   }
 
   const normalized = models.map((model) => {
-    if (model === 'auto' || !(model in MODEL_CAPABILITIES)) {
+    if (model === 'auto' || !(model in MODEL_CAPABILITIES) || !ENABLED_IMAGE_MODELS.includes(model as ImageModelType)) {
       throw new Error(`Unsupported image compare model: ${model}`);
     }
     return model as ImageModelType;
@@ -44,7 +46,7 @@ export function normalizeVideoCompareModels(rawModels: string[]): VideoModelType
   }
 
   const normalized = models.map((model) => {
-    if (model === 'auto' || !(model in VIDEO_MODEL_CAPABILITIES)) {
+    if (model === 'auto' || !(model in VIDEO_MODEL_CAPABILITIES) || !ENABLED_VIDEO_MODELS.includes(model as VideoModelType)) {
       throw new Error(`Unsupported video compare model: ${model}`);
     }
     return model as VideoModelType;

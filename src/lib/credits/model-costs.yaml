@@ -1,8 +1,7 @@
 # Koda Model Cost Configuration
-# fal_cost: actual fal.ai API cost per generation (USD)
-# credits: what we charge (auto-calculated: ceil(fal_cost * 30), i.e. 3x markup)
-# For per-second models, fal_cost is for base duration (5s). Scales linearly with duration.
-# Seedance 2.0 uses xskill (currently free) — assigned nominal credits until moved to fal.
+# fal_cost fields are legacy names for provider cost per generation (USD).
+# credits: what we charge (auto-calculated: ceil(provider cost * 30), i.e. 3x markup)
+# For per-second models, cost is for base duration (5s). Scales linearly with duration.
 
 markup_multiplier: 30  # ceil(fal_cost * this) = credits
 
@@ -17,6 +16,12 @@ plans:
     credits_per_month: 800
 
 image:
+  gpt-image-2:
+    fal_cost: 0.08
+    credits: 3
+  gemini-3.1-flash-image-preview:
+    fal_cost: 0.08
+    credits: 3
   flux-schnell:
     fal_cost: 0.003
     credits: 1
@@ -169,6 +174,18 @@ video:
     fal_cost_per_sec: 0.04
     base_duration: 5
     credits: 6
+  ltx-2.3-retake-v2v:
+    fal_cost_per_sec: 0.06
+    base_duration: 5
+    credits: 9
+  ltx-2.3-a2v:
+    fal_cost_per_sec: 0.06
+    base_duration: 5
+    credits: 9
+  ltx-2.3-extend:
+    fal_cost_per_sec: 0.06
+    base_duration: 5
+    credits: 9
   # LTX 2 19B family (frame-based pricing approximated to per-second at default fps/size)
   ltx-2-19b-t2v:
     fal_cost_per_sec: 0.042
@@ -267,7 +284,7 @@ video:
   seedance-1.0-pro-i2v:
     fal_cost_per_video: 0.62
     credits: 19
-  # Seedance 2.0 via xskill (currently free API) — nominal cost until moved to fal
+  # Seedance 2.0 direct BytePlus task API — nominal cost until final account pricing is set
   seedance-2.0-t2v:
     fal_cost_per_video: 0.00
     credits: 5
