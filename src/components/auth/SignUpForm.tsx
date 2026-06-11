@@ -16,6 +16,7 @@ import {
   InlineFeedbackArea,
 } from '@/components/auth/AuthShell';
 import { parseClerkError, type FieldErrors } from '@/components/auth/clerk-error';
+import { DISPOSABLE_EMAIL_BLOCK_MESSAGE, isBlockedDisposableEmail } from '@/lib/auth/email-domain-policy';
 
 const inputBaseClass =
   'h-11 border-border bg-background focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring-strong)] focus-visible:border-[var(--accent-primary)]';
@@ -56,6 +57,8 @@ export function SignUpForm() {
       nextErrors.email = 'Enter your email address.';
     } else if (!/^\S+@\S+\.\S+$/.test(email)) {
       nextErrors.email = 'Enter a valid email address.';
+    } else if (isBlockedDisposableEmail(email)) {
+      nextErrors.email = DISPOSABLE_EMAIL_BLOCK_MESSAGE;
     }
 
     if (!password) {

@@ -8,11 +8,12 @@ import {
   isServerDevBypassAllowed,
   warnDevAuthBypassEnabled,
 } from '@/lib/auth/dev-bypass';
+import { DISPOSABLE_EMAIL_BLOCK_MESSAGE, isBlockedDisposableEmail } from '@/lib/auth/email-domain-policy';
 import { getDatabaseAsync } from '@/lib/db';
 import { users, workspaceMembers, workspaces } from '@/lib/db/schema';
 import { emitLaunchMetric } from '@/lib/observability/launch-metrics';
 
-type ProvisioningFailureReason = 'missing_email' | 'clerk_lookup_failed' | 'db_upsert_failed';
+type ProvisioningFailureReason = 'missing_email' | 'blocked_email_domain' | 'clerk_lookup_failed' | 'db_upsert_failed';
 
 type ProvisionUserResult =
   | { ok: true }
@@ -118,6 +119,15 @@ async function provisionUserFromClerk(clerkUserId: string): Promise<ProvisionUse
       reason: 'missing_email',
       retryable: false,
       message: 'Clerk user has no resolvable primary email.',
+    };
+  }
+
+  if (isBlockedDisposableEmail(primaryEmail)) {
+    return {
+      ok: false,
+      reason: 'blocked_email_domain',
+      retryable: false,
+      message: DISPOSABLE_EMAIL_BLOCK_MESSAGE,
     };
   }
 
@@ -256,6 +266,21 @@ export async function requireActor() {
         },
         { status: 503, headers: { 'retry-after': '2' } }
       ),
+    };
+  }
+
+  if (!bypassClerkUserId && isBlockedDisposableEmail(user.email)) {
+    emitLaunchMetric({
+      metric: 'signup_completion',
+      status: 'error',
+      source: 'api',
+      errorCode: 'blocked_email_domain',
+      metadata: { clerkUserId: effectiveClerkUserId },
+    });
+
+    return {
+      ok: false as const,
+      response: NextResponse.json({ error: DISPOSABLE_EMAIL_BLOCK_MESSAGE }, { status: 403 }),
     };
   }
 
