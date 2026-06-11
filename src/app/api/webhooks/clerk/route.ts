@@ -7,6 +7,7 @@ import { Webhook } from 'svix';
 import { eq } from 'drizzle-orm';
 import { getDatabaseAsync } from '@/lib/db';
 import { users, creditBalances } from '@/lib/db/schema';
+import { isBlockedDisposableEmail } from '@/lib/auth/email-domain-policy';
 import { emitLaunchMetric } from '@/lib/observability/launch-metrics';
 import { getOrCreateBalance, resetMonthlyCredits } from '@/lib/db/credit-queries';
 import { getPlanCredits } from '@/lib/credits/costs';
@@ -70,6 +71,20 @@ async function handleUserEvent(evt: WebhookEvent): Promise<NextResponse> {
       metadata: { eventType: evt.type },
     });
     return NextResponse.json({ error: 'User payload missing email' }, { status: 400 });
+  }
+
+  if (isBlockedDisposableEmail(email)) {
+    await db.delete(users).where(eq(users.clerkUserId, evt.data.id));
+
+    emitLaunchMetric({
+      metric: 'signup_completion',
+      status: 'error',
+      source: 'webhook',
+      errorCode: 'blocked_email_domain',
+      metadata: { eventType: evt.type, userId: evt.data.id },
+    });
+
+    return NextResponse.json({ ok: true, action: 'blocked_email_domain' });
   }
 
   await db
