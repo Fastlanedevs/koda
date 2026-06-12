@@ -6,7 +6,6 @@
  */
 
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { animationAgent } from '@/mastra';
 import { getEngineInstructions } from '@/mastra/agents/instructions/animation';
 import { loadRecipes } from '@/mastra/recipes';
@@ -17,7 +16,8 @@ import { emitLaunchMetric } from '@/lib/observability/launch-metrics';
 import { evaluatePluginLaunchById, emitPluginPolicyAuditEvent } from '@/lib/plugins/launch-policy';
 import { requireActor } from '@/lib/auth/actor';
 import { getOrCreateBalance, deductCredits, refundCredits } from '@/lib/db/credit-queries';
-import { getCreditCost, PLAN_KEYS } from '@/lib/credits/costs';
+import { getCreditCost } from '@/lib/credits/costs';
+import { billingRequiredResponse, isBillingRequiredForGeneration, resolvePlanKey } from '@/lib/credits/server-balance';
 import { getAssetStorageType } from '@/lib/assets';
 import { signRequest, type S3Config } from '@/lib/assets/s3-signing';
 import {
@@ -258,16 +258,12 @@ export async function POST(request: Request) {
     if (!actorResult.ok) return actorResult.response;
     animUserId = actorResult.actor.user.id;
 
-    // Resolve plan
-    let animPlanKey = 'free_user';
-    const { has: hasPlan } = await auth();
-    if (hasPlan) {
-      for (const plan of PLAN_KEYS) {
-        if (plan === 'free_user') continue;
-        if (hasPlan({ plan })) { animPlanKey = plan; break; }
-      }
-    }
+    const animPlanKey = await resolvePlanKey();
     await getOrCreateBalance(animUserId!, animPlanKey);
+
+    if (isBillingRequiredForGeneration(animPlanKey)) {
+      return billingRequiredResponse();
+    }
 
     // Peek at engine + duration from body for per-second credit scaling
     let peekDuration: number | undefined;

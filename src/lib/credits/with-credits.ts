@@ -9,11 +9,11 @@
  */
 
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { requireActor } from '@/lib/auth/actor';
 import { isDevAuthBypassEnabled } from '@/lib/auth/dev-bypass';
 import { getOrCreateBalance, deductCredits, refundCredits } from '@/lib/db/credit-queries';
-import { getCreditCost, PLAN_KEYS, type GenerationType, type CreditCostParams } from './costs';
+import { getCreditCost, type GenerationType, type CreditCostParams } from './costs';
+import { billingRequiredResponse, isBillingRequiredForGeneration, resolvePlanKey } from './server-balance';
 
 export interface WithCreditsOptions {
   type: GenerationType;
@@ -28,21 +28,6 @@ type RouteHandler = (
   request: Request,
   context: { userId: string; planKey: string; creditCost: number }
 ) => Promise<Response>;
-
-/**
- * Resolve the user's active Clerk Billing plan key.
- * Checks plans in priority order (highest first).
- */
-async function resolvePlanKey(): Promise<string> {
-  const { has } = await auth();
-  if (!has) return 'free_user';
-
-  for (const plan of PLAN_KEYS) {
-    if (plan === 'free_user') continue;
-    if (has({ plan })) return plan;
-  }
-  return 'free_user';
-}
 
 /**
  * Wrap a generation route handler with authentication and credit checks.
@@ -86,6 +71,10 @@ export function withCredits(options: WithCreditsOptions, handler: RouteHandler) 
     // Dev bypass: skip credit deduction entirely in development
     if (isDevAuthBypassEnabled()) {
       return handler(request, { userId, planKey, creditCost: 0 });
+    }
+
+    if (isBillingRequiredForGeneration(planKey)) {
+      return billingRequiredResponse();
     }
 
     // 5. Atomic deduction

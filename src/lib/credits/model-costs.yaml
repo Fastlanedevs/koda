@@ -8,6 +8,8 @@ markup_multiplier: 30  # ceil(fal_cost * this) = credits
 plans:
   free_user:
     credits_per_month: 30
+  free_plan:
+    credits_per_month: 30
   basic_user:
     credits_per_month: 100
   pro_user:

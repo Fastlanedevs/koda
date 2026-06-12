@@ -31,7 +31,7 @@ function buildCreditMessage(payload: ApiErrorPayload): string {
 
 function isInsufficientCredits(response: Response, payload: ApiErrorPayload | null): boolean {
   const errorCode = asTrimmedString(payload?.error);
-  return response.status === 402 || errorCode === 'INSUFFICIENT_CREDITS';
+  return response.status === 402 || errorCode === 'INSUFFICIENT_CREDITS' || errorCode === 'BILLING_REQUIRED';
 }
 
 function maybeOpenBillingPrompt(payload: ApiErrorPayload | null): void {

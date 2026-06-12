@@ -10,14 +10,14 @@
 import { NextResponse } from 'next/server';
 import { fal } from '@fal-ai/client';
 import { z } from 'zod';
-import { auth } from '@clerk/nextjs/server';
 import { getAssetStorageType, type AssetStorageProvider } from '@/lib/assets';
 import { sanitizeSvg, SvgSanitizationError } from '@/lib/plugins/official/agents/svg-studio/schema';
 import { emitLaunchMetric } from '@/lib/observability/launch-metrics';
 import { evaluatePluginLaunchById, emitPluginPolicyAuditEvent } from '@/lib/plugins/launch-policy';
 import { requireActor } from '@/lib/auth/actor';
 import { getOrCreateBalance, deductCredits, refundCredits } from '@/lib/db/credit-queries';
-import { getCreditCost, PLAN_KEYS } from '@/lib/credits/costs';
+import { getCreditCost } from '@/lib/credits/costs';
+import { billingRequiredResponse, isBillingRequiredForGeneration, resolvePlanKey } from '@/lib/credits/server-balance';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -180,15 +180,12 @@ export async function POST(request: Request) {
     if (!actorResult.ok) return actorResult.response;
     userId = actorResult.actor.user.id;
 
-    let planKey = 'free_user';
-    const { has: hasPlan } = await auth();
-    if (hasPlan) {
-      for (const plan of PLAN_KEYS) {
-        if (plan === 'free_user') continue;
-        if (hasPlan({ plan })) { planKey = plan; break; }
-      }
-    }
+    const planKey = await resolvePlanKey();
     await getOrCreateBalance(userId!, planKey);
+
+    if (isBillingRequiredForGeneration(planKey)) {
+      return billingRequiredResponse();
+    }
 
     const body = await request.json();
     const parsed = GlyphRequestSchema.safeParse(body);

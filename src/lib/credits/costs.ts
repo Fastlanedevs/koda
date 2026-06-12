@@ -163,5 +163,5 @@ export function getInitialFreeCredits(): number {
 }
 
 /** All recognized plan keys in priority order (highest first) */
-export const PLAN_KEYS = ['pro_plus_user', 'pro_user', 'basic_user', 'free_user'] as const;
+export const PLAN_KEYS = ['pro_plus_user', 'pro_user', 'basic_user', 'free_plan', 'free_user'] as const;
 export type PlanKey = (typeof PLAN_KEYS)[number];

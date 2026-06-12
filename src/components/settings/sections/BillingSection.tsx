@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 
 const PLAN_BADGE_STYLES: Record<string, string> = {
   free_user: 'bg-zinc-700/60 text-zinc-300',
+  free_plan: 'bg-emerald-600/20 text-emerald-400',
   basic_user: 'bg-blue-600/20 text-blue-400',
   pro_user: 'bg-purple-600/20 text-purple-400',
   pro_plus_user: 'bg-amber-600/20 text-amber-400',
@@ -14,6 +15,7 @@ const PLAN_BADGE_STYLES: Record<string, string> = {
 
 const PLAN_LABELS: Record<string, string> = {
   free_user: 'Free',
+  free_plan: 'Trial',
   basic_user: 'Basic',
   pro_user: 'Pro',
   pro_plus_user: 'Pro+',

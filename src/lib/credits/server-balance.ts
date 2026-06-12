@@ -1,6 +1,12 @@
 import { auth } from '@clerk/nextjs/server';
 import { PLAN_KEYS } from './costs';
 import { getOrCreateBalance } from '../db/credit-queries';
+export {
+  BILLING_REQUIRED_ERROR,
+  BILLING_REQUIRED_MESSAGE,
+  billingRequiredResponse,
+  isBillingRequiredForGeneration,
+} from './billing-gate';
 
 export async function resolvePlanKey(): Promise<string> {
   const { has } = await auth();
