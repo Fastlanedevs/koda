@@ -5,7 +5,7 @@ Koda supports two deployment modes. Pick the one that fits your needs.
 | | Self-Hosted | Cloud |
 |---|---|---|
 | **Where** | Your machine / VPS | Vercel + managed services |
-| **Storage** | Local SQLite + disk | Turso (DB) + Cloudflare R2 (assets) |
+| **Storage** | Local SQLite + disk | Turso (DB) + S3/R2 (assets) |
 | **Sandboxes** | Docker containers | E2B cloud sandboxes |
 | **Cost** | Free (+ AI API keys) | ~$0 on free tiers, scales with usage |
 | **Best for** | Local dev, privacy, air-gapped | Teams, sharing, production |
@@ -151,15 +151,19 @@ Turso is a cloud-hosted SQLite service built on libSQL. It replaces the local `b
    npm run db:migrate
    ```
 
-### 3b. Cloudflare R2 (Asset Storage)
+### 3b. Cloud Asset Storage
 
-R2 stores generated images, videos, and audio so they persist beyond Fal.ai's 24-48h URL expiry. Zero egress fees.
+AWS S3 or Cloudflare R2 stores generated images, videos, audio, and optional animation snapshots so they persist beyond provider URL expiry.
 
-1. **Create an R2 bucket** — Cloudflare Dashboard → R2 → Create Bucket → name it `koda-assets`
-2. **Generate API credentials** — R2 → Manage R2 API tokens → Create API Token (Object Read & Write, scoped to bucket)
-3. **Get your Account ID** — visible in dashboard URL: `https://dash.cloudflare.com/<account-id>`
-4. **(Optional)** Set up a custom domain for public asset URLs
-5. **(Optional)** Configure CORS if assets are loaded from a different domain
+For AWS S3:
+
+1. **Create an S3 bucket** — for example `aws s3api create-bucket --bucket koda-assets-production --region eu-north-1 --create-bucket-configuration LocationConstraint=eu-north-1`
+2. **Create scoped IAM credentials** — allow `s3:GetObject`, `s3:PutObject`, and `s3:DeleteObject` on the bucket objects
+3. **Set production env** — `ASSET_STORAGE=s3`, `SNAPSHOT_STORAGE=s3`, `S3_BUCKET_NAME`, `S3_REGION`, `S3_ACCESS_KEY_ID`, and `S3_SECRET_ACCESS_KEY`
+4. **Configure public reads or CloudFront** — set `S3_PUBLIC_URL` when serving assets through CloudFront
+5. **Configure CORS** — allow `GET`, `HEAD`, and `PUT` for browser presigned uploads
+
+For Cloudflare R2, set `ASSET_STORAGE=r2`, `SNAPSHOT_STORAGE=r2`, and the `R2_*` variables from the R2 dashboard.
 
 ### 3c. E2B (Animation Sandboxes)
 
@@ -241,10 +245,10 @@ Default 1 vCPU / 2 GB is sufficient. Increase to 2 vCPU / 4 GB in Project Settin
 
 | Limitation | Impact | Mitigation |
 |-----------|--------|------------|
-| No persistent filesystem | Can't use local SQLite or disk assets | Turso + R2 |
+| No persistent filesystem | Can't use local SQLite or disk assets | Turso + S3/R2 |
 | No Docker | Can't run self-hosted animation sandboxes | E2B |
 | Cold starts | First request after idle ~1-3s | Fluid Compute |
-| 4.5 MB request body limit | Large uploads may fail | Upload to R2 directly |
+| 4.5 MB request body limit | Large uploads may fail | Upload to S3/R2 directly |
 | `better-sqlite3` won't build | Native module incompatible | Listed in `serverExternalPackages`, use Turso |
 
 ---
@@ -259,7 +263,7 @@ Default 1 vCPU / 2 GB is sufficient. Increase to 2 vCPU / 4 GB in Project Settin
 | `TURSO_DATABASE_URL` | Cloud | Turso | `libsql://...turso.io` |
 | `TURSO_AUTH_TOKEN` | Cloud | Turso | Auth token |
 | `SQLITE_PATH` | Local | App | `./data/koda.db` |
-| `ASSET_STORAGE` | Yes | App | `local` or `r2` |
+| `ASSET_STORAGE` | Yes | App | `local`, `r2`, or `s3` |
 | `ASSET_LOCAL_PATH` | Local | App | `./data/generations` |
 | `R2_ACCOUNT_ID` | Cloud | Cloudflare | Account ID |
 | `R2_ACCESS_KEY_ID` | Cloud | Cloudflare | S3-compatible access key |
@@ -267,6 +271,12 @@ Default 1 vCPU / 2 GB is sufficient. Increase to 2 vCPU / 4 GB in Project Settin
 | `R2_BUCKET_NAME` | Cloud | Cloudflare | Bucket name |
 | `R2_ENDPOINT` | No | Cloudflare | Custom endpoint (EU buckets) |
 | `R2_PUBLIC_URL` | No | Cloudflare | Custom domain or r2.dev URL |
+| `S3_ACCESS_KEY_ID` | Cloud | AWS | Scoped IAM access key |
+| `S3_SECRET_ACCESS_KEY` | Cloud | AWS | Scoped IAM secret key |
+| `S3_BUCKET_NAME` | Cloud | AWS | Bucket name |
+| `S3_REGION` | Cloud | AWS | Bucket region |
+| `S3_PUBLIC_URL` | No | AWS | CloudFront URL or other public asset URL |
+| `SNAPSHOT_STORAGE` | No | App | `local`, `r2`, or `s3` |
 | `SANDBOX_PROVIDER` | Animation | App | `docker` (local) or `e2b` (cloud) |
 | `E2B_API_KEY` | Cloud+Anim | E2B | API key for cloud sandboxes |
 
@@ -291,12 +301,12 @@ The cloud deployment is being built incrementally:
 |-----------|--------|-------|
 | Vercel deployment | Ready | Standard Next.js deploy |
 | Turso (database) | Ready | Drop-in replacement for local SQLite |
-| R2 (asset storage) | Ready | `ASSET_STORAGE=r2` — upload/serve via S3 API |
+| S3/R2 (asset storage) | Ready | `ASSET_STORAGE=s3` or `ASSET_STORAGE=r2` — upload/serve via S3 API |
 | E2B (sandboxes) | In progress | Replacing Docker containers with cloud VMs |
-| Sandbox persistence | In progress | R2 code snapshots + sandbox resurrection |
-| Media pipeline (R2) | In progress | Upload to R2 first, pass URLs to sandbox |
+| Sandbox persistence | In progress | S3/R2 code snapshots + sandbox resurrection |
+| Media pipeline (S3/R2) | In progress | Upload to cloud storage first, pass URLs to sandbox |
 
-Even before E2B is complete, you can deploy with Turso + R2 for everything except the animation plugin. Canvas editor, image/video generation, media upload, presets — all work in cloud mode today.
+Even before E2B is complete, you can deploy with Turso + S3/R2 for everything except the animation plugin. Canvas editor, image/video generation, media upload, presets — all work in cloud mode today.
 
 ---
 
@@ -363,14 +373,14 @@ Verify `export const dynamic = 'force-dynamic'` and adequate `maxDuration`. Enab
 
 ### Assets disappear after 24-48 hours
 
-You're using Fal.ai temporary URLs. Set `ASSET_STORAGE=r2` and configure R2 credentials.
+You're using Fal.ai temporary URLs. Set `ASSET_STORAGE=s3` or `ASSET_STORAGE=r2` and configure the matching cloud storage credentials.
 
 ### Comparison
 
 | Feature | Self-Hosted | Cloud |
 |---------|-------------|-------|
 | Setup time | ~5 min | ~15 min |
-| Data location | Your disk | Turso + R2 |
+| Data location | Your disk | Turso + S3/R2 |
 | Collaboration | Single user | Multi-user ready |
 | Animation sandboxes | Docker (local) | E2B (cloud VMs) |
 | Scaling | Limited by hardware | Auto-scales |

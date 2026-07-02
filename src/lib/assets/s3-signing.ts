@@ -1,7 +1,7 @@
 /**
  * AWS Signature V4 Signing Utilities
  *
- * Shared between S3AssetProvider and R2SnapshotProvider.
+ * Shared between S3AssetProvider and S3-compatible snapshot providers.
  * Uses Web Crypto API (available in Node.js 20+ and all modern runtimes).
  */
 

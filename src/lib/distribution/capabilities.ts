@@ -12,7 +12,8 @@ export type DistributionCapability =
   | 'docker_sandbox'
   | 'e2b_sandbox'
   | 'local_snapshots'
-  | 'r2_snapshots';
+  | 'r2_snapshots'
+  | 's3_snapshots';
 
 export type RuntimeFeature = 'authV1' | 'workspacesV1' | 'collabSharingV1';
 
@@ -30,6 +31,7 @@ const DISTRIBUTION_CAPABILITY_MATRIX: Record<Distribution, Record<DistributionCa
     e2b_sandbox: true,
     local_snapshots: true,
     r2_snapshots: true,
+    s3_snapshots: true,
   },
   hosted: {
     auth_v1: true,
@@ -44,6 +46,7 @@ const DISTRIBUTION_CAPABILITY_MATRIX: Record<Distribution, Record<DistributionCa
     e2b_sandbox: true,
     local_snapshots: true,
     r2_snapshots: true,
+    s3_snapshots: true,
   },
 };
 
@@ -88,7 +91,9 @@ export function resolveDistributionMode(): DistributionResolution {
     process.env.SANDBOX_PROVIDER === 'e2b' ||
     !!process.env.TURSO_DATABASE_URL ||
     process.env.ASSET_STORAGE === 'r2' ||
-    process.env.SNAPSHOT_STORAGE === 'r2';
+    process.env.ASSET_STORAGE === 's3' ||
+    process.env.SNAPSHOT_STORAGE === 'r2' ||
+    process.env.SNAPSHOT_STORAGE === 's3';
 
   return {
     distribution: isHosted ? 'hosted' : 'oss',
@@ -167,6 +172,15 @@ export function validateDistributionRuntimeContract(): RuntimeContractValidation
     );
     if (missing.length > 0) {
       errors.push(`SNAPSHOT_STORAGE=r2 missing required vars: ${missing.join(', ')}.`);
+    }
+  }
+
+  if (process.env.SNAPSHOT_STORAGE === 's3') {
+    const missing = ['S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY', 'S3_BUCKET_NAME'].filter(
+      (name) => !process.env[name]
+    );
+    if (missing.length > 0) {
+      errors.push(`SNAPSHOT_STORAGE=s3 missing required vars: ${missing.join(', ')}.`);
     }
   }
 

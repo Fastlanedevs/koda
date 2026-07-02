@@ -1,16 +1,18 @@
 /**
- * R2 Snapshot Provider
+ * S3-Compatible Snapshot Provider
  *
- * Buffer-based: stores tar.gz Buffers in Cloudflare R2.
+ * Buffer-based: stores tar.gz Buffers in Cloudflare R2 or AWS S3.
  * No Docker/sandbox awareness — callers handle export/import.
  *
- * R2 key layout:
+ * Snapshot key layout:
  *   snapshots/{nodeId}/{versionId}/code.tar.gz
  *   snapshots/{nodeId}/{versionId}/metadata.json
  *   snapshots/{nodeId}/latest/code.tar.gz        — copy of most recent
  *   snapshots/{nodeId}/latest/metadata.json
  *
- * Reuses R2 env vars: R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME
+ * Reuses the asset storage env vars for the selected backend:
+ * - R2: R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME
+ * - S3: S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3_BUCKET_NAME, S3_REGION
  */
 
 import type { SnapshotProvider, SnapshotMetadata } from './snapshot-provider';
@@ -74,6 +76,8 @@ function isRetryableSnapshotError(error: unknown): boolean {
   );
 }
 
+type SnapshotCloudStorageType = 'r2' | 's3';
+
 function getR2Config(): S3Config {
   const accountId = sanitizeEnv(process.env.R2_ACCOUNT_ID);
   const accessKeyId = sanitizeEnv(process.env.R2_ACCESS_KEY_ID);
@@ -100,11 +104,38 @@ function getR2Config(): S3Config {
   };
 }
 
-export class R2SnapshotProvider implements SnapshotProvider {
-  private config: S3Config;
+function getAwsS3Config(): S3Config {
+  const accessKeyId = sanitizeEnv(process.env.S3_ACCESS_KEY_ID);
+  const secretAccessKey = sanitizeEnv(process.env.S3_SECRET_ACCESS_KEY);
+  const bucket = sanitizeEnv(process.env.S3_BUCKET_NAME);
+  const region = sanitizeEnv(process.env.S3_REGION) || 'us-east-1';
 
-  constructor() {
-    this.config = getR2Config();
+  if (!accessKeyId || !secretAccessKey || !bucket) {
+    throw new Error(
+      'Missing S3 configuration. Set S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3_BUCKET_NAME.'
+    );
+  }
+
+  return {
+    type: 's3',
+    accessKeyId,
+    secretAccessKey,
+    bucket,
+    region,
+  };
+}
+
+function getCloudSnapshotConfig(type: SnapshotCloudStorageType): S3Config {
+  return type === 'r2' ? getR2Config() : getAwsS3Config();
+}
+
+export class S3SnapshotProvider implements SnapshotProvider {
+  private config: S3Config;
+  private label: string;
+
+  constructor(type: SnapshotCloudStorageType = 's3') {
+    this.config = getCloudSnapshotConfig(type);
+    this.label = type.toUpperCase();
   }
 
   private tarKey(nodeId: string, versionId: string): string {
@@ -136,7 +167,7 @@ export class R2SnapshotProvider implements SnapshotProvider {
         });
         if (!response.ok) {
           const errorText = (await response.text()).slice(0, 400);
-          throw new Error(`R2 PUT failed for ${key}: ${response.status} ${errorText}`);
+          throw new Error(`${this.label} PUT failed for ${key}: ${response.status} ${errorText}`);
         }
 
         lastError = undefined;
@@ -148,13 +179,13 @@ export class R2SnapshotProvider implements SnapshotProvider {
           break;
         }
         const delayMs = retryBaseMs * attempt;
-        console.warn(`[R2Snapshot] transient PUT failure for ${key} (attempt ${attempt}/${attempts}), retrying in ${delayMs}ms`, normalizeErrorMessage(error));
+        console.warn(`[${this.label}Snapshot] transient PUT failure for ${key} (attempt ${attempt}/${attempts}), retrying in ${delayMs}ms`, normalizeErrorMessage(error));
         await sleep(delayMs);
       }
     }
 
     if (lastError) {
-      throw new Error(`R2 PUT failed for ${key} after ${attemptsMade} attempt(s): ${normalizeErrorMessage(lastError)}`);
+      throw new Error(`${this.label} PUT failed for ${key} after ${attemptsMade} attempt(s): ${normalizeErrorMessage(lastError)}`);
     }
   }
 
@@ -164,7 +195,7 @@ export class R2SnapshotProvider implements SnapshotProvider {
     if (response.status === 404) return null;
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`R2 GET failed for ${key}: ${response.status} ${errorText}`);
+      throw new Error(`${this.label} GET failed for ${key}: ${response.status} ${errorText}`);
     }
     return Buffer.from(await response.arrayBuffer());
   }
@@ -204,7 +235,7 @@ export class R2SnapshotProvider implements SnapshotProvider {
       this.putObject(this.metadataKey(nodeId, LATEST), Buffer.from(metaJson), 'application/json'),
     ]);
 
-    console.log(`[R2Snapshot] Saved snapshot for ${nodeId}/${versionId} (${Math.round(data.length / 1024)}KB)`);
+    console.log(`[${this.label}Snapshot] Saved snapshot for ${nodeId}/${versionId} (${Math.round(data.length / 1024)}KB)`);
   }
 
   async load(nodeId: string, versionId?: string): Promise<Buffer | null> {
@@ -224,7 +255,7 @@ export class R2SnapshotProvider implements SnapshotProvider {
         this.deleteObject(this.tarKey(nodeId, versionId)),
         this.deleteObject(this.metadataKey(nodeId, versionId)),
       ]);
-      console.log(`[R2Snapshot] Deleted snapshot ${nodeId}/${versionId}`);
+      console.log(`[${this.label}Snapshot] Deleted snapshot ${nodeId}/${versionId}`);
     } else {
       // Delete latest — we can't list objects with pure S3 signing easily,
       // so delete known keys (latest). Individual versions remain until
@@ -233,7 +264,7 @@ export class R2SnapshotProvider implements SnapshotProvider {
         this.deleteObject(this.tarKey(nodeId, LATEST)),
         this.deleteObject(this.metadataKey(nodeId, LATEST)),
       ]);
-      console.log(`[R2Snapshot] Deleted latest snapshot for ${nodeId} (versioned copies may remain)`);
+      console.log(`[${this.label}Snapshot] Deleted latest snapshot for ${nodeId} (versioned copies may remain)`);
     }
   }
 
@@ -246,5 +277,11 @@ export class R2SnapshotProvider implements SnapshotProvider {
     } catch {
       return null;
     }
+  }
+}
+
+export class R2SnapshotProvider extends S3SnapshotProvider {
+  constructor() {
+    super('r2');
   }
 }

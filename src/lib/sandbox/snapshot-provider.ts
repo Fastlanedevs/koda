@@ -7,7 +7,7 @@
  *
  * Current implementations:
  * - LocalSnapshotProvider (disk-based, ./data/snapshots/)
- * - R2SnapshotProvider (Cloudflare R2 cloud storage)
+ * - S3SnapshotProvider (S3-compatible cloud storage: AWS S3 or Cloudflare R2)
  */
 
 export interface SnapshotMetadata {

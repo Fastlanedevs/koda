@@ -144,7 +144,7 @@ Koda is a canvas-based creative studio where AI nodes connect into workflows. In
 └─────────────────────────────────────────────────────┘
 ```
 
-**Local-first by default.** No external database needed to get started — state lives in Zustand with localStorage persistence. Optionally add Turso (cloud DB), Cloudflare R2 (asset storage), and E2B (cloud sandboxes) for production deployments.
+**Local-first by default.** No external database needed to get started — state lives in Zustand with localStorage persistence. Optionally add Turso (cloud DB), AWS S3 or Cloudflare R2 (asset storage), and E2B (cloud sandboxes) for production deployments.
 
 ---
 
@@ -234,7 +234,7 @@ Koda supports **mix-and-match deployment** — use local storage with cloud sand
 | `NEXT_PUBLIC_STORAGE_BACKEND` | No | `sqlite` | `sqlite` or `turso` |
 | `ASSET_STORAGE` | No | `local` | `local`, `r2`, or `s3` |
 | `SANDBOX_PROVIDER` | No | `docker` | `docker` or `e2b` |
-| `SNAPSHOT_STORAGE` | No | `local` | `local` or `r2` |
+| `SNAPSHOT_STORAGE` | No | `local` | `local`, `r2`, or `s3` |
 
 *At minimum you need the provider key for the image/video models you enable.
 
@@ -383,7 +383,7 @@ Koda supports flexible backend configurations:
 | **Database** | SQLite file | [Turso](https://turso.tech) (libSQL cloud) |
 | **Assets** | `./data/generations/` | [Cloudflare R2](https://developers.cloudflare.com/r2/) or AWS S3 |
 | **Sandboxes** | Docker containers | [E2B](https://e2b.dev) (managed cloud sandboxes) |
-| **Snapshots** | `./data/snapshots/` | Cloudflare R2 |
+| **Snapshots** | `./data/snapshots/` | Cloudflare R2 or AWS S3 |
 
 See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) and [`docs/SELF_HOSTING.md`](docs/SELF_HOSTING.md) for detailed setup guides.
 
