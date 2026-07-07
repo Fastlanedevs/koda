@@ -52,6 +52,9 @@ const DISPOSABLE_EMAIL_DOMAINS = new Set([
   'throwawaymail.com',
   'trashmail.com',
   'trashmail.de',
+  'sutemail.com',
+  'vhm.cc',
+  'x-box.in',
   'yopmail.com',
 ]);
 

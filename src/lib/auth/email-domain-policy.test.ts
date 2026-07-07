@@ -18,6 +18,9 @@ test('isBlockedDisposableEmail blocks observed abusive disposable domains', () =
   assert.equal(isBlockedDisposableEmail('buv2245xf6@gdte.site'), true);
   assert.equal(isBlockedDisposableEmail('happywave23@drafterplus.nl'), true);
   assert.equal(isBlockedDisposableEmail('yoruha78@ai-debate.jp'), true);
+  assert.equal(isBlockedDisposableEmail('yoruha786@sutemail.com'), true);
+  assert.equal(isBlockedDisposableEmail('finsoz@vhm.cc'), true);
+  assert.equal(isBlockedDisposableEmail('decent.leopon@x-box.in'), true);
 });
 
 test('isDisposableEmailDomain blocks common providers and subdomains', () => {

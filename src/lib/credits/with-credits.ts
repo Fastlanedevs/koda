@@ -22,6 +22,10 @@ export interface WithCreditsOptions {
    * Defaults to `{ model: body.model }`.
    */
   getCostParams?: (body: Record<string, unknown>) => CreditCostParams;
+  getPreflightError?: (
+    body: Record<string, unknown>,
+    context: { planKey: string; costParams: CreditCostParams }
+  ) => Response | null;
 }
 
 type RouteHandler = (
@@ -75,6 +79,11 @@ export function withCredits(options: WithCreditsOptions, handler: RouteHandler) 
 
     if (isBillingRequiredForGeneration(planKey)) {
       return billingRequiredResponse();
+    }
+
+    const preflightError = options.getPreflightError?.(body, { planKey, costParams });
+    if (preflightError) {
+      return preflightError;
     }
 
     // 5. Atomic deduction

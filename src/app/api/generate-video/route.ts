@@ -9,6 +9,11 @@ import {
 import { saveGeneratedVideo, saveGeneratedVideoBuffer } from '@/lib/video-storage';
 import { getAssetStorageType, getExtensionFromUrl, type AssetStorageProvider } from '@/lib/assets';
 import { withCredits } from '@/lib/credits/with-credits';
+import {
+  canUseSeedance,
+  isSeedanceModel,
+  seedanceBillingRequiredPayload,
+} from '@/lib/credits/provider-access';
 
 export const maxDuration = 600;
 
@@ -595,8 +600,14 @@ export const POST = withCredits(
       duration: (body.duration as number) || 5,
       generateAudio: (body.generateAudio as boolean) || false,
     }),
+    getPreflightError: (_body, { planKey, costParams }) => {
+      if (isSeedanceModel(String(costParams.model)) && !canUseSeedance(planKey)) {
+        return NextResponse.json(seedanceBillingRequiredPayload(), { status: 402 });
+      }
+      return null;
+    },
   },
-  async (request) => {
+  async (request, { planKey }) => {
     try {
       const body = await request.json();
       const {
@@ -627,6 +638,10 @@ export const POST = withCredits(
         referenceUrls: normalizedReferenceUrls,
       });
       const provider = getVideoProvider(modelType);
+      if (isSeedanceModel(modelType) && !canUseSeedance(planKey)) {
+        return NextResponse.json(seedanceBillingRequiredPayload(), { status: 402 });
+      }
+
       const normalizedOptions = normalizeVideoModelOptions(modelType, {
         aspectRatio,
         duration,
