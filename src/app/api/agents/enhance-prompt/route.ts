@@ -5,6 +5,7 @@ import { PROMPT_ENHANCER_MODEL } from '@/mastra/models';
 import { requirePaidGenerationAccess } from '@/lib/credits/paid-access';
 
 export const maxDuration = 60;
+const MAX_ENHANCE_PROMPT_CHARS = 4000;
 
 const SVG_ENHANCER_INSTRUCTIONS = `You are an expert prompt engineer for AI SVG generation.
 Your job is to take a user's basic prompt and enhance it to produce better vector SVG results.
@@ -50,9 +51,15 @@ export async function POST(request: Request) {
 
     const { prompt, type } = await request.json();
 
-    if (!prompt) {
+    if (typeof prompt !== 'string' || prompt.trim().length === 0) {
       return NextResponse.json(
         { error: 'Prompt is required' },
+        { status: 400 }
+      );
+    }
+    if (prompt.length > MAX_ENHANCE_PROMPT_CHARS) {
+      return NextResponse.json(
+        { error: `Prompt must be ${MAX_ENHANCE_PROMPT_CHARS} characters or fewer` },
         { status: 400 }
       );
     }

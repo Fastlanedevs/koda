@@ -15,6 +15,7 @@ import { withCredits } from '@/lib/credits/with-credits';
 export const maxDuration = 300;
 
 type DirectImageModelType = 'gpt-image-2' | 'gemini-3.1-flash-image-preview';
+const MAX_IMAGE_PROMPT_CHARS = 8000;
 
 interface InlineImagePart {
   mimeType: string;
@@ -532,8 +533,14 @@ export const POST = withCredits(
         imageInputs: rawImageInputs,
       } = body;
 
-      if (!prompt) {
+      if (typeof prompt !== 'string' || prompt.trim().length === 0) {
         return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
+      }
+      if (prompt.length > MAX_IMAGE_PROMPT_CHARS) {
+        return NextResponse.json(
+          { error: `Prompt must be ${MAX_IMAGE_PROMPT_CHARS} characters or fewer` },
+          { status: 400 }
+        );
       }
 
       const normalizeAbsoluteReferenceUrl = async (absolute: URL): Promise<string | undefined> => {

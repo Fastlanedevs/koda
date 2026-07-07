@@ -16,6 +16,7 @@ import {
 } from '@/lib/credits/provider-access';
 
 export const maxDuration = 600;
+const MAX_VIDEO_PROMPT_CHARS = 8000;
 
 type DirectVideoProvider = 'gemini' | 'ltx' | 'byteplus';
 
@@ -631,6 +632,15 @@ export const POST = withCredits(
       const normalizedReferenceUrls = normalizeMediaUrls(rawReferenceUrls, request);
       const normalizedVideoUrl = normalizeMediaUrl(inputVideoUrl, request);
       const normalizedAudioUrl = normalizeMediaUrl(inputAudioUrl, request);
+      if (prompt != null && typeof prompt !== 'string') {
+        return NextResponse.json({ error: 'Prompt must be a string' }, { status: 400 });
+      }
+      if (typeof prompt === 'string' && prompt.length > MAX_VIDEO_PROMPT_CHARS) {
+        return NextResponse.json(
+          { error: `Prompt must be ${MAX_VIDEO_PROMPT_CHARS} characters or fewer` },
+          { status: 400 }
+        );
+      }
       const modelType = resolveVideoModel(model as VideoModelType, {
         referenceUrl: normalizedReferenceUrl,
         firstFrameUrl: normalizedFirstFrameUrl,

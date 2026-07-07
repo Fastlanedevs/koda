@@ -6,6 +6,7 @@ import { getAssetStorageType, getExtensionFromUrl, type AssetStorageProvider } f
 import { withCredits } from '@/lib/credits/with-credits';
 
 export const maxDuration = 300;
+const MAX_MUSIC_PROMPT_CHARS = 4000;
 
 // Configure Fal client
 fal.config({
@@ -77,9 +78,15 @@ export const POST = withCredits(
       const modelId = FAL_AUDIO_MODELS['ace-step'];
 
       // Validate input
-      if (!prompt) {
+      if (typeof prompt !== 'string' || prompt.trim().length === 0) {
         return NextResponse.json(
           { error: 'Prompt is required' },
+          { status: 400 }
+        );
+      }
+      if (prompt.length > MAX_MUSIC_PROMPT_CHARS) {
+        return NextResponse.json(
+          { error: `Prompt must be ${MAX_MUSIC_PROMPT_CHARS} characters or fewer` },
           { status: 400 }
         );
       }

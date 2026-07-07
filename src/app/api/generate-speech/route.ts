@@ -5,6 +5,8 @@ import { getAssetStorageType, getExtensionFromUrl, type AssetStorageProvider } f
 import { withCredits } from '@/lib/credits/with-credits';
 
 export const maxDuration = 300;
+const MAX_SPEECH_TEXT_CHARS = 5000;
+const MAX_DIALOGUE_LINES = 20;
 
 // Configure Fal client
 fal.config({
@@ -229,6 +231,19 @@ export const POST = withCredits(
             { status: 400 }
           );
         }
+        if (lines.length > MAX_DIALOGUE_LINES) {
+          return NextResponse.json(
+            { error: `Dialogue mode supports up to ${MAX_DIALOGUE_LINES} lines` },
+            { status: 400 }
+          );
+        }
+        const dialogueTextLength = lines.reduce((total, line) => total + line.text.length, 0);
+        if (dialogueTextLength > MAX_SPEECH_TEXT_CHARS) {
+          return NextResponse.json(
+            { error: `Dialogue text must be ${MAX_SPEECH_TEXT_CHARS} characters or fewer` },
+            { status: 400 }
+          );
+        }
 
         const mappedInputs = lines.map((line) => ({
           text: line.text,
@@ -246,6 +261,12 @@ export const POST = withCredits(
         if (!finalText) {
           return NextResponse.json(
             { error: 'Text is required' },
+            { status: 400 }
+          );
+        }
+        if (finalText.length > MAX_SPEECH_TEXT_CHARS) {
+          return NextResponse.json(
+            { error: `Text must be ${MAX_SPEECH_TEXT_CHARS} characters or fewer` },
             { status: 400 }
           );
         }
