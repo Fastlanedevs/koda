@@ -22,6 +22,7 @@ import { evaluatePluginLaunchById, emitPluginPolicyAuditEvent } from '@/lib/plug
 import { loadVideoRecipes } from '@/mastra/recipes/video';
 import { STORYBOARD_MODEL } from '@/mastra/models';
 import { resolveModelImagePart } from '@/lib/model-image-input';
+import { requirePaidGenerationAccess } from '@/lib/credits/paid-access';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -55,6 +56,9 @@ export async function POST(request: Request) {
         { status: policyDecision.code === 'PLUGIN_NOT_FOUND' ? 404 : 403 }
       );
     }
+
+    const paidAccess = await requirePaidGenerationAccess();
+    if (!paidAccess.ok) return paidAccess.response;
 
     const body = await request.json();
     console.log('\n========== STORYBOARD GENERATION START ==========');

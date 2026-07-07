@@ -16,7 +16,7 @@ import {
   creditTransactions,
   type CreditBalance,
 } from './schema';
-import { getPlanCredits, getInitialFreeCredits, FREE_TIER_CREDITS } from '@/lib/credits/costs';
+import { getPlanCredits, getInitialFreeCredits } from '@/lib/credits/costs';
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -46,10 +46,45 @@ export async function getOrCreateBalance(
     .limit(1);
 
   if (existing) {
+    const monthlyCredits = getPlanCredits(planKey);
+
+    if (
+      monthlyCredits === 0
+      && (existing.balance !== 0 || existing.creditsPerMonth !== 0 || existing.planKey !== planKey)
+    ) {
+      const now = new Date();
+      await db
+        .update(creditBalances)
+        .set({
+          balance: 0,
+          planKey,
+          creditsPerMonth: 0,
+          updatedAt: now,
+        })
+        .where(eq(creditBalances.userId, userId));
+
+      await db.insert(creditTransactions).values({
+        id: randomUUID(),
+        userId,
+        amount: -existing.balance,
+        balanceAfter: 0,
+        type: 'reset',
+        reason: `free_plan_paywall:${planKey}`,
+        createdAt: now,
+      });
+
+      return {
+        ...existing,
+        balance: 0,
+        planKey,
+        creditsPerMonth: 0,
+        updatedAt: now,
+      };
+    }
+
     // Check if we need a monthly reset (new billing period)
     const periodStart = currentPeriodStart();
     if (existing.periodStart.getTime() < periodStart.getTime()) {
-      const monthlyCredits = getPlanCredits(planKey);
       const now = new Date();
       await db
         .update(creditBalances)
@@ -85,7 +120,6 @@ export async function getOrCreateBalance(
 
     // Plan changed (upgrade/downgrade) — reset balance to new allocation
     if (existing.planKey !== planKey) {
-      const monthlyCredits = getPlanCredits(planKey);
       const now = new Date();
       const periodStart = now;
       await db
@@ -124,7 +158,7 @@ export async function getOrCreateBalance(
   }
 
   // First access — create with plan credits
-  // For free users, apply early-user bonus if EARLY_USER_FREE_CREDITS is set
+  // Free users receive zero credits; paid plan keys receive their monthly allocation.
   const monthlyCredits = getPlanCredits(planKey);
   const initialCredits = planKey === 'free_user' ? getInitialFreeCredits() : monthlyCredits;
   const now = new Date();

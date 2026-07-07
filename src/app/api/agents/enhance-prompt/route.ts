@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { Agent } from '@mastra/core/agent';
 import { mastra } from '@/mastra';
 import { PROMPT_ENHANCER_MODEL } from '@/mastra/models';
+import { requirePaidGenerationAccess } from '@/lib/credits/paid-access';
 
 export const maxDuration = 60;
 
@@ -44,7 +45,10 @@ Output ONLY the enhanced prompt, nothing else.`;
 
 export async function POST(request: Request) {
   try {
-    const { prompt, type, model } = await request.json();
+    const paidAccess = await requirePaidGenerationAccess();
+    if (!paidAccess.ok) return paidAccess.response;
+
+    const { prompt, type } = await request.json();
 
     if (!prompt) {
       return NextResponse.json(

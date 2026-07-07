@@ -10,7 +10,7 @@ import {
 
 test('isBillingRequiredForGeneration requires a non-free Clerk plan', () => {
   assert.equal(isBillingRequiredForGeneration('free_user'), true);
-  assert.equal(isBillingRequiredForGeneration('free_plan'), false);
+  assert.equal(isBillingRequiredForGeneration('free_plan'), true);
   assert.equal(isBillingRequiredForGeneration('basic_user'), false);
   assert.equal(isBillingRequiredForGeneration('pro_user'), false);
   assert.equal(isBillingRequiredForGeneration('pro_plus_user'), false);

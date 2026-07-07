@@ -2,10 +2,12 @@ import { NextResponse } from 'next/server';
 
 export const BILLING_REQUIRED_ERROR = 'BILLING_REQUIRED';
 export const BILLING_REQUIRED_MESSAGE =
-  'Add a payment method to start your free trial and continue generating.';
+  'Choose a paid plan to continue generating.';
+
+const FREE_PLAN_KEYS = new Set(['free_user', 'free_plan']);
 
 export function isBillingRequiredForGeneration(planKey: string): boolean {
-  return planKey === 'free_user';
+  return FREE_PLAN_KEYS.has(planKey);
 }
 
 export function billingRequiredResponse(): Response {

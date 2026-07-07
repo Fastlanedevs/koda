@@ -35,6 +35,8 @@ export function BillingPromptModal() {
 
   if (!isOpen) return null;
 
+  const isPaidPlanRequired = required === null && balance === null;
+
   const handleOpenBilling = () => {
     close();
     router.push('/settings?tab=billing');
@@ -72,7 +74,7 @@ export function BillingPromptModal() {
           </div>
 
           <h2 id="billing-prompt-title" className="text-xl font-semibold text-foreground">
-            You&apos;re out of credits
+            {isPaidPlanRequired ? 'Paid plan required' : 'You\u0027re out of credits'}
           </h2>
 
           <p className="mt-2 text-sm leading-6 text-muted-foreground">{message}</p>

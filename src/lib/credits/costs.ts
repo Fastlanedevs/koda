@@ -146,19 +146,13 @@ export function getPlanCredits(planKey: string): number {
 }
 
 /** Default credits for free tier users */
-export const FREE_TIER_CREDITS = 30;
+export const FREE_TIER_CREDITS = 0;
 
 /**
  * Credits granted to NEW free-tier users on first provisioning.
- * Reads EARLY_USER_FREE_CREDITS env var (default: YAML's free_user allocation).
- * Remove the env var to revert to the standard 30-credit allocation.
+ * Free plans are paywalled, so they do not receive introductory credits.
  */
 export function getInitialFreeCredits(): number {
-  const envVal = process.env.EARLY_USER_FREE_CREDITS;
-  if (envVal !== undefined && envVal !== '') {
-    const parsed = parseInt(envVal, 10);
-    if (!Number.isNaN(parsed) && parsed > 0) return parsed;
-  }
   return getPlanCredits('free_user');
 }
 

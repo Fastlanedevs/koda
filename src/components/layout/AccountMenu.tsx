@@ -17,7 +17,7 @@ import {
 
 const PLAN_BADGE_STYLES: Record<string, { label: string; className: string }> = {
   free_user: { label: 'Free', className: 'bg-zinc-700/60 text-zinc-300' },
-  free_plan: { label: 'Trial', className: 'bg-emerald-600/20 text-emerald-400' },
+  free_plan: { label: 'Free', className: 'bg-zinc-700/60 text-zinc-300' },
   basic_user: { label: 'Basic', className: 'bg-blue-600/20 text-blue-400' },
   pro_user: { label: 'Pro', className: 'bg-purple-600/20 text-purple-400' },
   pro_plus_user: { label: 'Pro+', className: 'bg-amber-600/20 text-amber-400' },

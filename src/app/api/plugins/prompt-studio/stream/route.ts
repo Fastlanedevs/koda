@@ -1,7 +1,7 @@
 /**
  * Prompt Studio Streaming API Route
  *
- * Simple Mastra agent stream — no sandbox, no plan gate.
+ * Simple Mastra agent stream — no sandbox, paid plan required.
  * Receives chat messages, streams creative prompt generation as SSE.
  */
 
@@ -12,6 +12,7 @@ import { emitLaunchMetric } from '@/lib/observability/launch-metrics';
 import { evaluatePluginLaunchById, emitPluginPolicyAuditEvent } from '@/lib/plugins/launch-policy';
 import { getAssetStorageType } from '@/lib/assets';
 import { generatePresignedGetUrl, type S3Config } from '@/lib/assets/s3-signing';
+import { requirePaidGenerationAccess } from '@/lib/credits/paid-access';
 import { z } from 'zod';
 
 export const runtime = 'nodejs';
@@ -277,6 +278,9 @@ export async function POST(request: Request) {
         { status: policyDecision.code === 'PLUGIN_NOT_FOUND' ? 404 : 403 }
       );
     }
+
+    const paidAccess = await requirePaidGenerationAccess();
+    if (!paidAccess.ok) return paidAccess.response;
 
     const rawBody = await request.json();
     const parsedBody = PromptStudioRequestSchema.safeParse(rawBody);

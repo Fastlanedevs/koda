@@ -7,6 +7,7 @@
 
 import { NextResponse } from 'next/server';
 import { Agent } from '@mastra/core/agent';
+import { requirePaidGenerationAccess } from '@/lib/credits/paid-access';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -26,6 +27,9 @@ Rules:
 
 export async function POST(request: Request) {
   try {
+    const paidAccess = await requirePaidGenerationAccess();
+    if (!paidAccess.ok) return paidAccess.response;
+
     const body = await request.json();
     const { product, character, style, targetVideoModel, connectedNodes } = body;
 

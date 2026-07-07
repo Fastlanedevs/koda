@@ -16,6 +16,7 @@ import {
 import { emitLaunchMetric } from '@/lib/observability/launch-metrics';
 import { evaluatePluginLaunchById, emitPluginPolicyAuditEvent } from '@/lib/plugins/launch-policy';
 import { resolveModelImagePart } from '@/lib/model-image-input';
+import { requirePaidGenerationAccess } from '@/lib/credits/paid-access';
 
 const DEFAULT_MODEL = 'google/gemini-3-pro-preview';
 
@@ -47,6 +48,9 @@ export async function POST(request: Request) {
         { status: policyDecision.code === 'PLUGIN_NOT_FOUND' ? 404 : 403 }
       );
     }
+
+    const paidAccess = await requirePaidGenerationAccess();
+    if (!paidAccess.ok) return paidAccess.response;
 
     const body = await request.json();
     console.log('\n========== PRODUCT SHOT GENERATION START ==========');

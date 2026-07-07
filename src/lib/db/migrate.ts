@@ -191,7 +191,7 @@ const SCHEMA_SQL_STATEMENTS = [
     user_id TEXT NOT NULL,
     balance INTEGER NOT NULL DEFAULT 0,
     plan_key TEXT NOT NULL DEFAULT 'free_user',
-    credits_per_month INTEGER NOT NULL DEFAULT 30,
+    credits_per_month INTEGER NOT NULL DEFAULT 0,
     period_start INTEGER NOT NULL,
     lifetime_used INTEGER NOT NULL DEFAULT 0,
     created_at INTEGER NOT NULL,

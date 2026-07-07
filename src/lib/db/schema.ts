@@ -272,7 +272,7 @@ export const creditBalances = sqliteTable(
     userId: text('user_id').notNull(),
     balance: integer('balance').notNull().default(0),
     planKey: text('plan_key').notNull().default('free_user'),
-    creditsPerMonth: integer('credits_per_month').notNull().default(30),
+    creditsPerMonth: integer('credits_per_month').notNull().default(0),
     periodStart: integer('period_start', { mode: 'timestamp_ms' }).notNull(),
     lifetimeUsed: integer('lifetime_used').notNull().default(0),
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
